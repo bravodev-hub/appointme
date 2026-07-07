@@ -1,16 +1,44 @@
-﻿<Solution>
-  <Folder Name="/Booking/" />
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Booking/">
+    <Project Path="src/Booking/AppointMe.Booking.Contracts/AppointMe.Booking.Contracts.csproj" />
+    <Project Path="src/Booking/AppointMe.Booking.Tests/AppointMe.Booking.Tests.csproj" />
+    <Project Path="src/Booking/AppointMe.Booking/AppointMe.Booking.csproj" />
+  </Folder>
   <Folder Name="/CRM/">
-    <Project Path="src\CRM\AppointMe.Crm.Contracts\AppointMe.Crm.Contracts.csproj" Type="Classic C#" />
-    <Project Path="src\CRM\AppointMe.Crm.Tests\AppointMe.Crm.Tests.csproj" Type="Classic C#" />
-    <Project Path="src\CRM\AppointMe.Crm\AppointMe.Crm.csproj" Type="Classic C#" />
+    <Project Path="src/CRM/AppointMe.Crm.Contracts/AppointMe.Crm.Contracts.csproj" />
+    <Project Path="src/CRM/AppointMe.Crm.Tests/AppointMe.Crm.Tests.csproj" />
+    <Project Path="src/CRM/AppointMe.Crm/AppointMe.Crm.csproj" />
+  </Folder>
+  <Folder Name="/Docs/">
+    <File Path="docs/identity-resolution.md" />
+  </Folder>
+  <Folder Name="/Identity/">
+    <Project Path="src/Identity/AppointMe.Identity.Contracts/AppointMe.Identity.Contracts.csproj" />
+    <Project Path="src/Identity/AppointMe.Identity.Tests/AppointMe.Identity.Tests.csproj" />
+    <Project Path="src/Identity/AppointMe.Identity/AppointMe.Identity.csproj" />
+  </Folder>
+  <Folder Name="/Organizations/">
+    <Project Path="src/Organizations/AppointMe.Organizations.Contracts/AppointMe.Organizations.Contracts.csproj" />
+    <Project Path="src/Organizations/AppointMe.Organizations.Tests/AppointMe.Organizations.Tests.csproj" />
+    <Project Path="src/Organizations/AppointMe.Organizations/AppointMe.Organizations.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitlab-ci.yml" />
     <File Path="compose.yaml" />
-    <File Path="Directory.Packages.props" />
     <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="THIRD-PARTY-NOTICES.md" />
   </Folder>
-  <Project Path="src\AppointMe.Aspire\AppointMe.Aspire.csproj" Type="Classic C#" />
-  <Project Path="src\AppointMe.Shared\AppointMe.Shared.csproj" Type="Classic C#" />
-  <Project Path="src\AppointMe.Web\AppointMe.Web.csproj" Type="Classic C#" />
+  <Project Path="src/AppointMe.Api/AppointMe.Api.csproj" />
+  <Project Path="src/AppointMe.Aspire/AppointMe.Aspire.csproj" />
+  <Project Path="src/AppointMe.Shared.Tests/AppointMe.Shared.Tests.csproj" />
+  <Project Path="src/AppointMe.Shared/AppointMe.Shared.csproj" />
 </Solution>
