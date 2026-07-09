@@ -73,5 +73,9 @@ public sealed class AppointmentTypeConfiguration : IEntityTypeConfiguration<Appo
             .HasConversion(UtcDateTimeOffsetConverter)
             .HasColumnType("datetime2")
             .IsRequired();
+
+        builder.Property<byte[]>("Version")
+            .IsRowVersion()
+            .IsRequired();
     }
 }

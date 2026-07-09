@@ -12,6 +12,7 @@ internal static class ErrorHandlingServiceCollectionExtensions
                 .AddExceptionHandler<NotFoundExceptionHandler>()
                 .AddExceptionHandler<ConflictExceptionHandler>()
                 .AddExceptionHandler<AccessDeniedExceptionHandler>()
+                .AddExceptionHandler<ConcurrencyExceptionHandler>()
                 .AddExceptionHandler<GlobalExceptionHandler>();
         }
     }
