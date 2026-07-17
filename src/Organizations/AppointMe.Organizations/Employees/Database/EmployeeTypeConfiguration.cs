@@ -67,5 +67,9 @@ public sealed class EmployeeTypeConfiguration : IEntityTypeConfiguration<Employe
             .HasComputedColumnSql(
                 "LOWER(CONCAT([FirstName], ' ', ISNULL([LastName], ''), ' ', [Email]))",
                 stored: true);
+
+        builder.Property<byte[]>("Version")
+            .IsRowVersion()
+            .IsRequired();
     }
 }

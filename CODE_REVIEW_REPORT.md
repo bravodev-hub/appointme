@@ -45,7 +45,7 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 
 > **Remediation status (updated 2026-07-17).** The review is a point-in-time snapshot from 2026-07-08 (base commit `3f5228e`). Fully fixed findings have been **removed** from this register (and from Appendix B, whose numbering is preserved); partially fixed ones remain in place with a status note.
 > - **H2 — Hangfire dashboard exposed at `/admin/jobs` with authorization disabled — FIXED and removed** (commits `a7d4043` → `e65bf41` → `868f278`, merged in PR #3 `0ac8d2a`, refined in `e35ba73`; was also Appendix B3). Verified implementation: the dashboard is mapped as a routed endpoint behind `.RequireAuthorization(HangfireDashboardPolicy.Name)`, moving enforcement into the ASP.NET Core authorization pipeline (the empty `DashboardOptions.Authorization = []` is now intentional). The `HangfireDashboard` policy requires an authenticated user plus `SuperAdminRequirement`; `SuperAdminAuthorizationHandler` resolves the caller via `IIdentityResolver` and succeeds only for a registered `UserIdentity` whose email is in the config-sourced `SuperAdminRegistry` (`Authentication:SuperAdmins`; production defaults to `[]` → deny-all, Development/Devtest allow only `demo@appointme.dev`). Covered by `SuperAdminAuthorizationHandlerTests` (9/9 passing). Residual (accepted): the dashboard registers in every non-codegen environment — safe under the deny-by-default allowlist; super-admin trust rests on the IdP-provided email at user registration.
-> - **M6 — PARTIALLY FIXED** (commit `0bb7021`): `Appointment` has a rowversion token and a global 409 concurrency handler exists; all other aggregates still lack tokens. See the status note under M6.
+> - **M6 — No optimistic-concurrency token on any aggregate (silent lost updates) — FIXED and removed** (commit `0bb7021` + follow-ups on 2026-07-17; was also Appendix B11). Every EF-mapped entity across all four DbContexts now carries a non-nullable rowversion concurrency token (`builder.Property<byte[]>("Version").IsRowVersion().IsRequired()`): Booking — `Appointment`, `Attendee`, `BookingCompany`, `ServiceProvider` (migrations `20260709104431_AddAppointmentRowVersion`, `20260717103055_AddBookingProjectionsRowVersion`); CRM — `Customer` (`20260717102104_AddCustomerRowVersion`); Organizations — `Employee`, `Company`, `EmployeeInvitation`, `RolePermissionOverride` (`20260717102457_AddEmployeeAndCompanyRowVersion`, `20260717103102_AddInvitationAndPermissionOverrideRowVersion`); Identity — `User` (`20260717103143_AddUserRowVersion`). All columns are `rowversion, nullable: false`. A global `ConcurrencyExceptionHandler` maps `DbUpdateConcurrencyException` (including Wolverine-wrapped inner exceptions) to `409 Conflict` with code `concurrency_conflict`; conflicts inside Wolverine event/reconciliation handlers surface as exceptions handled by Wolverine's retry policy instead of silent lost updates. Verified: 10/10 entities tokenized in the model snapshots, full test suite green (136 tests), no Dapper `SELECT *` reads affected.
 > - All other findings remain open.
 
 ## HIGH
@@ -142,20 +142,6 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
   services.AddHybridCache(); // now backed by the distributed L2
   ```
 
-### M6 — No optimistic-concurrency token on any aggregate (silent lost updates)
-- **File:** representative — `src/Booking/AppointMe.Booking/Appointments/Database/AppointmentTypeConfiguration.cs:15` (pattern applies to all aggregates)
-- **Issue:** no `IsRowVersion`/`IsConcurrencyToken` anywhere. All mutations are load→mutate→`SaveChanges` under READ COMMITTED. Two concurrent operations on the same aggregate (e.g. reschedule vs. cancel of one appointment) both succeed last-writer-wins with no `DbUpdateConcurrencyException`. No cross-tenant impact.
-- **Remediation:** add a rowversion concurrency token to each aggregate's EF configuration:
-  ```csharp
-  builder.Property<byte[]>("Version").IsRowVersion();
-  ```
-  Handle `DbUpdateConcurrencyException` (retry or surface `ConflictException`) in the write handlers.
-
-> **◐ PARTIALLY FIXED — verified 2026-07-17** (commit `0bb7021`):
-> - `Appointment` now carries a non-nullable rowversion token: `builder.Property<byte[]>("Version").IsRowVersion().IsRequired()` (`AppointmentTypeConfiguration.cs:77-79`), with migration `20260709104431_AddAppointmentRowVersion` (`nullable: false`).
-> - A global `ConcurrencyExceptionHandler` (`src/AppointMe.Api/ErrorHandling/`) maps `DbUpdateConcurrencyException` — including Wolverine-wrapped inner exceptions — to `409 Conflict` with code `concurrency_conflict`, covering the "handle the exception" half of the remediation for all aggregates going forward.
-> - **Still open:** every other aggregate (Customer, Employee, Company, invitations, …) remains without a concurrency token; the last-writer-wins behavior described above still applies to them.
-
 ## LOW (hardening / defense-in-depth)
 
 ### L1 — `RequireHttpsMetadata` defaults to `false` (code + base config)
@@ -245,7 +231,7 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 ## Items flagged for architectural realignment / manual design review
 - **H1** — the role-grant authorization policy (who may grant which roles) is a product decision, not just a null-check.
 - **L13** — make tenant-membership enforcement a boundary invariant rather than an emergent property of handler signatures.
-- **M5 / M6** — both are latent until horizontal scale-out / real write contention; decide whether to fix now or gate scale-out on them.
+- **M5** — latent until horizontal scale-out; decide whether to fix now or gate scale-out on it. *(M6, its former companion here, is done.)*
 
 ## Verified clean (checked and dismissed — recorded for completeness)
 The following were investigated and found **not** to be defects (8 adversarially refuted + confirmations from my own pass): SQL injection in search/pagination (fully parameterized); value-object primary-constructor misuse in handlers (all `new` usages are inside the factories themselves); `DateTime.Now/UtcNow` misuse (TimeProvider used consistently); customer/appointment/team read + write handlers (all resolve `IPrincipal`, `Require` a permission, and scope by `companyId`); `/me` and `/invitations/pending` `IgnoreQueryFilters` usage (deliberate, self-scoped by `UserId`/`Email`); invitation acceptance IDOR (scoped to the caller's email; expiry + pending-status enforced); `GlobalExceptionHandler` (generic message, no stack-trace leakage); the `X-Company-Id` client-controlled header (server-enforced); `<Can>`/`usePermission` UI gating (server enforces independently); login `returnUrl` open-redirect (server restricts to relative paths); DataProtection ephemeral-key concern (cookie is `Secure`/`HttpOnly`); the chart `dangerouslySetInnerHTML` (developer-authored input only); `RolePermissionOverridesCache` thread-safety (uses stampede-safe `HybridCache`).
@@ -266,7 +252,7 @@ The following were investigated and found **not** to be defects (8 adversarially
 2. M1, M2, L1, L2 (auth/session/secrets hygiene).
 3. L7, L8, L9, L3, L4 (transport/CSRF headers — one small middleware + config).
 4. L12, L6, L11, L5 (robustness one-liners).
-5. M3, M4, M5, M6, L10, L13 (infra + architectural — schedule with a design discussion).
+5. M3, M4, M5, L10, L13 (infra + architectural — schedule with a design discussion). *(M6 done.)*
 
 
 ---
@@ -697,10 +683,10 @@ There is **no SMTP client, MailKit, or `IEmailSender` in application code** — 
 
 ---
 
-# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 30 listed)
+# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 29 listed)
 
 
-Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard — see the remediation-status note in the register); the original numbering is preserved.
+Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency — see the remediation-status note in the register); the original numbering is preserved.
 
 
 ## B1. [High] UpdateEmployeeRoles lets a non-owner assign the protected Owner SystemRole, enabling vertical privilege escalation and self-promotion
@@ -1125,72 +1111,6 @@ Configure a distributed L2 backing store and a backplane for HybridCache (e.g. A
 **Verification.** The defect is real and there is no mitigation elsewhere. (1) HybridCache is registered bare at SharedModule.cs:20 with `services.AddHybridCache()`. A grep across the entire src tree shows this is the only HybridCache registration and there is NO Redis/IDistributedCache/L2/backplane registration anywhere — so HybridCache is L1-only (in-process). (2) RolePermissionOverridesCache uses LocalCacheExpiration = 1h and Expiration = 1h; InvalidateAsync (line 32) calls cache.RemoveAsync, which on an L1-only cache evicts only the processing node's entry. (3) This cache is authoritative for authZ: UserPrincipalFactory.Create (lines 27/33) builds every request's effective permission set from GetAsync and feeds it to PermissionResolver.Resolve. (4) I specifically checked for a messaging-based backplane mitigation and it does not exist: the CompanyPermissionsChanged event is a cascaded Wolverine message handled by CompanyPermissionsChangedEventHandler, and Wolverine is configured with UseDurableLocalQueues() + default transport SqlDurable (node-local durable queue, no external broker). Even the alternate AzureServiceBus path is a competing-consumer queue, not a broadcast — so exactly ONE node processes the invalidation and only that node's L1 is cleared. Therefore, in a multi-instance deployment, all other nodes keep the stale permission set until their local 1h expiry, meaning revoked permissions stay effective (and new grants unavailable) for up to 60 minutes. The one nuance the reviewer already acknowledged: the current Aspire AppHost (Program.cs) registers appointme-api with no .WithReplicas(...), so the deployment is single-instance today and the defect does not manifest in production right now — it is latent, surfacing only on the scale-out the modular monolith is explicitly designed for. Line anchor is slightly imprecise: the RemoveAsync call is line 32 (line 30 is the method signature), and the root-cause fix belongs at SharedModule.cs:20.
 
 **Notes.** Practical severity today is Low because the app runs single-instance (no .WithReplicas in AppHost/Program.cs) — with one node, RemoveAsync clears the only L1 and there is no staleness. It escalates to Medium/High the moment the API is scaled to more than one instance, which the codebase is explicitly designed for. The staleness is bounded and self-healing (max 1h, per LocalCacheExpiration). This is a consistency/robustness issue, not an immediately exploitable auth bypass, so Immediate/High do not apply to the current state. Recommend fixing before any horizontal scale-out. Also note the reviewer's line should be 32 (RemoveAsync) rather than 30, and the actual configuration fix lives in SharedModule.cs:20.
-
-
-## B11. [Medium] No optimistic-concurrency token on any aggregate — concurrent writes silently lost
-
-> **◐ PARTIALLY FIXED 2026-07-17** — `Appointment` has a rowversion token and concurrency conflicts surface as 409; other aggregates still lack tokens. See the status note under M6 in the main register.
-
-- **Location:** `src/Booking/AppointMe.Booking/Appointments/Database/AppointmentTypeConfiguration.cs:15`
-- **Dimension / category:** robustness / concurrency
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** yes
-
-**Explanation.** A repo-wide search for IsRowVersion / IsConcurrencyToken / RowVersion / UseXminAsConcurrencyToken returns zero matches, so no aggregate defines an optimistic-concurrency token. Every mutation handler follows load-mutate-SaveChanges under the default READ COMMITTED isolation (Wolverine AutoApplyTransactions wraps a transaction but does not add conflict detection). Two concurrent requests that load the same aggregate therefore both succeed with last-writer-wins and no DbUpdateConcurrencyException. Concrete impact: two simultaneous reschedules of the same appointment, or a reschedule racing a cancel, or two concurrent UpdateEmployeeRoles calls, produce a lost update with no error surfaced to either caller. This is the highest-value case for booking data where correctness of the final slot matters.
-
-**Evidence.**
-```
-var appointment = await dbContext.Appointments
-    .LoadAsync(new AppointmentId(command.AppointmentId), cancellationToken);
-...
-appointment.Reschedule(providerId, timePeriod);
-await dbContext.SaveChangesAsync(cancellationToken);
-```
-
-**Proposed remediation.**
-```
-Add a concurrency token to mutable aggregates (SQL Server rowversion via IsRowVersion() on a byte[] property, mapped in each aggregate's IEntityTypeConfiguration) so EF Core issues WHERE-clause optimistic checks and throws DbUpdateConcurrencyException on conflict; then handle that (retry or surface a ConflictException).
-```
-
-**Verification.** The defect is real and I found no mitigation anywhere.
-
-1. Repo-wide search for `IsRowVersion` / `IsConcurrencyToken` / `RowVersion` / `UseXminAsConcurrencyToken` / `ConcurrencyCheck` / `[Timestamp]` returns zero matches across all `*.cs` (excluding generated obj/migration artifacts). No aggregate defines an optimistic-concurrency token.
-
-2. The Appointment aggregate (src/Booking/AppointMe.Booking/Appointments/Appointment.cs) has no version/rowversion field — only Id, CompanyId, ProviderId, AttendeeId, Period, Notes, Status, ScheduledAt.
-
-3. AppointmentTypeConfiguration.cs configures every property but never calls `.IsRowVersion()`/`.IsConcurrencyToken()`. BookingDbContext.OnModelCreating only adds query filters (CompanyId, soft-delete); its ConfigureConventions is not even overridden here (the only ConfigureConventions in the repo, in OrganizationsDbContext, adds a RoleValueConverter — not concurrency). No SaveChangesInterceptor/ISaveChangesInterceptor exists.
-
-4. The handler follows load→mutate→SaveChanges: `LoadAsync(...)` (tracked read) then `appointment.Reschedule(...)` (mutates ProviderId + Period, only guarded by a Status==Scheduled check) then `SaveChangesAsync`. The endpoint dispatches via `bus.InvokeAsync` (in-process request/response, runs inside the HTTP request thread) — no cross-request serialization.
-
-5. Wolverine's `options.Policies.AutoApplyTransactions()` (WolverineHostBuilderExtensions.cs:50) plus `UseEntityFrameworkCoreTransactions()` wraps each handler in a DB transaction, but under the default READ COMMITTED isolation a read-then-write pattern releases shared locks immediately, so two concurrent transactions both read the same row, both issue `UPDATE ... WHERE Id = @id` (no version predicate), and the second commit silently overwrites the first. No DbUpdateConcurrencyException is possible because EF has no concurrency token to add to the WHERE clause. Confirmed lost-update / last-writer-wins with no error surfaced.
-
-The reviewer's file/line (RescheduleAppointmentCommandHandler.cs:27) correctly anchors the unprotected write; the actual fix belongs in the aggregate + its IEntityTypeConfiguration (and equivalently every mutable aggregate: Appointment, Attendee, ServiceProvider, Employee, Customer, etc.).
-
-**Verified remediation.**
-```
-Add a SQL Server rowversion token to each mutable aggregate and surface conflicts. For Appointment:
-
-// Appointment.cs — add a concurrency token property
-public byte[] Version { get; init; } = [];
-
-// AppointmentTypeConfiguration.Configure(...) — map it as a rowversion
-builder.Property(appointment => appointment.Version)
-    .IsRowVersion();   // maps to SQL Server rowversion; EF adds WHERE Version = @orig and throws DbUpdateConcurrencyException on mismatch
-
-// Then handle the conflict in the write path (handler or a shared Wolverine/EF policy):
-try
-{
-    await dbContext.SaveChangesAsync(cancellationToken);
-}
-catch (DbUpdateConcurrencyException)
-{
-    throw new ConflictException("The appointment was modified by another request. Please reload and retry.");
-}
-
-Add an EF migration to introduce the rowversion column. Apply the same pattern to the other mutable aggregates (Attendee, ServiceProvider, Employee, Customer, Role/permission overrides) rather than only Appointment.
-```
-
-**Notes.** Accurate finding, no false positive. Scope note for the parent: the impact is a silent lost update on a single aggregate under a genuine concurrent-write race (two reschedules of the same appointment, or reschedule vs. cancel), not data-cross-tenant leakage or auth bypass — CompanyId query filters and permission checks are intact. Severity Medium is defensible (arguably Low if same-aggregate concurrent edits are rare in practice), consistent with the claim. Separately worth noting (out of scope for this finding): there is no overlap/double-booking invariant enforced either, which is a distinct correctness gap for booking data. The cited line 27 is a valid evidence anchor, but the corrective change lives in the aggregate + IEntityTypeConfiguration plus a migration; I adjusted the corrected file/line to AppointmentTypeConfiguration.cs where the mapping fix belongs.
 
 
 ## B12. [Low] RequireHttpsMetadata defaults to false for both OIDC and JWT Bearer, allowing token-signing metadata over HTTP

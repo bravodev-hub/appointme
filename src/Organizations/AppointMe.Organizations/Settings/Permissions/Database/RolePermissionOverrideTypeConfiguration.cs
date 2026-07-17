@@ -36,5 +36,9 @@ public sealed class RolePermissionOverrideTypeConfiguration : IEntityTypeConfigu
             .WithMany()
             .HasForeignKey(permissionOverride => permissionOverride.CompanyId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Property<byte[]>("Version")
+            .IsRowVersion()
+            .IsRequired();
     }
 }

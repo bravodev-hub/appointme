@@ -26,5 +26,9 @@ public sealed class BookingCompanyTypeConfiguration : IEntityTypeConfiguration<B
             .HasColumnName("TimeZone")
             .HasMaxLength(100)
             .IsRequired();
+
+        builder.Property<byte[]>("Version")
+            .IsRowVersion()
+            .IsRequired();
     }
 }

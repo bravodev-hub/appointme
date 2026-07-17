@@ -46,5 +46,9 @@ public sealed class AttendeeTypeConfiguration : IEntityTypeConfiguration<Attende
 
         builder.Property(attendee => attendee.IsDeleted)
             .IsRequired();
+
+        builder.Property<byte[]>("Version")
+            .IsRowVersion()
+            .IsRequired();
     }
 }

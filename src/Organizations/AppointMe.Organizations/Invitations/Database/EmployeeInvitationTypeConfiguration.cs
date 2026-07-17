@@ -57,5 +57,9 @@ public sealed class EmployeeInvitationTypeConfiguration : IEntityTypeConfigurati
         builder.HasIndex(invitation => new { invitation.CompanyId, invitation.Email })
             .IsUnique()
             .HasFilter("[Status] = 'Pending'");
+
+        builder.Property<byte[]>("Version")
+            .IsRowVersion()
+            .IsRequired();
     }
 }

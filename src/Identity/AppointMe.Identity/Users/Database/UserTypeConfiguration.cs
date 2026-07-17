@@ -48,5 +48,9 @@ public sealed class UserTypeConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(user => user.IsDeleted)
             .IsRequired();
+
+        builder.Property<byte[]>("Version")
+            .IsRowVersion()
+            .IsRequired();
     }
 }

@@ -57,5 +57,9 @@ public sealed class CustomerTypeConfiguration : IEntityTypeConfiguration<Custome
             .HasComputedColumnSql(
                 "LOWER(CONCAT([FirstName], ' ', ISNULL([LastName], ''), ' ', ISNULL([Email], '')))",
                 stored: true);
+
+        builder.Property<byte[]>("Version")
+            .IsRowVersion()
+            .IsRequired();
     }
 }

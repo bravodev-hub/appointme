@@ -4,6 +4,7 @@ using AppointMe.Organizations.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AppointMe.Organizations.Database.Migrations
 {
     [DbContext(typeof(OrganizationsDbContext))]
-    partial class OrganizationsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260717102457_AddEmployeeAndCompanyRowVersion")]
+    partial class AddEmployeeAndCompanyRowVersion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -140,12 +143,6 @@ namespace AppointMe.Organizations.Database.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<byte[]>("Version")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId", "Email")
@@ -170,12 +167,6 @@ namespace AppointMe.Organizations.Database.Migrations
 
                     b.Property<bool>("IsGranted")
                         .HasColumnType("bit");
-
-                    b.Property<byte[]>("Version")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
 
                     b.HasKey("CompanyId", "Role", "PermissionCode");
 

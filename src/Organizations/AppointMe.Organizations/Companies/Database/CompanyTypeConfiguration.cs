@@ -44,5 +44,9 @@ public sealed class CompanyTypeConfiguration : IEntityTypeConfiguration<Company>
             .WithMany()
             .HasForeignKey(company => company.PrimaryOwnerEmployeeId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property<byte[]>("Version")
+            .IsRowVersion()
+            .IsRequired();
     }
 }

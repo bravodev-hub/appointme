@@ -34,5 +34,9 @@ public sealed class ServiceProviderTypeConfiguration : IEntityTypeConfiguration<
 
         builder.Property(serviceProvider => serviceProvider.IsDeleted)
             .IsRequired();
+
+        builder.Property<byte[]>("Version")
+            .IsRowVersion()
+            .IsRequired();
     }
 }
