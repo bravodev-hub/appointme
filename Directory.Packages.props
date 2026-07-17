@@ -1,6 +1,7 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Asp.Versioning.Http" Version="10.0.0" />
@@ -23,6 +24,10 @@
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.9" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <!-- Transitive-pinned via CentralPackageTransitivePinningEnabled to a patched 2.x release.
+         Microsoft.AspNetCore.OpenApi 10.0.9 pulls Microsoft.OpenApi 2.0.0, which is affected by
+         GHSA-v5pm-xwqc-g5wc (High; affected [2.0.0-preview.11, 2.7.4]). 2.11.0 is the latest patched 2.x. -->
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.11" />
     <PackageVersion Include="Microsoft.AspNetCore.Routing.Abstractions" Version="2.3.11" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="7.0.2" />
