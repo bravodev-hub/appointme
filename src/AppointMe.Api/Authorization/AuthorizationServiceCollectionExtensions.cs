@@ -11,10 +11,14 @@ public static class AuthorizationServiceCollectionExtensions
             .AddSingleton<ICurrentPrincipal, CurrentPrincipal>()
             .AddScoped<ICurrentPrincipalResolver, CurrentPrincipalResolver>()
             .AddScoped<IAuthorizationHandler, RegisteredUserAuthorizationHandler>()
+            .AddScoped<IAuthorizationHandler, SuperAdminAuthorizationHandler>()
             .AddSingleton<PermissionRegistry>();
 
         services
             .AddAuthorizationBuilder()
+            .AddPolicy(HangfireDashboardPolicy.Name, policy => policy
+                .RequireAuthenticatedUser()
+                .AddRequirements(new SuperAdminRequirement()))
             .SetFallbackPolicy(new AuthorizationPolicyBuilder()
                 .RequireAuthenticatedUser()
                 .AddRequirements(new RegisteredUserRequirement())

@@ -74,12 +74,13 @@ app.UseAppointMeMultiTenancy();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapEndpoints();
+
 if (!isCodegen)
 {
-    app.UseAppointMeHangfireDashboard();
+    app.MapAppointMeHangfireDashboard();
 }
 
-app.MapEndpoints();
 app.MapFallbackToFile("index.html").AllowAnonymous();
 
 return await app.RunJasperFxCommands(args);

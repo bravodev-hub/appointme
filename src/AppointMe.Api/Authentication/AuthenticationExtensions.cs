@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using AppointMe.Api.Authentication.EntraExternalId;
 using AppointMe.Api.Authentication.Keycloak;
+using AppointMe.Api.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -28,6 +29,12 @@ internal static class AuthenticationExtensions
                     throw new InvalidOperationException(
                         $"Unknown Authentication:Provider '{providerName}'. Expected 'Keycloak' or 'EntraExternalId'.");
             }
+
+            // Super-admin membership is sourced from config so it works across providers.
+            // Enforced via SuperAdminAuthorizationHandler (not a claims transformer) to avoid
+            // shadowing the single provider IClaimsTransformation that normalizes identity claims.
+            var superAdminEmails = configuration.GetSection(SuperAdmin.ConfigurationSection).Get<string[]>() ?? [];
+            services.AddSingleton(new SuperAdminRegistry(superAdminEmails));
 
             var requireHttpsMetadata = configuration.GetValue("Authentication:RequireHttpsMetadata", false);
 

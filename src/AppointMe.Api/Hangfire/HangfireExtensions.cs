@@ -1,6 +1,9 @@
+using AppointMe.Api.Authorization;
 using AppointMe.Shared.Jobs;
 using Hangfire;
 using Hangfire.SqlServer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 
 namespace AppointMe.Api.Hangfire;
 
@@ -33,16 +36,18 @@ public static class HangfireExtensions
         }
     }
 
-    extension(IApplicationBuilder app)
+    extension(IEndpointRouteBuilder endpoints)
     {
-        public IApplicationBuilder UseAppointMeHangfireDashboard()
+        public IEndpointConventionBuilder MapAppointMeHangfireDashboard()
         {
-            app.UseHangfireDashboard("/admin/jobs", new DashboardOptions
-            {
-                // No auth for now. Default would apply LocalRequestsOnlyAuthorizationFilter.
-                Authorization = [],
-            });
-            return app;
+            // Map the dashboard as a routed endpoint so it flows through the
+            // ASP.NET Core authorization pipeline. Hangfire's own dashboard
+            // filters are intentionally left empty — access is enforced by
+            // RequireAuthorization below, which demands an authenticated,
+            // registered user. Never expose this endpoint anonymously.
+            return endpoints
+                .MapHangfireDashboard("/admin/jobs", new DashboardOptions { Authorization = [] })
+                .RequireAuthorization(HangfireDashboardPolicy.Name);
         }
     }
 }
