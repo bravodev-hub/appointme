@@ -1,11 +1,13 @@
 using AppointMe.Api.Wolverine.HandlerContext;
 using AppointMe.Shared.Domain;
+using AppointMe.Shared.Domain.Errors;
 using JasperFx.CodeGeneration;
 using JasperFx.CodeGeneration.Model;
 using Wolverine;
 using Wolverine.AzureServiceBus;
 using Wolverine.Attributes;
 using Wolverine.EntityFrameworkCore;
+using Wolverine.ErrorHandling;
 using Wolverine.SqlServer;
 
 [assembly: WolverineModule]
@@ -48,6 +50,8 @@ public static class HostBuilderExtensions
                 options.PublishDomainEventsFromEntityFrameworkCore<AggregateRoot>(root => root.Events);
                 options.Policies.UseDurableLocalQueues();
                 options.Policies.AutoApplyTransactions();
+
+                options.OnException<ValidationException>().MoveToErrorQueue();
 
                 switch (transport)
                 {

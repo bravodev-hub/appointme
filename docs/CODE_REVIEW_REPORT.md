@@ -46,6 +46,7 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 > **Remediation status (updated 2026-07-17).** The review is a point-in-time snapshot from 2026-07-08 (base commit `3f5228e`). Fully fixed findings have been **removed** from this register (and from Appendix B, whose numbering is preserved); partially fixed ones remain in place with a status note.
 > - **H2 — Hangfire dashboard exposed at `/admin/jobs` with authorization disabled — FIXED and removed** (commits `a7d4043` → `e65bf41` → `868f278`, merged in PR #3 `0ac8d2a`, refined in `e35ba73`; was also Appendix B3). Verified implementation: the dashboard is mapped as a routed endpoint behind `.RequireAuthorization(HangfireDashboardPolicy.Name)`, moving enforcement into the ASP.NET Core authorization pipeline (the empty `DashboardOptions.Authorization = []` is now intentional). The `HangfireDashboard` policy requires an authenticated user plus `SuperAdminRequirement`; `SuperAdminAuthorizationHandler` resolves the caller via `IIdentityResolver` and succeeds only for a registered `UserIdentity` whose email is in the config-sourced `SuperAdminRegistry` (`Authentication:SuperAdmins`; production defaults to `[]` → deny-all, Development/Devtest allow only `demo@appointme.dev`). Covered by `SuperAdminAuthorizationHandlerTests` (9/9 passing). Residual (accepted): the dashboard registers in every non-codegen environment — safe under the deny-by-default allowlist; super-admin trust rests on the IdP-provided email at user registration.
 > - **M6 — No optimistic-concurrency token on any aggregate (silent lost updates) — FIXED and removed** (commit `0bb7021` + follow-ups on 2026-07-17; was also Appendix B11). Every EF-mapped entity across all four DbContexts now carries a non-nullable rowversion concurrency token (`builder.Property<byte[]>("Version").IsRowVersion().IsRequired()`): Booking — `Appointment`, `Attendee`, `BookingCompany`, `ServiceProvider` (migrations `20260709104431_AddAppointmentRowVersion`, `20260717103055_AddBookingProjectionsRowVersion`); CRM — `Customer` (`20260717102104_AddCustomerRowVersion`); Organizations — `Employee`, `Company`, `EmployeeInvitation`, `RolePermissionOverride` (`20260717102457_AddEmployeeAndCompanyRowVersion`, `20260717103102_AddInvitationAndPermissionOverrideRowVersion`); Identity — `User` (`20260717103143_AddUserRowVersion`). All columns are `rowversion, nullable: false`. A global `ConcurrencyExceptionHandler` maps `DbUpdateConcurrencyException` (including Wolverine-wrapped inner exceptions) to `409 Conflict` with code `concurrency_conflict`; conflicts inside Wolverine event/reconciliation handlers surface as exceptions handled by Wolverine's retry policy instead of silent lost updates. Verified: 10/10 entities tokenized in the model snapshots, full test suite green (136 tests), no Dapper `SELECT *` reads affected.
+> - **L6 — Untrusted timezone id rehydrated via non-validating `FindSystemTimeZoneById` — FIXED and removed** (2026-07-17; was also Appendix B16/B30). `BookingCompanySynchronizer.Apply` now reconstructs the timezone from the cross-module `CompanySnapshot` via the validating factory `TimeZoneInfo.Create(snapshot.TimeZone)`, per the value-object convention — an unresolvable id raises a domain `ValidationException` with a clear message instead of an infrastructure `TimeZoneNotFoundException`. The two `FindSystemTimeZoneById` uses in EF `HasConversion` lambdas are intentionally unchanged (DB materialization is a trusted path). Additionally, a Wolverine failure policy (`options.OnException<ValidationException>().MoveToErrorQueue()` in `WolverineHostBuilderExtensions.cs`) dead-letters queued messages that fail validation instead of retrying them — validation failures are deterministic, so retries could never succeed; inline HTTP invocations are unaffected (still mapped to 400 by `ValidationExceptionHandler`). Verified: solution builds, full test suite green (136 tests).
 > - All other findings remain open.
 
 ## HIGH
@@ -169,11 +170,6 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 - **Issue:** `limit` binds unconstrained then clamps to `[0,1000]` (parameterized, so no injection/unbounded DoS). 1000 + `COUNT(*) OVER ()` per page is a high per-request cost.
 - **Remediation:** lower `MaxLimit` to ~100-200 and add `[Range]` on `PaginationRequest.Limit` for a clear 400 instead of silent clamping.
 
-### L6 — Untrusted timezone id rehydrated via non-validating `FindSystemTimeZoneById` (can throw uncaught in event handler)
-- **File:** `src/Booking/AppointMe.Booking/BookingCompanies/ReconcileBookingCompanies/BookingCompanySynchronizer.cs:13`
-- **Issue:** CLAUDE.md requires reconstructing value objects from cross-module payloads via validating factories. This uses `TimeZoneInfo.FindSystemTimeZoneById(snapshot.TimeZone)` directly (the project has `TimeZoneInfo.Create` using `TryFindSystemTimeZoneById`). In the batch job it's caught per-item, but `CompanyRegisteredEventHandler.Handle` calls the synchronizer with no try/catch — an unresolvable id throws and the projection stalls (Wolverine retry/DLQ).
-- **Remediation:** use the factory: `var tz = TimeZoneInfo.Create(snapshot.TimeZone);` (throws a handled `ValidationException` instead of an infra exception).
-
 ### L7 — HSTS never configured
 - **File:** `src/AppointMe.Api/Program.cs:70`
 - **Issue:** `UseHttpsRedirection` present, but no `UseHsts()`/`AddHsts()` — no `Strict-Transport-Security` header, so a first-visit downgrade/SSL-strip isn't prevented.
@@ -251,7 +247,7 @@ The following were investigated and found **not** to be defects (8 adversarially
 1. H1, H3 (correctness/security, low blast radius). *(H2 done.)*
 2. M1, M2, L1, L2 (auth/session/secrets hygiene).
 3. L7, L8, L9, L3, L4 (transport/CSRF headers — one small middleware + config).
-4. L12, L6, L11, L5 (robustness one-liners).
+4. L12, L11, L5 (robustness one-liners). *(L6 done.)*
 5. M3, M4, M5, L10, L13 (infra + architectural — schedule with a design discussion). *(M6 done.)*
 
 
@@ -683,10 +679,10 @@ There is **no SMTP client, MailKit, or `IEmailSender` in application code** — 
 
 ---
 
-# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 29 listed)
+# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 27 listed)
 
 
-Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency — see the remediation-status note in the register); the original numbering is preserved.
+Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency; B16/B30, timezone rehydration — see the remediation-status note in the register); the original numbering is preserved.
 
 
 ## B1. [High] UpdateEmployeeRoles lets a non-owner assign the protected Owner SystemRole, enabling vertical privilege escalation and self-promotion
@@ -1291,39 +1287,6 @@ public static async Task<CompanyId> Load(
 **Notes.** Severity lowered from the claimed Medium to Low: verification shows no current exploit path. Every HTTP-reachable tenant-data handler injects IPrincipal (so UserPrincipalFactory.Create runs and rejects non-members of the header company), and no endpoint bypasses the Wolverine bus to touch tenant data. The two handlers that take CompanyId without IPrincipal (SeedDemo*) are saga/event-driven with a trusted TenantId, not header-driven. This is therefore a defense-in-depth / future-proofing gap: it would escalate to High only if a new or refactored HTTP-reachable handler read/wrote tenant data via a CompanyId parameter without also injecting IPrincipal. The risky pattern already exists in-repo (SeedDemo handlers), so a copy-paste into an HTTP slice would silently open cross-tenant access with no compile-time or test guardrail — which is the legitimate basis for the finding. The reviewer's file/line (CompanyResolutionMiddleware.cs:17) correctly identifies where the header is trusted; the enforcement fix belongs in CompanyContextBehavior.Load.
 
 
-## B16. [Low] Cross-module event payload reconstructs TimeZone via unvalidated FindSystemTimeZoneById instead of the validating TimeZoneInfo.Create factory
-
-- **Location:** `src/Booking/AppointMe.Booking/BookingCompanies/ReconcileBookingCompanies/BookingCompanySynchronizer.cs:13`
-- **Dimension / category:** input-validation / input-validation
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** no
-
-**Explanation.** CLAUDE.md rule: 'inside event handlers that build projections from cross-module events - the payload is untrusted, so reconstruct value objects via Create / CreateOrNull, not new.' Here the CompanyRegistered event (AppointMe.Organizations.Contracts/Companies/Events/CompanyRegistered.cs: `string TimeZone`) is an untrusted cross-module payload, but the synchronizer feeds `snapshot.TimeZone` straight into `TimeZoneInfo.FindSystemTimeZoneById(...)` - the unvalidated equivalent of a primary constructor - rather than the purpose-built validating factory `TimeZoneInfo.Create` (src/AppointMe.Shared/Domain/Common/TimeZoneInfoFactory.cs), which uses TryFindSystemTimeZoneById and throws a handled ValidationException. On any tz id the local tz database does not recognise (a tz id removed by a later OS/ICU update and then replayed from the outbox/inbox or by the BookingCompanyReconciliationJob, corrupted payload, or a future split of these modules onto hosts with differing Windows-vs-IANA id sets) FindSystemTimeZoneById throws TimeZoneNotFoundException/InvalidTimeZoneException. That is an unhandled infrastructure exception rather than a domain ValidationException, so the Wolverine projection handler fails and retries, stalling the BookingCompanies read-model projection. The same unvalidated call is intentionally fine in BookingCompanyTypeConfiguration.cs:25 (EF materialization is a trusted path), but not on the write-from-event path.
-
-**Evidence.**
-```
-await dbContext.BookingCompanies.UpsertAsync(
-    id: new CompanyId(snapshot.CompanyId),
-    name: snapshot.Name,
-    timeZone: TimeZoneInfo.FindSystemTimeZoneById(snapshot.TimeZone),
-    cancellationToken: cancellationToken);
-```
-
-**Proposed remediation.**
-```
-timeZone: TimeZoneInfo.Create(snapshot.TimeZone),  // validating factory in AppointMe.Shared.Domain.Common.TimeZoneInfoFactory; throws ValidationException on unknown/empty ids instead of an unhandled TimeZoneNotFoundException
-```
-
-**Verification.** The code genuinely exhibits the reported deviation. BookingCompanySynchronizer.cs:13 reconstructs the TimeZoneInfo value object from an untrusted cross-module event payload (CompanySnapshot.TimeZone, sourced from CompanyRegistered's `string TimeZone` in AppointMe.Organizations.Contracts/Companies/Events/CompanyRegistered.cs) using the raw TimeZoneInfo.FindSystemTimeZoneById(...) instead of the purpose-built validating factory TimeZoneInfo.Create (AppointMe.Shared/Domain/Common/TimeZoneInfoFactory.cs, which uses TryFindSystemTimeZoneById and throws ValidationException). This violates the CLAUDE.md rule for reconstructing value objects from cross-module event payloads. The intended pattern is confirmed by the sibling projection AttendeeSynchronizer.cs, which uses PersonName.Create/DateOfBirth.CreateOrNull/Email.CreateOrNull on its snapshot input. The factory is in scope (GlobalUsings.cs:8 imports AppointMe.Shared.Domain.Common), so the remediation compiles. No upstream factory call or config policy mitigates the raw call; the FindSystemTimeZoneById use at BookingCompanyTypeConfiguration.cs:25 is a separate trusted EF-materialization path, not a mitigation for the event path. HOWEVER, the finding's impact/severity rationale is overstated: I verified ValidationExceptionHandler is an ASP.NET Core IExceptionHandler (HTTP-only) and does not catch Wolverine message-handler exceptions, and WolverineHostBuilderExtensions.cs defines no policy distinguishing ValidationException. On the event-handler path (CompanyRegisteredEventHandler, no try/catch) both TimeZoneNotFoundException and ValidationException propagate identically (retry/dead-letter), so the factory does NOT prevent the claimed projection stall. On the reconcile-job path (ReconcileBookingCompaniesCommandHandler) a broad `catch (Exception) when (exception is not OperationCanceledException)` already swallows both identically. Thus the fix's genuine value is convention consistency plus a cleaner validated error (including a null/whitespace guard), not runtime resilience.
-
-**Verified remediation.**
-```
-timeZone: TimeZoneInfo.Create(snapshot.TimeZone), // validating factory in AppointMe.Shared.Domain.Common.TimeZoneInfoFactory (globally imported via GlobalUsings.cs); throws a clean ValidationException on empty/unknown ids and matches the sibling AttendeeSynchronizer convention
-```
-
-**Notes.** Real convention/input-validation deviation, correctly located at line 13, no mitigation upstream or in config. Keep severity Low. Caveat for the report: the finding's stated operational impact ("prevents a projection stall by turning an unhandled infra exception into a handled ValidationException") is inaccurate — ValidationException is NOT specially handled in Wolverine message processing (ValidationExceptionHandler is HTTP-pipeline only, and no Wolverine error policy distinguishes it). On the event-handler path both exception types stall/retry identically; on the reconcile-job path both are already caught by a broad catch. The legitimate justification for the fix is code-convention consistency (matching AttendeeSynchronizer) and a clearer validation error with a null/empty guard, not resilience. EF materialization at BookingCompanyTypeConfiguration.cs:25 should remain FindSystemTimeZoneById (trusted path).
-
-
 ## B17. [Low] Client-controlled pagination page size bounded only at 1000 rows per request
 
 - **Location:** `src/AppointMe.Shared/Pagination/PaginationFilter.cs:6`
@@ -1890,51 +1853,6 @@ Alternatively, if the anonymous default is intentional, delete the dead null-che
 ```
 
 **Notes.** Root cause is the non-null default + non-nullable type parameter on line 5; the dead branch itself is line 20 (the reviewer's cited line). This is a robustness/code-quality issue, not a security vulnerability: the fail-closed anonymous default means a misuse causes a redirect to /auth/login, never an auth bypass. Provider wiring in app-shell.tsx (AppShell wraps Outlet in CurrentUserProvider) means all current call sites (nav-user.tsx, company-selector.tsx, app-shell.tsx, current-company-context.tsx) are inside the provider today, so the dead guard has no runtime effect in practice — it only fails to protect future misuse.
-
-
-## B30. [Low] TimeZone rehydration uses non-validating FindSystemTimeZoneById on untrusted event payload and can throw uncaught in the event handler
-
-- **Location:** `src/Booking/AppointMe.Booking/BookingCompanies/ReconcileBookingCompanies/BookingCompanySynchronizer.cs:13`
-- **Dimension / category:** robustness / robustness
-- **Verdict:** CONFIRMED (claimed Medium → final Low)
-- **Needs architectural review:** no
-
-**Explanation.** The synchronizer calls TimeZoneInfo.FindSystemTimeZoneById(snapshot.TimeZone) directly on a cross-module payload. Per the project's own convention, timezone ids from untrusted payloads must go through the validating factory TimeZoneInfo.Create (which uses TryFindSystemTimeZoneById). FindSystemTimeZoneById throws TimeZoneNotFoundException / InvalidTimeZoneException for an id the host OS can't resolve. In the batch reconciler this is caught and logged per-item, but CompanyRegisteredEventHandler.Handle calls the same synchronizer with NO try/catch — an unresolvable id (a real risk when the emitting and consuming processes run on different OSes with mismatched Windows/IANA tz databases, or on any id-format drift) throws out of the handler, failing the message and driving Wolverine retries/dead-lettering, and the BookingCompany projection is never created.
-
-**Evidence.**
-```
-await dbContext.BookingCompanies.UpsertAsync(
-    id: new CompanyId(snapshot.CompanyId),
-    name: snapshot.Name,
-    timeZone: TimeZoneInfo.FindSystemTimeZoneById(snapshot.TimeZone),
-    cancellationToken: cancellationToken);
-```
-
-**Proposed remediation.**
-```
-Use the validating factory TimeZoneInfo.Create(snapshot.TimeZone) (which delegates to TryFindSystemTimeZoneById and throws a domain ValidationException) so invalid ids fail predictably, and/or guard the projection so a single bad timezone id does not turn the event into a poison message.
-```
-
-**Verification.** The code genuinely exhibits the described pattern and there is no mitigation that neutralizes it. BookingCompanySynchronizer.cs:13 calls TimeZoneInfo.FindSystemTimeZoneById(snapshot.TimeZone) directly on a cross-module event payload. The project ships a validating factory TimeZoneInfo.Create (src/AppointMe.Shared/Domain/Common/TimeZoneInfoFactory.cs, using TryFindSystemTimeZoneById and throwing ValidationException), and CLAUDE.md explicitly extends the value-object-factory convention to "event handlers that build projections from cross-module events," so this is a real convention violation. The handler asymmetry is also real: CompanyRegisteredEventHandler.Handle (lines 9-18) has NO try/catch, while ReconcileBookingCompaniesCommandHandler.HandleAsync (lines 20-31) wraps each item in try/catch + ChangeTracker.Clear(). No middleware/global handler intercepts the throw; with the default SqlDurable transport an exception fails the message and drives Wolverine retry/DLQ. HOWEVER, the reviewer's Medium rating is overstated. This is a modular monolith: producer (Organizations) and consumer (Booking) run in the SAME process/host (AppointMe.Api) under both transports. The tz id was validated at onboarding via TimeZoneInfo.Create on that same host (OnboardingCommandHandler.cs:17), and CompanyRegistered carries company.TimeZone.Id (the canonical id resolved on that host, RegisterCompany.cs:26). Resolving the same id on the same host via FindSystemTimeZoneById cannot throw, so the poison-message / projection-never-created outcome is effectively unreachable in the shipping architecture. The reviewer's stated trigger (emit and consume on different OSes with mismatched Windows/IANA tz DBs) does not apply because there is no separate Booking deployable, and .NET 6+ auto-converts IANA/Windows ids regardless. Net: a real, un-mitigated convention violation + latent defense-in-depth gap, but low practical robustness impact.
-
-**Verified remediation.**
-```
-// Align with the project convention: build the value from the untrusted cross-module
-// payload via the validating factory instead of the throwing FindSystemTimeZoneById.
-await dbContext.BookingCompanies.UpsertAsync(
-    id: new CompanyId(snapshot.CompanyId),
-    name: snapshot.Name,
-    timeZone: TimeZoneInfo.Create(snapshot.TimeZone), // TryFindSystemTimeZoneById -> ValidationException
-    cancellationToken: cancellationToken);
-
-// Note: TimeZoneInfo.Create still throws (ValidationException) on an unresolvable id; it only makes
-// the failure predictable/consistent. If poison-message resilience for the event path is also desired
-// (defense-in-depth for a future out-of-process/cross-OS split), mirror the batch reconciler by
-// catching/logging-and-skipping a single bad id in CompanyRegisteredEventHandler.Handle rather than
-// letting the message fail and retry/DLQ.
-```
-
-**Notes.** Convention violation is confirmed and un-mitigated (no factory used, no handler guard, no global exception filter). Severity lowered from Medium to Low because the concrete consequence (uncaught throw -> Wolverine retry/DLQ -> BookingCompany projection never created) requires an unresolvable tz id, which cannot occur in this single-process modular monolith: the id was validated at onboarding on the same host via TimeZoneInfo.Create and the event carries the canonical .Id resolved on that same host, so the consumer's FindSystemTimeZoneById on the same host resolves it. The EF HasConversion read paths (BookingCompanyTypeConfiguration.cs:25 and Organizations CompanyTypeConfiguration.cs:26) use the same throwing call but are trusted materialization paths per CLAUDE.md and are acceptable. Primary value of the fix is convention alignment + defense-in-depth, not fixing an actively-reachable crash.
 
 
 ## B31. [Low] SqlConnection leaked when OpenAsync throws (cancellation or connection failure)

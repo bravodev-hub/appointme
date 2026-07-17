@@ -55,6 +55,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{9F528FBD-0112-4CD0-88E8-2CA183E91BCD}"
 	ProjectSection(SolutionItems) = preProject
 		docs\identity-resolution.md = docs\identity-resolution.md
+		docs\CODE_REVIEW_REPORT.md = docs\CODE_REVIEW_REPORT.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppointMe.Api.Tests", "src\AppointMe.Api.Tests\AppointMe.Api.Tests.csproj", "{C2847759-D0CB-457B-95F3-64842CB0152F}"

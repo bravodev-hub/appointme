@@ -15,6 +15,7 @@
     <Project Path="src/CRM/AppointMe.Crm/AppointMe.Crm.csproj" />
   </Folder>
   <Folder Name="/Docs/">
+    <File Path="docs/CODE_REVIEW_REPORT.md" />
     <File Path="docs/identity-resolution.md" />
   </Folder>
   <Folder Name="/Identity/">

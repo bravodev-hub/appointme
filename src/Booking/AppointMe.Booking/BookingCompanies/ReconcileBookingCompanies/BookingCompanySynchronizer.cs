@@ -10,7 +10,7 @@ public sealed class BookingCompanySynchronizer(BookingDbContext dbContext)
         await dbContext.BookingCompanies.UpsertAsync(
             id: new CompanyId(snapshot.CompanyId),
             name: snapshot.Name,
-            timeZone: TimeZoneInfo.FindSystemTimeZoneById(snapshot.TimeZone),
+            timeZone: TimeZoneInfo.Create(snapshot.TimeZone),
             cancellationToken: cancellationToken);
     }
 }
