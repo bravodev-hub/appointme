@@ -2,8 +2,8 @@ namespace AppointMe.Shared.Pagination;
 
 public sealed record PaginationFilter
 {
-    private const int MinLimit = 0;
-    private const int MaxLimit = 1000;
+    private const int MinLimit = 1;
+    private const int MaxLimit = 100;
 
     private const int MinPage = 1;
 
