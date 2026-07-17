@@ -1,28 +1,21 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
 namespace AppointMe.Api.Authorization;
 
-/// <summary>
-/// Succeeds when the authenticated user's email is in the configured super-admin
-/// allowlist. Reads the normalized <see cref="ClaimTypes.Email"/> claim produced
-/// by the provider claims transformer, falling back to the raw <c>email</c> claim.
-/// </summary>
-public sealed class SuperAdminAuthorizationHandler(SuperAdminRegistry registry)
-    : AuthorizationHandler<SuperAdminRequirement>
+public sealed class SuperAdminAuthorizationHandler(
+    IIdentityResolver identityResolver,
+    SuperAdminRegistry registry
+) : AuthorizationHandler<SuperAdminRequirement>
 {
-    protected override Task HandleRequirementAsync(
+    protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         SuperAdminRequirement requirement)
     {
-        var email = context.User.FindFirstValue(ClaimTypes.Email)
-                    ?? context.User.FindFirstValue("email");
+        var identity = await identityResolver.Resolve(CancellationToken.None);
 
-        if (registry.IsSuperAdmin(email))
+        if (identity is UserIdentity user && registry.IsSuperAdmin(user.Email.Value))
         {
             context.Succeed(requirement);
         }
-
-        return Task.CompletedTask;
     }
 }

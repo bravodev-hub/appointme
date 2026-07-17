@@ -37,6 +37,7 @@
     <File Path="README.md" />
     <File Path="THIRD-PARTY-NOTICES.md" />
   </Folder>
+  <Project Path="src/AppointMe.Api.Tests/AppointMe.Api.Tests.csproj" />
   <Project Path="src/AppointMe.Api/AppointMe.Api.csproj" />
   <Project Path="src/AppointMe.Aspire/AppointMe.Aspire.csproj" />
   <Project Path="src/AppointMe.Shared.Tests/AppointMe.Shared.Tests.csproj" />
