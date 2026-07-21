@@ -43,10 +43,14 @@ Auto-discovery via Scrutor: endpoints (`IEndpoint`), permissions (`*Permissions`
 
 Priority = **Immediate** (exploitable now / data loss) · **High** (serious, needs preconditions) · **Medium** · **Low** (hardening / defense-in-depth). Findings are de-duplicated (several were raised under multiple dimensions).
 
-> **Remediation status (updated 2026-07-17).** The review is a point-in-time snapshot from 2026-07-08 (base commit `3f5228e`). Fully fixed findings have been **removed** from this register (and from Appendix B, whose numbering is preserved); partially fixed ones remain in place with a status note.
+> **Remediation status (updated 2026-07-21).** The review is a point-in-time snapshot from 2026-07-08 (base commit `3f5228e`). Fully fixed findings have been **removed** from this register (and from Appendix B, whose numbering is preserved); partially fixed ones remain in place with a status note.
 > - **H2 — Hangfire dashboard exposed at `/admin/jobs` with authorization disabled — FIXED and removed** (commits `a7d4043` → `e65bf41` → `868f278`, merged in PR #3 `0ac8d2a`, refined in `e35ba73`; was also Appendix B3). Verified implementation: the dashboard is mapped as a routed endpoint behind `.RequireAuthorization(HangfireDashboardPolicy.Name)`, moving enforcement into the ASP.NET Core authorization pipeline (the empty `DashboardOptions.Authorization = []` is now intentional). The `HangfireDashboard` policy requires an authenticated user plus `SuperAdminRequirement`; `SuperAdminAuthorizationHandler` resolves the caller via `IIdentityResolver` and succeeds only for a registered `UserIdentity` whose email is in the config-sourced `SuperAdminRegistry` (`Authentication:SuperAdmins`; production defaults to `[]` → deny-all, Development/Devtest allow only `demo@appointme.dev`). Covered by `SuperAdminAuthorizationHandlerTests` (9/9 passing). Residual (accepted): the dashboard registers in every non-codegen environment — safe under the deny-by-default allowlist; super-admin trust rests on the IdP-provided email at user registration.
 > - **M6 — No optimistic-concurrency token on any aggregate (silent lost updates) — FIXED and removed** (commit `0bb7021` + follow-ups on 2026-07-17; was also Appendix B11). Every EF-mapped entity across all four DbContexts now carries a non-nullable rowversion concurrency token (`builder.Property<byte[]>("Version").IsRowVersion().IsRequired()`): Booking — `Appointment`, `Attendee`, `BookingCompany`, `ServiceProvider` (migrations `20260709104431_AddAppointmentRowVersion`, `20260717103055_AddBookingProjectionsRowVersion`); CRM — `Customer` (`20260717102104_AddCustomerRowVersion`); Organizations — `Employee`, `Company`, `EmployeeInvitation`, `RolePermissionOverride` (`20260717102457_AddEmployeeAndCompanyRowVersion`, `20260717103102_AddInvitationAndPermissionOverrideRowVersion`); Identity — `User` (`20260717103143_AddUserRowVersion`). All columns are `rowversion, nullable: false`. A global `ConcurrencyExceptionHandler` maps `DbUpdateConcurrencyException` (including Wolverine-wrapped inner exceptions) to `409 Conflict` with code `concurrency_conflict`; conflicts inside Wolverine event/reconciliation handlers surface as exceptions handled by Wolverine's retry policy instead of silent lost updates. Verified: 10/10 entities tokenized in the model snapshots, full test suite green (136 tests), no Dapper `SELECT *` reads affected.
+> - **L1 — `RequireHttpsMetadata` insecure default — FIXED and removed** (2026-07-21, working-copy change pending commit; was also Appendix B23). Per B23's verified remediation: the code fallback in `AuthenticationExtensions.cs` is now `GetValue("Authentication:RequireHttpsMetadata", true)` (applied to both OIDC and JWT Bearer options); the hard-coded `false` was removed from base `appsettings.json`; and an explicit `"RequireHttpsMetadata": false` opt-out was added to `appsettings.Development.json` and `appsettings.Codegen.json` only (the two local/offline paths B23 identified — local Keycloak and the fake `http://codegen` authority). Devtest config and `infra/main.json` already set `true`, so deployed posture is unchanged — the code default now matches it. Any new hosted environment that forgets the setting now gets HTTPS-only metadata by default and fails closed. Covered by `AuthenticationExtensionsTests` (default-absent → `true` on both schemes; explicit `false` still honored), enabled via a new `InternalsVisibleTo("AppointMe.Api.Tests")`. Verified: full solution test suite green (151 tests). Note: the finding's cited line 32 had drifted to line 39 by fix time.
+> - **L5 — Pagination ceiling 1000 rows/request — FIXED and removed** (commit `d6abd85`, 2026-07-17; was also Appendix B17). `PaginationFilter` now clamps to `[1, 100]` (`MinLimit = 1`, `MaxLimit = 100`), capping both per-request row count and the cost of the `COUNT(*) OVER ()` window aggregate; the `MinLimit = 1` change also removes the degenerate `limit=0` page (rows-free `TotalCount` probe) flagged in B17's notes. Silent clamping was deliberately kept instead of a `[Range]` 400 — the option B17's verified remediation endorsed ("friendlier than rejecting; no controller/attribute change strictly required"); `PaginationRequest.Limit` still defaults to 10. Verified 2026-07-21 against the working tree: both paged read paths (`GetCustomers`, `GetTeam`) funnel through `PaginationFilter`, so no other call sites needed changes.
 > - **L6 — Untrusted timezone id rehydrated via non-validating `FindSystemTimeZoneById` — FIXED and removed** (2026-07-17; was also Appendix B16/B30). `BookingCompanySynchronizer.Apply` now reconstructs the timezone from the cross-module `CompanySnapshot` via the validating factory `TimeZoneInfo.Create(snapshot.TimeZone)`, per the value-object convention — an unresolvable id raises a domain `ValidationException` with a clear message instead of an infrastructure `TimeZoneNotFoundException`. The two `FindSystemTimeZoneById` uses in EF `HasConversion` lambdas are intentionally unchanged (DB materialization is a trusted path). Additionally, a Wolverine failure policy (`options.OnException<ValidationException>().MoveToErrorQueue()` in `WolverineHostBuilderExtensions.cs`) dead-letters queued messages that fail validation instead of retrying them — validation failures are deterministic, so retries could never succeed; inline HTTP invocations are unaffected (still mapped to 400 by `ValidationExceptionHandler`). Verified: solution builds, full test suite green (136 tests).
+> - **L7 — HSTS never configured — FIXED and removed** (commit `cee5004`, 2026-07-21; was also Appendix B21). Per the verified remediation: `builder.Services.AddHsts(...)` registered in `Program.cs` with `MaxAge = 365 days` and `IncludeSubDomains = true`, and `app.UseHsts()` added before `UseHttpsRedirection()`, gated to non-Development environments. `Preload` deliberately omitted until the team commits to submitting the domain (and all subdomains) to the browser preload list. Verified: solution builds, API test suite green; `Strict-Transport-Security` confirmed absent when running locally (Development-gated by design), so live confirmation of the header belongs in a deployed Devtest/production environment. Residual (tracked separately as B7/C1): the ForwardedHeaders allow-lists are cleared (`Program.cs:50-55`), so in production `X-Forwarded-Proto` must be trusted only from the real ingress for `Request.IsHttps` — and therefore HSTS emission — to be reliable.
+> - **L8 — No security response headers / no CSP — FIXED and removed** (commit `4069fb7`, 2026-07-21; was also Appendix B22). New `SecurityHeadersMiddleware` (`src/AppointMe.Api/SecurityHeaders/`), wired via `UseAppointMeSecurityHeaders()` immediately after `UseForwardedHeaders()` so static assets, the SPA fallback, and API responses are all covered. Emits `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: strict-origin-when-cross-origin` on every response; headers are applied in `Response.OnStarting` so they survive the `Response.Clear()` that `ExceptionHandlerMiddleware` performs before writing problem-details responses. CSP ships **report-only** (`Content-Security-Policy-Report-Only`: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'` — inline styles required by the `chart.tsx` `<style>` sink and Recharts; `img-src`/`font-src 'self' data:`; `connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'`); rename the header to the enforcing `Content-Security-Policy` once browser violation reports come back clean while exercising the SPA. Covered by `SecurityHeadersMiddlewareTests` (6/6 passing, including a survives-`Response.Clear()` regression test); verified live against the running Aspire stack — all four headers present on both SPA-fallback and API responses, no enforcing CSP header emitted. Residual (intentional): CSP is report-only until tuned; framing is already blocked by the enforcing `X-Frame-Options: DENY`, with `frame-ancestors` taking over when CSP enforcement flips.
 > - All other findings remain open.
 
 ## HIGH
@@ -145,11 +149,6 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 
 ## LOW (hardening / defense-in-depth)
 
-### L1 — `RequireHttpsMetadata` defaults to `false` (code + base config)
-- **Files:** `src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:32`; `src/AppointMe.Api/appsettings.json:18`
-- **Issue:** insecure default at both layers; applied to OIDC (line 108) and JWT bearer (line 120). Devtest overrides to `true` and `infra/main.json` sets it `true` for the deployed app, so it's not exploitable today — but any new hosted environment that forgets the override fetches OIDC discovery/JWKS over HTTP (MITM → forged tokens).
-- **Remediation:** default to `true` in code (`GetValue("Authentication:RequireHttpsMetadata", true)`) and set `false` only in Development.
-
 ### L2 — Secrets committed to source control
 - **Files:** `src/AppointMe.Api/appsettings.Development.json:9,15,23,29`; `appsettings.Devtest.json:33`; also `compose.yaml:30,47-48`, `src/AppointMe.Aspire/Program.cs:5,18-19`, `appointme-realm.json`
 - **Issue:** SQL `sa` password (`Password1`), Keycloak `FrontendClientSecret` and admin `ClientSecret`, and the demo password (`AppointMe1`) are committed. Most are local-dev-only (local Keycloak realm, local SQL), but the **Devtest demo password is a real Entra credential** and the repo path is `public/`. Committed OIDC client secrets are a standing leak.
@@ -164,33 +163,6 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 - **File:** `src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:51` (posture); no `AddAntiforgery` anywhere
 - **Issue:** browser flows are cookie-authenticated; the only defense against cross-site state change is `SameSite=Lax` (no CSRF token, no CORS). This is an accepted posture for a same-origin SPA, so not actively exploitable, but it's single-layer.
 - **Remediation:** either add ASP.NET antiforgery for cookie-authed endpoints, or require a custom header the server validates (e.g. enforce presence of `X-Company-Id`/a CSRF header on mutations), or explicitly document `SameSite=Lax` + same-origin as the accepted control.
-
-### L5 — Pagination ceiling is 1000 rows/request
-- **File:** `src/AppointMe.Shared/Pagination/PaginationFilter.cs:6`
-- **Issue:** `limit` binds unconstrained then clamps to `[0,1000]` (parameterized, so no injection/unbounded DoS). 1000 + `COUNT(*) OVER ()` per page is a high per-request cost.
-- **Remediation:** lower `MaxLimit` to ~100-200 and add `[Range]` on `PaginationRequest.Limit` for a clear 400 instead of silent clamping.
-
-### L7 — HSTS never configured
-- **File:** `src/AppointMe.Api/Program.cs:70`
-- **Issue:** `UseHttpsRedirection` present, but no `UseHsts()`/`AddHsts()` — no `Strict-Transport-Security` header, so a first-visit downgrade/SSL-strip isn't prevented.
-- **Remediation:** `if (!app.Environment.IsDevelopment()) app.UseHsts();` and `builder.Services.AddHsts(o => { o.MaxAge = TimeSpan.FromDays(365); o.IncludeSubDomains = true; });`
-
-### L8 — No security response headers; no CSP; a `dangerouslySetInnerHTML` sink exists
-- **Files:** `src/AppointMe.Api/Program.cs:72,83` (the API serves the SPA); `src/AppointMe.Frontend/src/components/ui/chart.tsx:73`
-- **Issue:** no `X-Content-Type-Options`, `X-Frame-Options`/CSP `frame-ancestors`, `Referrer-Policy`, or `Content-Security-Policy` are emitted. The vendored shadcn chart uses `dangerouslySetInnerHTML` (currently fed only developer-authored config — not exploitable today), but there's no CSP backstop.
-- **Remediation:** add a small header middleware before `UseStaticFiles`:
-  ```csharp
-  app.Use(async (ctx, next) =>
-  {
-      var h = ctx.Response.Headers;
-      h["X-Content-Type-Options"] = "nosniff";
-      h["X-Frame-Options"] = "DENY";
-      h["Referrer-Policy"] = "strict-origin-when-cross-origin";
-      h["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'; object-src 'none'";
-      await next();
-  });
-  ```
-  (Tune CSP to the SPA's inline-style/script needs; validate against the chart `<style>` injection.)
 
 ### L9 — `AllowedHosts` wildcard
 - **File:** `src/AppointMe.Api/appsettings.json:8`
@@ -240,14 +212,14 @@ The following were investigated and found **not** to be defects (8 adversarially
 3. **H1:** as a Manager, `PUT /api/v1/employees/{id}/roles` and `POST /api/v1/invitations` with `{"roles":["Owner"]}` → expect `400 role_not_assignable`.
 4. **H3:** seed a source employee with an invalid name among several valid ones, run the service-provider reconciliation, confirm the valid ones still project.
 5. **M1:** confirm `/login/demo` is unavailable in deployed configs and `Demo:Enabled=false`; changed to POST.
-6. **Headers (L7/L8):** `curl -I https://localhost:7233/` → confirm `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy` present and the SPA still loads/charts render.
+6. **Headers (L7/L8):** `curl -I https://localhost:7233/` → confirm `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy` present and the SPA still loads/charts render. *(L7 and L8 done 2026-07-21 — nosniff/DENY/Referrer-Policy verified live; CSP is emitted as `Content-Security-Policy-Report-Only` until tuned. `Strict-Transport-Security` is Development-gated, so verify it in a deployed environment.)*
 7. **Contract:** none of these change the OpenAPI surface, so `/regenerate-api` is not required (H1 adds a validation error code only).
 
 ## Suggested sequencing
 1. H1, H3 (correctness/security, low blast radius). *(H2 done.)*
-2. M1, M2, L1, L2 (auth/session/secrets hygiene).
-3. L7, L8, L9, L3, L4 (transport/CSRF headers — one small middleware + config).
-4. L12, L11, L5 (robustness one-liners). *(L6 done.)*
+2. M1, M2, L2 (auth/session/secrets hygiene). *(L1 done.)*
+3. L9, L3, L4 (transport/CSRF headers — one small middleware + config). *(L7, L8 done.)*
+4. L12, L11 (robustness one-liners). *(L5, L6 done.)*
 5. M3, M4, M5, L10, L13 (infra + architectural — schedule with a design discussion). *(M6 done.)*
 
 
@@ -682,7 +654,7 @@ There is **no SMTP client, MailKit, or `IEmailSender` in application code** — 
 # Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 27 listed)
 
 
-Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency; B16/B30, timezone rehydration — see the remediation-status note in the register); the original numbering is preserved.
+Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22, security response headers; B23, RequireHttpsMetadata default — see the remediation-status note in the register); the original numbering is preserved.
 
 
 ## B1. [High] UpdateEmployeeRoles lets a non-owner assign the protected Owner SystemRole, enabling vertical privilege escalation and self-promotion
@@ -1287,38 +1259,6 @@ public static async Task<CompanyId> Load(
 **Notes.** Severity lowered from the claimed Medium to Low: verification shows no current exploit path. Every HTTP-reachable tenant-data handler injects IPrincipal (so UserPrincipalFactory.Create runs and rejects non-members of the header company), and no endpoint bypasses the Wolverine bus to touch tenant data. The two handlers that take CompanyId without IPrincipal (SeedDemo*) are saga/event-driven with a trusted TenantId, not header-driven. This is therefore a defense-in-depth / future-proofing gap: it would escalate to High only if a new or refactored HTTP-reachable handler read/wrote tenant data via a CompanyId parameter without also injecting IPrincipal. The risky pattern already exists in-repo (SeedDemo handlers), so a copy-paste into an HTTP slice would silently open cross-tenant access with no compile-time or test guardrail — which is the legitimate basis for the finding. The reviewer's file/line (CompanyResolutionMiddleware.cs:17) correctly identifies where the header is trusted; the enforcement fix belongs in CompanyContextBehavior.Load.
 
 
-## B17. [Low] Client-controlled pagination page size bounded only at 1000 rows per request
-
-- **Location:** `src/AppointMe.Shared/Pagination/PaginationFilter.cs:6`
-- **Dimension / category:** input-validation / robustness
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** no
-
-**Explanation.** PaginationRequest.Limit is bound directly from the `limit` query-string parameter with no attribute constraints, and PaginationFilter clamps it to [0, 1000]. So it is NOT unbounded (no true DoS / no injection - the value is passed as the @Limit Dapper parameter), but 1000 is a high ceiling: any authenticated tenant user hitting GetCustomers / GetTeam can request 1000 rows per call, and every paged query additionally computes `COUNT(*) OVER ()` (ExtSqlBuilder.AddPagination) across the full filtered set on each page. Confirm 1000 is the intended maximum; a lower cap (e.g. 100-200) reduces per-request cost and large-payload amplification. Flagged because the review scope explicitly asked to check pagination page-size bounds - reporting the verified ceiling rather than a vulnerability.
-
-**Evidence.**
-```
-private const int MinLimit = 0;
-private const int MaxLimit = 1000;
-...
-Limit = Math.Clamp(limit, MinLimit, MaxLimit);
-```
-
-**Proposed remediation.**
-```
-Lower MaxLimit to a value justified by real page sizes (e.g. 100), and consider defaulting/validating Limit in PaginationRequest so out-of-range values are rejected rather than silently clamped.
-```
-
-**Verification.** Read PaginationFilter.cs, PaginationRequest.cs, ExtSqlBuilder.cs, CustomersRepository.cs, TeamRepository.cs, GetCustomersEndpoint.cs and GetCustomersRequest.cs. The code matches the finding exactly. PaginationRequest.Limit (line 8) binds from `[FromQuery(Name="limit")]` with default 10 and NO attribute constraint (no [Range]). PaginationFilter constructor (line 12) silently clamps with Math.Clamp(limit, 0, 1000); MaxLimit=1000 is at line 6. The clamped value reaches SQL only as the parameterized Dapper @Limit in `OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY` (ExtSqlBuilder.cs:12-16) — so there is no injection and it is not literally unbounded, exactly as the reviewer stated. AddPagination also unconditionally appends `,COUNT(*) OVER () AS [TotalCount]` (lines 18-22), which is evaluated over the full filtered set on every page. Both reachable paths confirmed: CustomersRepository.GetAll (GetCustomers endpoint) and TeamRepository.GetTeam (GetTeam), each behind an authenticated endpoint. I looked for any upstream mitigation (middleware, base-class validation, global config lowering the cap) and found none — 1000 is the real effective ceiling. This is a truthful robustness/hardening observation rather than an exploitable vulnerability, which the finding itself acknowledges.
-
-**Verified remediation.**
-```
-Lower the ceiling to a value justified by real page sizes and treat it as the single source of truth. In PaginationFilter.cs:\n\n    private const int MinLimit = 1;   // 0 rows is a degenerate page; default to 1\n    private const int MaxLimit = 100; // was 1000\n\nKeep silent clamping (it is friendlier than rejecting), so no controller/attribute change is strictly required. If you prefer to reject out-of-range input explicitly instead of clamping, add a validation attribute on the bound property in PaginationRequest.cs:\n\n    [FromQuery(Name = \"limit\")]\n    [Range(1, 100)]\n    public int Limit { get; init; } = 10;\n\nEither approach caps per-request row count and the cost of the COUNT(*) OVER () window aggregate. No other call sites need changes since both GetCustomers and GetTeam funnel through PaginationFilter.
-```
-
-**Notes.** Not a security vulnerability: the limit is passed as a parameterized Dapper value (@Limit), reachable only by authenticated tenant users, and clamped rather than unbounded. The finding is a hardening/robustness suggestion and the reviewer explicitly framed it as reporting the verified ceiling, not an exploit. The COUNT(*) OVER () per-page cost is real but modest at these table sizes. Note MinLimit is currently 0, which permits a limit=0 request that returns only the TotalCount with zero rows — harmless but arguably should be 1.
-
-
 ## B18. [Low] No antiforgery/CSRF protection for cookie-authenticated state-changing endpoints; sole defense is SameSite=Lax
 
 - **Location:** `src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:51`
@@ -1459,138 +1399,6 @@ Do not establish a session over a safe verb. Convert the demo sign-in to POST wi
 ```
 
 **Notes.** Severity remains Low, matching the reviewer. Production is not exposed (Demo.Enabled=false in base appsettings.json). The impacted account is a shared public demo sandbox rather than a real per-user account, which limits confidentiality/integrity impact; the primary concern is that a victim can be silently signed into the shared demo identity in demo-enabled internet-reachable environments (Devtest → app.appointme.dev), so any data they enter is attributed to / readable within the shared demo account. The line-23 anchor (MapGet + AllowAnonymous) is the correct root-cause location; the actual state change is line 51 (SignInAsync).
-
-
-## B21. [Low] HSTS (Strict-Transport-Security) is never configured
-
-- **Location:** `src/AppointMe.Api/Program.cs:70`
-- **Dimension / category:** transport-headers / transport
-- **Verdict:** CONFIRMED (claimed Medium → final Low)
-- **Needs architectural review:** no
-
-**Explanation.** The pipeline calls UseHttpsRedirection but there is no app.UseHsts() / services.AddHsts() anywhere in the solution (grep for UseHsts/AddHsts/Strict-Transport returns nothing). Without HSTS the app never emits a Strict-Transport-Security response header, so a browser that first reaches the site over HTTP (or is coerced there via a downgrade / the spoofable X-Forwarded-Proto path above) is not protected against SSL-stripping on subsequent visits. The default ASP.NET template ships a `if (!app.Environment.IsDevelopment()) app.UseHsts();` branch that is absent here.
-
-**Evidence.**
-```
-app.UseHttpsRedirection();
-app.UseExceptionHandler();
-app.UseStaticFiles();
-// no app.UseHsts() in any environment branch
-```
-
-**Proposed remediation.**
-```
-Add HSTS for non-development environments: `if (!app.Environment.IsDevelopment()) { app.UseHsts(); }` placed before UseHttpsRedirection, and configure services.AddHsts(o => { o.MaxAge = TimeSpan.FromDays(365); o.IncludeSubDomains = true; o.Preload = true; }). Ensure this is only enabled once the site is reliably served over HTTPS on its production domain.
-```
-
-**Verification.** Read src/AppointMe.Api/Program.cs in full: the request pipeline calls app.UseForwardedHeaders() (line 63), then app.UseHttpsRedirection() (line 70), UseExceptionHandler, UseStaticFiles, multi-tenancy, auth, endpoints, and MapFallbackToFile. There is no app.UseHsts() in any environment branch and no services.AddHsts(...) registration. A repo-wide case-insensitive grep for UseHsts|AddHsts|Strict-Transport|Hsts (excluding node_modules/.git) returned exactly one match: src/AppointMe.Aspire/appointme-realm.json line ~1731, inside Keycloak's "browserSecurityHeaders" block ("strictTransportSecurity": "max-age=31536000; includeSubDomains"). That setting only governs Keycloak server responses, not the AppointMe API, so it does NOT mitigate the finding for this app. I checked for alternative mitigations and found none: no custom security-headers middleware (grep for Headers.Append/Add, SecurityHeaders, X-Frame-Options etc. only hit the Keycloak realm JSON), and no reverse-proxy/ingress that could inject HSTS (grep for yarp|nginx|ingress|reverseproxy|traefik found nothing). The SPA is served by this same API process (UseStaticFiles + MapFallbackToFile("index.html")), so the application's own HTTPS responses genuinely never carry a Strict-Transport-Security header. UseHttpsRedirection performs a 307/308 HTTP->HTTPS redirect, but the first hop is still over plaintext, which HSTS is specifically designed to protect on subsequent visits. Defect confirmed with no offsetting mitigation.
-
-**Verified remediation.**
-```
-Register HSTS options and enable the middleware for non-development environments, before UseHttpsRedirection:
-
-// in service configuration (near line 57)
-builder.Services.AddHsts(options =>
-{
-    options.MaxAge = TimeSpan.FromDays(365);
-    options.IncludeSubDomains = true;
-    options.Preload = true; // only set if you intend to submit to the HSTS preload list
-});
-
-// in the pipeline, before app.UseHttpsRedirection(); (line 70)
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHsts();
-}
-
-Note: because ForwardedHeadersOptions here clears KnownProxies/KnownIPNetworks (Program.cs:50-55), ensure X-Forwarded-Proto is trusted only from a real reverse proxy in production so HttpContext.Request.IsHttps is accurate before enabling HSTS; roll out max-age gradually and only add Preload once HTTPS is guaranteed on the production domain and all subdomains.
-```
-
-**Notes.** Refined severity from claimed Medium to Low: missing HSTS is a defense-in-depth hardening gap, not directly exploitable. It requires an active on-path (network MITM / SSL-strip) attacker, and app.UseHttpsRedirection() is already present, so plaintext requests are redirected to HTTPS. Medium is defensible if the production surface is public-facing and users commonly type http:// URLs, but Low is the more accurate rating for a missing security header with no other weakness in isolation. The Keycloak realm's strictTransportSecurity setting is a red herring for this finding — it applies only to Keycloak, not the API. Also note this finding is adjacent to (but distinct from) the spoofable X-Forwarded-Proto configuration at Program.cs:50-55; that trust-boundary issue should be addressed alongside enabling HSTS so IsHttps is reliable.
-
-
-## B22. [Low] No security response headers (X-Content-Type-Options, X-Frame-Options/CSP frame-ancestors, Referrer-Policy, Content-Security-Policy)
-
-- **Location:** `src/AppointMe.Api/Program.cs:72`
-- **Dimension / category:** transport-headers / transport
-- **Verdict:** CONFIRMED (claimed Medium → final Low)
-- **Needs architectural review:** no
-
-**Explanation.** The API serves its own SPA and static assets (UseStaticFiles at line 72, MapFallbackToFile("index.html") at line 83) yet emits no protective response headers — a repo-wide grep for X-Content-Type-Options/nosniff, X-Frame-Options/frame-ancestors, Content-Security-Policy, and Referrer-Policy returns nothing and there is no header-writing middleware or StaticFileOptions.OnPrepareResponse. Consequences: no X-Content-Type-Options=nosniff (MIME-sniffing of user/static content), no X-Frame-Options or CSP frame-ancestors (the app can be framed → clickjacking), no Content-Security-Policy (no defence-in-depth against injected script), and no Referrer-Policy (referrer leakage of authenticated URLs / X-Company-Id-bearing paths to third parties).
-
-**Evidence.**
-```
-app.UseStaticFiles();
-app.UseAppointMeMultiTenancy();
-...
-app.MapFallbackToFile("index.html").AllowAnonymous();
-// no middleware setting X-Content-Type-Options, X-Frame-Options, CSP, or Referrer-Policy
-```
-
-**Proposed remediation.**
-```
-Add a small headers middleware early in the pipeline setting at minimum: X-Content-Type-Options: nosniff; Referrer-Policy: strict-origin-when-cross-origin; and a Content-Security-Policy with `frame-ancestors 'none'` (plus X-Frame-Options: DENY for legacy browsers). Tune the CSP script/style/connect-src to the SPA's needs. Consider the NetEscapades.AspNetCore.SecurityHeaders package for a maintained policy builder.
-```
-
-**Verification.** Read src/AppointMe.Api/Program.cs in full. The middleware pipeline (UseForwardedHeaders, UseHttpsRedirection, UseExceptionHandler, UseStaticFiles at line 72, UseAppointMeMultiTenancy, UseAuthentication, UseAuthorization, MapEndpoints, MapFallbackToFile index.html at line 83) contains no header-writing middleware, no UseHsts, and no StaticFileOptions.OnPrepareResponse. The API serves its own SPA (UseStaticFiles plus MapFallbackToFile confirmed). Searched for mitigations: no NetEscapades/SecurityHeaders/HSTS package in AppointMe.Api.csproj; the only custom middleware (CompanyResolutionMiddleware) does not touch response headers; ErrorHandling/Internal write no headers. The only nosniff/X-Frame-Options/contentSecurityPolicy/referrerPolicy hits in the repo are in src/AppointMe.Aspire/appointme-realm.json under Keycloak browserSecurityHeaders, which govern Keycloak's own login pages (separate service on port 8082), not the API/SPA responses, so they do not mitigate the API. ASP.NET Core adds none of these headers by default. The defect is genuine and unmitigated.</parameter>
-<parameter name="notes">Downgraded from claimed Medium to Low. This is a defense-in-depth/hardening gap, not directly exploitable; no data breach or auth bypass results from the missing headers alone. The clickjacking concern is materially reduced because browser flows use cookie auth (per CLAUDE.md) and modern browsers default cookies to SameSite=Lax, so cross-site iframe requests do not carry the session; MIME-sniffing and referrer leakage are minor. OWASP/scanners rate missing security headers as Low/Informational. Any CSP must be tuned to the SPA (Tailwind/Vite styles, connect-src for the API origin and Keycloak) and tested, since an over-strict policy will break the app.</parameter>
-<parameter name="correctedFile">src/AppointMe.Api/Program.cs
-
-**Verified remediation.**
-```
-Add a headers middleware early in the pipeline (right after app.UseForwardedHeaders(), before UseStaticFiles) so both static assets and the SPA fallback are covered: app.Use(async (context, next) => { var headers = context.Response.Headers; headers.Append("X-Content-Type-Options", "nosniff"); headers.Append("Referrer-Policy", "strict-origin-when-cross-origin"); headers.Append("X-Frame-Options", "DENY"); headers.Append("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"); await next(); }); Tune the CSP script/style/connect-src to the SPA (Tailwind/Vite styles; API and Keycloak origins for connect-src) and test before shipping. Also add app.UseHsts() outside the Development branch for production HSTS. Consider the NetEscapades.AspNetCore.SecurityHeaders package for a maintained policy builder.
-```
-
-
-## B23. [Low] RequireHttpsMetadata defaults to false for both OIDC and JWT Bearer, and base appsettings hard-codes it false
-
-- **Location:** `src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:32`
-- **Dimension / category:** transport-headers / transport
-- **Verdict:** PLAUSIBLE (claimed Medium → final Low)
-- **Needs architectural review:** no
-
-**Explanation.** requireHttpsMetadata is read with a fallback default of false (line 32) and applied to both oidc.RequireHttpsMetadata (line 108) and jwt.RequireHttpsMetadata (line 120). The base appsettings.json also sets "RequireHttpsMetadata": false (line 18). Security therefore depends entirely on each environment file opting back in; appsettings.Devtest.json does set true, but any environment that fails to override (including a plain "Production" environment with no override) will fetch the OIDC discovery document and JWKS signing keys over HTTP, exposing token validation to a man-in-the-middle who can substitute signing keys and forge tokens. The secure default should be true, with false only as an explicit dev opt-out.
-
-**Evidence.**
-```
-var requireHttpsMetadata = configuration.GetValue("Authentication:RequireHttpsMetadata", false);
-...
-oidc.RequireHttpsMetadata = requireHttpsMetadata;
-...
-jwt.RequireHttpsMetadata = requireHttpsMetadata;
-```
-
-**Proposed remediation.**
-```
-Flip the default to secure: `configuration.GetValue("Authentication:RequireHttpsMetadata", true)` and remove the `false` from base appsettings.json (or set it only in appsettings.Development.json). Leave RequireHttpsMetadata=false exclusively in Development where Keycloak runs on a local self-signed/HTTP endpoint.
-```
-
-**Verification.** The factual code claims are all correct. AuthenticationExtensions.cs:32 reads `configuration.GetValue("Authentication:RequireHttpsMetadata", false)` (insecure fallback), and this value is applied to both oidc.RequireHttpsMetadata (line 108) and jwt.RequireHttpsMetadata (line 120). appsettings.json:18 does hard-code `"RequireHttpsMetadata": false`. So an insecure *default* genuinely exists — this is a real secure-defaults/hardening smell.
-
-BUT the reviewer's exploit scenario ("a plain Production environment with no override will fetch metadata over HTTP and be MITM'd") does not correspond to any actual deployment artifact in this repo, and is neutralized by config elsewhere:
-
-1. DEPLOYMENT MITIGATION (the decisive one the reviewer missed): infra/main.json:1148-1151 — the actual infrastructure/deployment template — explicitly injects the container env var `Authentication__RequireHttpsMetadata = "true"`. The real deployed (EntraExternalId) environment therefore does NOT rely on the insecure default; it opts into HTTPS enforcement at the infra layer.
-
-2. appsettings.Devtest.json:14 and appsettings.Devtest.example.json:14 both set `true`, with an HTTPS authority (ciamlogin.com). Every non-local configured path enforces HTTPS.
-
-3. A "plain Production environment with no override" cannot actually run: base appsettings.json has no valid Authority (Keycloak authority only exists in appsettings.Development.json; EntraExternalId.Authority in base is an empty string). Token validation would fail to obtain metadata at all, so there is no working-but-insecure production state produced by the default.
-
-4. Technical nuance: RequireHttpsMetadata=false does not downgrade an HTTPS authority to HTTP — it only removes the scheme requirement. Since every real authority configured here is HTTPS, discovery/JWKS is fetched over HTTPS regardless of the flag. The MITM-key-substitution path requires an HTTP authority AND the flag being false AND no infra override — none of which is the shipped state.
-
-The only places the `false` default is actually reachable are Development (local Keycloak, intentional) and Codegen (offline OpenAPI generation with authority "http://codegen", never validates real tokens). So the concern is a legitimate defense-in-depth/hardening improvement, but it is not an exploitable vulnerability in any shipping configuration.
-
-**Verified remediation.**
-```
-Flip to a secure default and make insecure HTTP metadata an explicit dev-only opt-out:
-
-// AuthenticationExtensions.cs:32
-// Secure default: require HTTPS for IdP metadata (discovery/JWKS) unless a trusted env explicitly opts out.
-var requireHttpsMetadata = configuration.GetValue("Authentication:RequireHttpsMetadata", true);
-
-Then remove line 18 (`"RequireHttpsMetadata": false`) from src/AppointMe.Api/appsettings.json, and add `"RequireHttpsMetadata": false` only to appsettings.Development.json and appsettings.Codegen.json (the two local/offline paths). The deployment template (infra/main.json) already sets it true, so this is purely defense-in-depth alignment of the code default with the deployed posture.
-```
-
-**Notes.** Severity reduced from the claimed Medium to Low. The code defect (insecure default) is real, but the claimed production MITM impact is not realized: infra/main.json explicitly sets Authentication__RequireHttpsMetadata=true for the deployed app, Devtest config sets true, base appsettings has no valid Authority so a no-override environment can't authenticate at all, and RequireHttpsMetadata=false does not downgrade an HTTPS authority. Recommend keeping as a low-priority hardening item rather than a security bug. Only the Development and Codegen environments ever hit the false default, both intentionally local/offline.
 
 
 ## B24. [Low] AllowedHosts wildcard disables host-header filtering

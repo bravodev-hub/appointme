@@ -36,7 +36,9 @@ internal static class AuthenticationExtensions
             var superAdminEmails = configuration.GetSection(SuperAdmin.ConfigurationSection).Get<string[]>() ?? [];
             services.AddSingleton(new SuperAdminRegistry(superAdminEmails));
 
-            var requireHttpsMetadata = configuration.GetValue("Authentication:RequireHttpsMetadata", false);
+            // Secure default: IdP metadata (discovery/JWKS) must be fetched over HTTPS unless an
+            // environment explicitly opts out (Development and Codegen, where the IdP is local/fake).
+            var requireHttpsMetadata = configuration.GetValue("Authentication:RequireHttpsMetadata", true);
 
             services
                 .AddAuthentication(options =>
