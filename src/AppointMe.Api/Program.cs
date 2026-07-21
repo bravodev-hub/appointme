@@ -9,6 +9,7 @@ using AppointMe.Api.Json;
 using AppointMe.Api.MultiTenancy;
 using AppointMe.Api.OpenApi;
 using AppointMe.Api.OpenTelemetry;
+using AppointMe.Api.SecurityHeaders;
 using AppointMe.Api.Wolverine;
 using AppointMe.Booking.Configuration;
 using AppointMe.Crm.Configuration;
@@ -67,6 +68,7 @@ builder.Host.AddWolverine(builder.Configuration, builder.Environment, isCodegen)
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+app.UseAppointMeSecurityHeaders();
 
 if (app.Environment.IsDevelopment())
 {
