@@ -15,6 +15,7 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui';
+import { logout } from '@/lib/logout';
 import { BellIcon, CreditCardIcon, EllipsisVerticalIcon, LogOutIcon, UserCircleIcon } from 'lucide-react';
 
 export const NavUser = () => {
@@ -77,11 +78,7 @@ export const NavUser = () => {
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            onClick={() => {
-                                window.location.href = '/api/v1/logout';
-                            }}
-                        >
+                        <DropdownMenuItem onClick={logout}>
                             <LogOutIcon />
                             Log out
                         </DropdownMenuItem>

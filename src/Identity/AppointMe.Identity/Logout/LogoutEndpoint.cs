@@ -10,7 +10,7 @@ internal sealed class LogoutEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder builder)
     {
-        builder.MapGet("/logout", Logout).WithName(nameof(Logout)).AllowAnonymous();
+        builder.MapPost("/logout", Logout).WithName(nameof(Logout)).RequireAuthorization();
     }
 
     private static async Task Logout(HttpContext context, IOptions<FrontendOptions> frontendOptions)

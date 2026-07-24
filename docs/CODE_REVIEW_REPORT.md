@@ -46,7 +46,8 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 > **Remediation status (updated 2026-07-21).** The review is a point-in-time snapshot from 2026-07-08 (base commit `3f5228e`). Fully fixed findings have been **removed** from this register (and from Appendix B, whose numbering is preserved); partially fixed ones remain in place with a status note.
 > - **H2 — Hangfire dashboard exposed at `/admin/jobs` with authorization disabled — FIXED and removed** (commits `a7d4043` → `e65bf41` → `868f278`, merged in PR #3 `0ac8d2a`, refined in `e35ba73`; was also Appendix B3). Verified implementation: the dashboard is mapped as a routed endpoint behind `.RequireAuthorization(HangfireDashboardPolicy.Name)`, moving enforcement into the ASP.NET Core authorization pipeline (the empty `DashboardOptions.Authorization = []` is now intentional). The `HangfireDashboard` policy requires an authenticated user plus `SuperAdminRequirement`; `SuperAdminAuthorizationHandler` resolves the caller via `IIdentityResolver` and succeeds only for a registered `UserIdentity` whose email is in the config-sourced `SuperAdminRegistry` (`Authentication:SuperAdmins`; production defaults to `[]` → deny-all, Development/Devtest allow only `demo@appointme.dev`). Covered by `SuperAdminAuthorizationHandlerTests` (9/9 passing). Residual (accepted): the dashboard registers in every non-codegen environment — safe under the deny-by-default allowlist; super-admin trust rests on the IdP-provided email at user registration.
 > - **M6 — No optimistic-concurrency token on any aggregate (silent lost updates) — FIXED and removed** (commit `0bb7021` + follow-ups on 2026-07-17; was also Appendix B11). Every EF-mapped entity across all four DbContexts now carries a non-nullable rowversion concurrency token (`builder.Property<byte[]>("Version").IsRowVersion().IsRequired()`): Booking — `Appointment`, `Attendee`, `BookingCompany`, `ServiceProvider` (migrations `20260709104431_AddAppointmentRowVersion`, `20260717103055_AddBookingProjectionsRowVersion`); CRM — `Customer` (`20260717102104_AddCustomerRowVersion`); Organizations — `Employee`, `Company`, `EmployeeInvitation`, `RolePermissionOverride` (`20260717102457_AddEmployeeAndCompanyRowVersion`, `20260717103102_AddInvitationAndPermissionOverrideRowVersion`); Identity — `User` (`20260717103143_AddUserRowVersion`). All columns are `rowversion, nullable: false`. A global `ConcurrencyExceptionHandler` maps `DbUpdateConcurrencyException` (including Wolverine-wrapped inner exceptions) to `409 Conflict` with code `concurrency_conflict`; conflicts inside Wolverine event/reconciliation handlers surface as exceptions handled by Wolverine's retry policy instead of silent lost updates. Verified: 10/10 entities tokenized in the model snapshots, full test suite green (136 tests), no Dapper `SELECT *` reads affected.
-> - **L1 — `RequireHttpsMetadata` insecure default — FIXED and removed** (2026-07-21, working-copy change pending commit; was also Appendix B23). Per B23's verified remediation: the code fallback in `AuthenticationExtensions.cs` is now `GetValue("Authentication:RequireHttpsMetadata", true)` (applied to both OIDC and JWT Bearer options); the hard-coded `false` was removed from base `appsettings.json`; and an explicit `"RequireHttpsMetadata": false` opt-out was added to `appsettings.Development.json` and `appsettings.Codegen.json` only (the two local/offline paths B23 identified — local Keycloak and the fake `http://codegen` authority). Devtest config and `infra/main.json` already set `true`, so deployed posture is unchanged — the code default now matches it. Any new hosted environment that forgets the setting now gets HTTPS-only metadata by default and fails closed. Covered by `AuthenticationExtensionsTests` (default-absent → `true` on both schemes; explicit `false` still honored), enabled via a new `InternalsVisibleTo("AppointMe.Api.Tests")`. Verified: full solution test suite green (151 tests). Note: the finding's cited line 32 had drifted to line 39 by fix time.
+> - **L1 — `RequireHttpsMetadata` insecure default — FIXED and removed** (commit `8f74451`, 2026-07-21; was also Appendix B23). Per B23's verified remediation: the code fallback in `AuthenticationExtensions.cs` is now `GetValue("Authentication:RequireHttpsMetadata", true)` (applied to both OIDC and JWT Bearer options); the hard-coded `false` was removed from base `appsettings.json`; and an explicit `"RequireHttpsMetadata": false` opt-out was added to `appsettings.Development.json` and `appsettings.Codegen.json` only (the two local/offline paths B23 identified — local Keycloak and the fake `http://codegen` authority). Devtest config and `infra/main.json` already set `true`, so deployed posture is unchanged — the code default now matches it. Any new hosted environment that forgets the setting now gets HTTPS-only metadata by default and fails closed. Covered by `AuthenticationExtensionsTests` (default-absent → `true` on both schemes; explicit `false` still honored), enabled via a new `InternalsVisibleTo("AppointMe.Api.Tests")`. Verified: full solution test suite green (151 tests). Note: the finding's cited line 32 had drifted to line 39 by fix time.
+> - **L3 — Logout is an anonymous GET (logout CSRF) — FIXED and removed** (2026-07-21, working-copy change pending commit; was also Appendix B14/B19). `LogoutEndpoint` now maps `MapPost("/logout")` with `RequireAuthorization()`. POST alone would not have closed the hole — `SignOutAsync`'s cookie-deletion `Set-Cookie` is applied by the browser even when the request carried no cookie (per B14's verification) — so auth is required: a cross-site POST arrives cookieless under `SameSite=Lax` and is challenged before the handler runs. `RequireAuthorization()` deliberately applies the default policy (authenticated user) rather than the registered-user fallback policy, so a signed-in user who has not completed signup can still log out. Frontend: `nav-user.tsx` now uses a `lib/logout.ts` helper submitting a top-level form POST (replacing the `window.location.href` GET) so the OIDC end-session redirect chain still runs as a navigation; the orval client was regenerated (`logout` is now a POST mutation). Verified live against the running stack: cookieless `POST /api/v1/logout` → 302 OIDC login challenge with **no** `appointme.auth` deletion header (a forged request can no longer terminate a session); `GET /api/v1/logout` no longer performs any sign-out (it now yields the same harmless challenge-redirect class as the pre-existing `/login` GET); solution builds, full test suite green, frontend `tsc`/lint clean on changed files. Residual: cross-site protection rests on `SameSite=Lax` + required auth (legacy-browser caveat); the app-wide antiforgery posture remains tracked as open finding L4. A manual login → logout click-through in the browser is recommended, as curl cannot drive the full OIDC session.
 > - **L5 — Pagination ceiling 1000 rows/request — FIXED and removed** (commit `d6abd85`, 2026-07-17; was also Appendix B17). `PaginationFilter` now clamps to `[1, 100]` (`MinLimit = 1`, `MaxLimit = 100`), capping both per-request row count and the cost of the `COUNT(*) OVER ()` window aggregate; the `MinLimit = 1` change also removes the degenerate `limit=0` page (rows-free `TotalCount` probe) flagged in B17's notes. Silent clamping was deliberately kept instead of a `[Range]` 400 — the option B17's verified remediation endorsed ("friendlier than rejecting; no controller/attribute change strictly required"); `PaginationRequest.Limit` still defaults to 10. Verified 2026-07-21 against the working tree: both paged read paths (`GetCustomers`, `GetTeam`) funnel through `PaginationFilter`, so no other call sites needed changes.
 > - **L6 — Untrusted timezone id rehydrated via non-validating `FindSystemTimeZoneById` — FIXED and removed** (2026-07-17; was also Appendix B16/B30). `BookingCompanySynchronizer.Apply` now reconstructs the timezone from the cross-module `CompanySnapshot` via the validating factory `TimeZoneInfo.Create(snapshot.TimeZone)`, per the value-object convention — an unresolvable id raises a domain `ValidationException` with a clear message instead of an infrastructure `TimeZoneNotFoundException`. The two `FindSystemTimeZoneById` uses in EF `HasConversion` lambdas are intentionally unchanged (DB materialization is a trusted path). Additionally, a Wolverine failure policy (`options.OnException<ValidationException>().MoveToErrorQueue()` in `WolverineHostBuilderExtensions.cs`) dead-letters queued messages that fail validation instead of retrying them — validation failures are deterministic, so retries could never succeed; inline HTTP invocations are unaffected (still mapped to 400 by `ValidationExceptionHandler`). Verified: solution builds, full test suite green (136 tests).
 > - **L7 — HSTS never configured — FIXED and removed** (commit `cee5004`, 2026-07-21; was also Appendix B21). Per the verified remediation: `builder.Services.AddHsts(...)` registered in `Program.cs` with `MaxAge = 365 days` and `IncludeSubDomains = true`, and `app.UseHsts()` added before `UseHttpsRedirection()`, gated to non-Development environments. `Preload` deliberately omitted until the team commits to submitting the domain (and all subdomains) to the browser preload list. Verified: solution builds, API test suite green; `Strict-Transport-Security` confirmed absent when running locally (Development-gated by design), so live confirmation of the header belongs in a deployed Devtest/production environment. Residual (tracked separately as B7/C1): the ForwardedHeaders allow-lists are cleared (`Program.cs:50-55`), so in production `X-Forwarded-Proto` must be trusted only from the real ingress for `Request.IsHttps` — and therefore HSTS emission — to be reliable.
@@ -154,11 +155,6 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 - **Issue:** SQL `sa` password (`Password1`), Keycloak `FrontendClientSecret` and admin `ClientSecret`, and the demo password (`AppointMe1`) are committed. Most are local-dev-only (local Keycloak realm, local SQL), but the **Devtest demo password is a real Entra credential** and the repo path is `public/`. Committed OIDC client secrets are a standing leak.
 - **Remediation:** move real secrets to user-secrets / Key Vault; keep only placeholders in committed files (there is already an `appsettings.Devtest.example.json`); rotate the Entra demo password and the Keycloak client secrets; confirm `.gitleaks.toml` isn't allow-listing these.
 
-### L3 — Logout is an anonymous GET (logout CSRF)
-- **File:** `src/Identity/AppointMe.Identity/Logout/LogoutEndpoint.cs:13`
-- **Issue:** `MapGet("/logout")` + `AllowAnonymous` calls `SignOutAsync`; a cross-site `<img>`/navigation can force-logout a victim. `SameSite=Lax` doesn't help because the `Set-Cookie` deletion applies regardless. Nuisance only (no data/auth impact).
-- **Remediation:** change to `MapPost("/logout")` and have the SPA call it via a request (it already uses axios with credentials).
-
 ### L4 — No antiforgery/CSRF for cookie-authenticated mutations
 - **File:** `src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:51` (posture); no `AddAntiforgery` anywhere
 - **Issue:** browser flows are cookie-authenticated; the only defense against cross-site state change is `SameSite=Lax` (no CSRF token, no CORS). This is an accepted posture for a same-origin SPA, so not actively exploitable, but it's single-layer.
@@ -218,7 +214,7 @@ The following were investigated and found **not** to be defects (8 adversarially
 ## Suggested sequencing
 1. H1, H3 (correctness/security, low blast radius). *(H2 done.)*
 2. M1, M2, L2 (auth/session/secrets hygiene). *(L1 done.)*
-3. L9, L3, L4 (transport/CSRF headers — one small middleware + config). *(L7, L8 done.)*
+3. L9, L4 (transport/CSRF headers — one small middleware + config). *(L3, L7, L8 done.)*
 4. L12, L11 (robustness one-liners). *(L5, L6 done.)*
 5. M3, M4, M5, L10, L13 (infra + architectural — schedule with a design discussion). *(M6 done.)*
 
@@ -654,7 +650,7 @@ There is **no SMTP client, MailKit, or `IEmailSender` in application code** — 
 # Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 27 listed)
 
 
-Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22, security response headers; B23, RequireHttpsMetadata default — see the remediation-status note in the register); the original numbering is preserved.
+Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22, security response headers; B23, RequireHttpsMetadata default — see the remediation-status note in the register); the original numbering is preserved.
 
 
 ## B1. [High] UpdateEmployeeRoles lets a non-owner assign the protected Owner SystemRole, enabling vertical privilege escalation and self-promotion
@@ -1166,45 +1162,6 @@ Keep tracked configs pointing at placeholders (as appsettings.Devtest.example.js
 **Notes.** File/line citation is accurate (appsettings.Development.json:15). Additional secret locations for completeness: appsettings.Development.json:23 (KeycloakAdmin.ClientSecret) and :29 (demo password); appsettings.Devtest.json:32 (demo password); and the same values are committed in src/AppointMe.Aspire/appointme-realm.json:497 and :689. Key corrections to the finding: (1) Devtest.json does NOT contain a real Entra client secret — only public ClientId/TenantId/ApiAudience, which are not confidential in OIDC; (2) the Keycloak secrets are localhost-only dev secrets duplicated in the tracked realm import, so 'rotation' of them has little value and they grant no access to any remote system; (3) the frontend client is a public client. The one item worth attention is the demo account password if the live demo at app.appointme.dev grants that user any meaningful write access — but it appears to be a deliberately shared one-click demo login.
 
 
-## B14. [Low] Logout is an anonymous GET, enabling logout CSRF
-
-- **Location:** `src/Identity/AppointMe.Identity/Logout/LogoutEndpoint.cs:13`
-- **Dimension / category:** auth-session / csrf
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** no
-
-**Explanation.** `/logout` is mapped as an AllowAnonymous GET that performs `SignOutAsync` for both the cookie and OIDC schemes. Because it is a safe-method GET with no anti-forgery protection, a cross-site page can force a victim's browser to hit it and terminate their session (logout CSRF). Functionally the local cookie IS cleared on sign-out (so logout does invalidate the cookie), but the GET shape makes it involuntarily triggerable. The paired `/login` GET is lower impact (it only issues an OIDC challenge redirect).
-
-**Evidence.**
-```
-builder.MapGet("/logout", Logout).WithName(nameof(Logout)).AllowAnonymous();
-```
-
-**Proposed remediation.**
-```
-Use POST for logout with anti-forgery protection (or a same-site confirmation), rather than a plain GET.
-```
-
-**Verification.** Read src/Identity/AppointMe.Identity/Logout/LogoutEndpoint.cs: line 13 is `builder.MapGet("/logout", Logout).WithName(nameof(Logout)).AllowAnonymous();` and the handler (lines 16-23) calls `context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme)` plus `SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, ...)`. This is a safe-method GET with no anti-forgery protection, so a cross-site page can force the victim's browser to hit it and terminate the session.
-
-I checked for mitigations in the auth configuration (src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:47-53): the auth cookie is `appointme.auth` with HttpOnly=true, SecurePolicy=Always, SameSite=Lax. None of these neutralize logout CSRF: (1) SignOutAsync appends a cookie-deletion Set-Cookie header in the response irrespective of whether the incoming request carried the cookie, so the browser clears `appointme.auth` even for a request that Lax would strip the cookie from (e.g. an <img>/sub-resource GET); (2) SameSite=Lax still sends the cookie on top-level GET navigations (window.location, link, form GET). No minimal-API AntiforgeryMiddleware requires a token on this route, and antiforgery does not apply to GET regardless. No confirmation/same-site check exists. The defect is real end-to-end and unmitigated.
-
-The paired /login GET (LoginEndpoint.cs:14) only issues an OIDC challenge redirect and is lower impact, consistent with the finding. Impact of the /logout issue is confined to involuntary session termination (availability/nuisance) — no data exposure, no auth bypass.
-
-**Verified remediation.**
-```
-Make logout a POST guarded by anti-forgery instead of an anonymous GET. Register the anti-forgery middleware in the API pipeline (app.UseAntiforgery()) and map the endpoint as:
-
-    builder.MapPost("/logout", Logout).WithName(nameof(Logout));
-    // do NOT call .DisableAntiforgery(); the frontend must submit a valid
-    // antiforgery token (e.g. via IAntiforgery-issued header/cookie).
-
-The OIDC RP-initiated sign-out redirect still works from a POST: SignOutAsync issues the 302 to Keycloak's end_session endpoint the same way. If a link-style logout must be preserved, gate it behind a same-site confirmation page that submits the POST with the token. Requiring authentication (remove AllowAnonymous) is a minor hardening but does not by itself stop the CSRF, since the victim is authenticated.
-```
-
-**Notes.** Well-known Low-severity class (logout CSRF): exploitation only ends the victim's session, causing a re-login nuisance; it does not disclose data or bypass authentication. SameSite=Lax reduces but does not eliminate it because top-level navigations carry Lax cookies and, more importantly, the sign-out Set-Cookie deletion is applied by the browser regardless of whether the cookie accompanied the request. Reviewer's file/line and Low rating are accurate.
-
-
 ## B15. [Low] Cross-tenant isolation relies on the client-supplied X-Company-Id header and is only enforced when a handler happens to inject IPrincipal
 
 - **Location:** `src/AppointMe.Api/Wolverine/HandlerContext/CompanyContextBehavior.cs:8`
@@ -1316,56 +1273,6 @@ Issue the token to the SPA (e.g. a `GET /antiforgery/token` that calls `IAntifor
 ```
 
 **Notes.** Severity downgraded from the claimed Medium to Low: SameSite=Lax + no CORS is an accepted (if not best-practice) CSRF posture for a same-origin SPA, so the enumerated POST/PUT/DELETE endpoints are not actively exploitable. The finding's own framing (defense-in-depth, SameSite as the mitigating control) is correct. The concrete residual exploit path (GET /login/demo performing sign-in) is demo-mode-gated via AddDemoMode(configuration) and is covered by a separate finding, so it should not be double-counted here. Line 51 is the exact SameSite=Lax line; the cookie block spans lines 47-53.
-
-
-## B19. [Low] Logout is a state-changing operation exposed over MapGet and AllowAnonymous (logout CSRF / unsafe verb)
-
-- **Location:** `src/Identity/AppointMe.Identity/Logout/LogoutEndpoint.cs:13`
-- **Dimension / category:** csrf-verbs / http-verb-safety
-- **Verdict:** CONFIRMED (claimed Medium → final Low)
-- **Needs architectural review:** no
-
-**Explanation.** GET /api/v1/logout is mapped as a safe/idempotent verb but mutates authentication state: it calls SignOutAsync for both the cookie and OIDC schemes, clearing the user's session. Because it is a GET and AllowAnonymous, it can be triggered cross-site with no token: an attacker page embedding <img src="https://app/api/v1/logout"> or a top-level link/redirect forces the victim to be logged out (the Set-Cookie session-deletion response is applied by the browser regardless of whether the Lax cookie is sent). SameSite=Lax does not mitigate this because the attack rides a safe GET, not a cross-site cookie-bearing POST. Impact is denial-of-session / forced logout, and via the OIDC RedirectUri it can also bounce the victim through the IdP sign-out flow.
-
-**Evidence.**
-```
-builder.MapGet("/logout", Logout).WithName(nameof(Logout)).AllowAnonymous();
-...
-await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-await context.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, new AuthenticationProperties { RedirectUri = ... });
-```
-
-**Proposed remediation.**
-```
-Expose logout over MapPost and require antiforgery (POST /logout with a validated token issued to the SPA). Keep it non-anonymous where possible, or at minimum require a CSRF token so it cannot be driven by a cross-site GET.
-```
-
-**Verification.** Confirmed end-to-end. LogoutEndpoint.cs:13 maps `MapGet("/logout", Logout)...AllowAnonymous()`; because it is registered on the `MapGroup("api/v1")` versioned group (EndpointsApplicationBuilderExtensions.cs:20), the live route is GET /api/v1/logout, anonymous. The handler mutates authentication state: SignOutAsync for the cookie scheme unconditionally appends a `Set-Cookie` that deletes `appointme.auth`, and SignOutAsync for the OIDC scheme returns a 302 to the IdP end-session endpoint. Repo-wide greps show NO mitigation: no AddAntiforgery/UseAntiforgery, no CSRF/XSRF token or custom-header requirement, no SameSiteMode.Strict, no Origin/Referer validation anywhere in src/. The cookie is SameSite=Lax/HttpOnly/Secure (AuthenticationExtensions.cs:49-52). Lax does not save it: (1) the cookie-deletion Set-Cookie is honored by the browser on the response even when the request omits the cookie, so a cross-site `<img src=.../api/v1/logout>` forces local logout; (2) top-level navigation (link / window.location / redirect) is a Lax-allowed context, so the cookie IS sent, enabling the full OIDC end-session with id_token_hint. CORS is not a mitigation (it restricts reading responses, not issuing img/navigation GETs). No factory/middleware/global-filter neutralizes it. The reviewer's file and line (LogoutEndpoint.cs:13) are precise.
-
-**Verified remediation.**
-```
-Expose logout over POST, drop AllowAnonymous, and require antiforgery so a cross-site GET/navigation cannot trigger it:
-
-// LogoutEndpoint.cs
-public void MapEndpoint(IEndpointRouteBuilder builder)
-{
-    builder.MapPost("/logout", Logout)
-        .WithName(nameof(Logout))
-        .RequireAuthorization()   // only an authenticated cookie session can sign itself out
-        .RequireAntiforgery();    // reject requests without a validated CSRF token
-}
-
-// Program.cs
-builder.Services.AddAntiforgery(/* e.g. options.HeaderName = "X-XSRF-TOKEN" */);
-...
-app.UseAuthentication();
-app.UseAuthorization();
-app.UseAntiforgery();   // after auth, before MapEndpoints()
-
-The SPA then issues logout as a credentialed POST carrying the antiforgery token (or a custom header that browsers cannot set cross-site without a CORS preflight). If logout must remain callable for an already-expired/anonymous session, keep it POST + antiforgery rather than reverting to anonymous GET.
-```
-
-**Notes.** Severity downgraded from the claimed Medium to Low: the maximal impact is forced logout / denial-of-session plus an IdP sign-out bounce — no data breach, auth bypass, or privilege escalation, which matches standard logout-CSRF ratings. Note LoginEndpoint.cs:14 (GET /login, AllowAnonymous) and DemoLoginEndpoint.cs:23 (GET /login/demo) are analogous state-initiating GETs; login CSRF is the mirror class and may be worth flagging separately, though login only initiates an OIDC challenge rather than mutating an existing session. Changing GET→POST for logout requires a matching frontend change (the client currently likely navigates/links to it), so the API-client/SPA must be updated in the same change.
 
 
 ## B20. [Low] Demo login establishes an authenticated session over MapGet with no CSRF protection (login CSRF)
