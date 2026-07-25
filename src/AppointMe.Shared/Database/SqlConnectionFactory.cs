@@ -8,7 +8,16 @@ public sealed class SqlConnectionFactory(string connectionString) : IDbConnectio
     public async Task<IDbConnection> OpenConnectionAsync(CancellationToken cancellationToken)
     {
         var sqlConnection = new SqlConnection(connectionString);
-        await sqlConnection.OpenAsync(cancellationToken);
+        try
+        {
+            await sqlConnection.OpenAsync(cancellationToken);
+        }
+        catch
+        {
+            await sqlConnection.DisposeAsync();
+            throw;
+        }
+
         return sqlConnection;
     }
 }

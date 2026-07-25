@@ -53,6 +53,7 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 > - **L7 — HSTS never configured — FIXED and removed** (commit `cee5004`, 2026-07-21; was also Appendix B21). Per the verified remediation: `builder.Services.AddHsts(...)` registered in `Program.cs` with `MaxAge = 365 days` and `IncludeSubDomains = true`, and `app.UseHsts()` added before `UseHttpsRedirection()`, gated to non-Development environments. `Preload` deliberately omitted until the team commits to submitting the domain (and all subdomains) to the browser preload list. Verified: solution builds, API test suite green; `Strict-Transport-Security` confirmed absent when running locally (Development-gated by design), so live confirmation of the header belongs in a deployed Devtest/production environment. Residual (tracked separately as B7/C1): the ForwardedHeaders allow-lists are cleared (`Program.cs:50-55`), so in production `X-Forwarded-Proto` must be trusted only from the real ingress for `Request.IsHttps` — and therefore HSTS emission — to be reliable.
 > - **L8 — No security response headers / no CSP — FIXED and removed** (commit `4069fb7`, 2026-07-21; was also Appendix B22/B28). New `SecurityHeadersMiddleware` (`src/AppointMe.Api/SecurityHeaders/`), wired via `UseAppointMeSecurityHeaders()` immediately after `UseForwardedHeaders()` so static assets, the SPA fallback, and API responses are all covered. Emits `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: strict-origin-when-cross-origin` on every response; headers are applied in `Response.OnStarting` so they survive the `Response.Clear()` that `ExceptionHandlerMiddleware` performs before writing problem-details responses. CSP ships **report-only** (`Content-Security-Policy-Report-Only`: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'` — inline styles required by the `chart.tsx` `<style>` sink and Recharts; `img-src`/`font-src 'self' data:`; `connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'`); rename the header to the enforcing `Content-Security-Policy` once browser violation reports come back clean while exercising the SPA. Covered by `SecurityHeadersMiddlewareTests` (6/6 passing, including a survives-`Response.Clear()` regression test); verified live against the running Aspire stack — all four headers present on both SPA-fallback and API responses, no enforcing CSP header emitted. Residual (intentional): CSP is report-only until tuned; framing is already blocked by the enforcing `X-Frame-Options: DENY`, with `frame-ancestors` taking over when CSP enforcement flips.
 > - **L11 — `useCurrentUser` guard is dead code — FIXED and removed** (2026-07-25, working-copy change pending commit; was also Appendix B29). `CurrentUserContext` is now `createContext<GetCurrentUserResponse | null>(null)`, matching the sibling `current-company-context` / `user-access-context`, so the existing `if (context === null) throw` guard in `useCurrentUser` is live: calling the hook outside `CurrentUserProvider` throws instead of silently yielding the anonymous `{ isAuthenticated: false }` default. No behavior change for correctly wired call sites — B29's verification confirmed every current call site sits inside the provider and the provider never supplies null. Verified: frontend `tsc` clean; lint reports nothing new on the changed file (its `react-refresh/only-export-components` warning is the pre-existing pattern shared with the sibling contexts).
+> - **L12 — `SqlConnection` leaked if `OpenAsync` throws — FIXED and removed** (2026-07-25, working-copy change pending commit; was also Appendix B31). `SqlConnectionFactory.OpenConnectionAsync` now wraps the open in try/catch and disposes the connection before rethrowing (B31's verified remediation verbatim), closing the CA2000 leak-on-throw window: previously a cancellation mid-open or transient failure left the instance outside any `using` scope, pinning pooled connections under sustained failure load. This is the sole `IDbConnectionFactory` implementation, so all repository call sites are covered. Verified: solution builds, full test suite green. No dedicated regression test was added — disposal is not observable through the factory's public surface without introducing a test seam, which was judged disproportionate for the five-line fix.
 > - All other findings remain open.
 
 ## HIGH
@@ -171,16 +172,6 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 - **Issue:** `enablePurgeProtection: null` (off) and `publicNetworkAccess: 'Enabled'`. RBAC still gates access, so exposure is bounded, but a soft-deleted secret can be permanently purged within the retention window and the vault is internet-reachable.
 - **Remediation:** `enablePurgeProtection: true` and restrict network access (private endpoint / firewall).
 
-### L12 — `SqlConnection` leaked if `OpenAsync` throws
-- **File:** `src/AppointMe.Shared/Database/SqlConnectionFactory.cs:10-13`
-- **Issue:** the connection is created and `OpenAsync` awaited before it's returned to the caller's `using`. If `OpenAsync` throws (cancellation mid-open, transient failure after a pooled connection is reserved), the instance is never disposed — under load this can exhaust the pool.
-- **Remediation:**
-  ```csharp
-  var sqlConnection = new SqlConnection(connectionString);
-  try { await sqlConnection.OpenAsync(cancellationToken); return sqlConnection; }
-  catch { await sqlConnection.DisposeAsync(); throw; }
-  ```
-
 ### L13 — Tenant isolation depends on every handler injecting `IPrincipal` (architectural fragility) ⚠ needs design review
 - **File:** `src/AppointMe.Api/Wolverine/HandlerContext/CompanyContextBehavior.cs` + `CompanyResolutionMiddleware.cs`
 - **Issue:** the active tenant is taken verbatim from `X-Company-Id` with **no membership check at the boundary**. The membership check only runs as a side effect of a handler injecting `IPrincipal` (`UserPrincipalFactory`). Every current HTTP-reachable tenant-data handler does so, so there's **no live exploit** — but the isolation guarantee is implicit: a future handler that reads tenant data without injecting `IPrincipal` (or any path bypassing the Wolverine bus) would silently leak cross-tenant.
@@ -199,7 +190,7 @@ The following were investigated and found **not** to be defects (8 adversarially
 ---
 
 ## Verification plan (after fixes are approved & applied)
-1. **Build/tests:** `dotnet build AppointMe.sln` and `dotnet test` (unit suites under each `*.Tests`). Add regression tests: role-assignment rejects `Owner`/non-configurable roles (H1); reconciliation continues after a bad record (H3); `SqlConnectionFactory` disposes on cancelled open (L12).
+1. **Build/tests:** `dotnet build AppointMe.sln` and `dotnet test` (unit suites under each `*.Tests`). Add regression tests: role-assignment rejects `Owner`/non-configurable roles (H1); reconciliation continues after a bad record (H3). *(L12 was fixed without its suggested regression test — disposal isn't observable via the factory's public surface without a test seam.)*
 2. **Run the stack:** `cd src/AppointMe.Aspire && dotnet run` (SQL, Keycloak, Mailpit, API, SPA).
 3. **H1:** as a Manager, `PUT /api/v1/employees/{id}/roles` and `POST /api/v1/invitations` with `{"roles":["Owner"]}` → expect `400 role_not_assignable`.
 4. **H3:** seed a source employee with an invalid name among several valid ones, run the service-provider reconciliation, confirm the valid ones still project.
@@ -211,7 +202,7 @@ The following were investigated and found **not** to be defects (8 adversarially
 1. H1, H3 (correctness/security, low blast radius). *(H2 done.)*
 2. M1, M2, L2 (auth/session/secrets hygiene). *(L1 done.)*
 3. L9, L4 (transport/CSRF headers — one small middleware + config). *(L3, L7, L8 done.)*
-4. L12 (robustness one-liners). *(L5, L6, L11 done.)*
+4. *(Robustness one-liners all done: L5, L6, L11, L12.)*
 5. M3, M4, M5, L10, L13 (infra + architectural — schedule with a design discussion). *(M6 done.)*
 
 
@@ -643,10 +634,10 @@ There is **no SMTP client, MailKit, or `IEmailSender` in application code** — 
 
 ---
 
-# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 17 listed)
+# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 16 listed)
 
 
-Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency; B12/B23/B25, RequireHttpsMetadata default; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22/B28, security response headers / CSP; B29, useCurrentUser dead guard — see the remediation-status note in the register); the original numbering is preserved.
+Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency; B12/B23/B25, RequireHttpsMetadata default; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22/B28, security response headers / CSP; B29, useCurrentUser dead guard; B31, SqlConnection leak — see the remediation-status note in the register); the original numbering is preserved.
 
 
 ## B1. [High] UpdateEmployeeRoles lets a non-owner assign the protected Owner SystemRole, enabling vertical privilege escalation and self-promotion
@@ -1369,55 +1360,6 @@ Acceptable to keep for local dev: the values only authenticate against local con
 ```
 
 **Notes.** Repo path is public/appointme, so this is a public-facing repository, which is why committing even local-only creds warrants a finding rather than being ignored. Severity stays Low because: the secrets are not valid against any hosted/network-reachable system (Keycloak realm is imported locally; SQL is localhost-only); hosted auth is Entra External ID; the dev TLS private key is correctly git-ignored; and gitleaks value-based allowlisting means the controls degrade safely (a genuinely new secret is still caught). No framework mitigation makes this a false positive — the credentials are genuinely committed — but the surrounding controls cap real-world impact at Low. Reviewer's severity, category, and remediation stance are all correct; the only imprecision is the anchor line (multiple secrets across lines 9/15/23; strongest single anchor is the SQL password at line 9).
-
-
-## B31. [Low] SqlConnection leaked when OpenAsync throws (cancellation or connection failure)
-
-- **Location:** `src/AppointMe.Shared/Database/SqlConnectionFactory.cs:10`
-- **Dimension / category:** robustness / robustness
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** no
-
-**Explanation.** The SqlConnection is constructed and OpenAsync is awaited before the instance is returned to the caller's `using`. If OpenAsync throws — e.g. the passed CancellationToken is cancelled mid-open, or a transient network/login failure occurs after a pooled physical connection has been reserved — the SqlConnection object is never disposed because the caller never receives it to place in a using scope. Under load with cancellations this can leak/pin pooled connections and eventually exhaust the connection pool.
-
-**Evidence.**
-```
-var sqlConnection = new SqlConnection(connectionString);
-await sqlConnection.OpenAsync(cancellationToken);
-return sqlConnection;
-```
-
-**Proposed remediation.**
-```
-Wrap the open so the connection is disposed on failure:
-var sqlConnection = new SqlConnection(connectionString);
-try { await sqlConnection.OpenAsync(cancellationToken); }
-catch { await sqlConnection.DisposeAsync(); throw; }
-return sqlConnection;
-```
-
-**Verification.** The cited code (src/AppointMe.Shared/Database/SqlConnectionFactory.cs:10-12) constructs `new SqlConnection(connectionString)`, then `await sqlConnection.OpenAsync(cancellationToken)`, then returns it — with no try/catch. If OpenAsync throws (token cancelled mid-open, or a transient network/login failure after a physical connection has been reserved), the SqlConnection instance is never returned to the caller. Every caller relies on `using var connection = await connectionFactory.OpenConnectionAsync(...)` (confirmed in CustomersRepository.cs:37/61, AppointmentsRepository.cs:39/73, ServiceProvidersRepository.cs:24, TeamRepository.cs:65), and that `using` only binds after a successful return — so on an exception the object escapes any disposal scope. This is the single IDbConnectionFactory implementation, registered as a singleton in all four modules, so no alternate implementation exists. I looked for mitigations (wrapper types, middleware, base class) and found none; nothing else can dispose an object the caller never receives. This is the classic CA2000 leak-on-throw pattern and is genuinely present. Severity remains Low: the ADO.NET pooler reclaims leaked SqlConnection objects via finalization/pruning, so the practical impact is transient pool pressure under sustained cancellation/failure load, not a permanent leak, data breach, or auth issue.
-
-**Verified remediation.**
-```
-public async Task<IDbConnection> OpenConnectionAsync(CancellationToken cancellationToken)
-{
-    var sqlConnection = new SqlConnection(connectionString);
-    try
-    {
-        await sqlConnection.OpenAsync(cancellationToken);
-    }
-    catch
-    {
-        await sqlConnection.DisposeAsync();
-        throw;
-    }
-    return sqlConnection;
-}
-```
-
-**Notes.** Confirmed as the only implementation of IDbConnectionFactory, registered singleton in Identity/Organizations/CRM/Booking modules; all repositories consume it via `using var connection = await ...`. The `using` cannot protect against a throw inside the factory because the caller never receives the instance. Real-world blast radius is bounded by connection-pool finalization/pruning, hence Low. The reviewer's cited line 10 is accurate (the construction site); the fix spans lines 10-12.
-
 
 
 ---
