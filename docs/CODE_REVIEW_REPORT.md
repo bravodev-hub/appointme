@@ -46,12 +46,13 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 > **Remediation status (updated 2026-07-21).** The review is a point-in-time snapshot from 2026-07-08 (base commit `3f5228e`). Fully fixed findings have been **removed** from this register (and from Appendix B, whose numbering is preserved); partially fixed ones remain in place with a status note.
 > - **H2 — Hangfire dashboard exposed at `/admin/jobs` with authorization disabled — FIXED and removed** (commits `a7d4043` → `e65bf41` → `868f278`, merged in PR #3 `0ac8d2a`, refined in `e35ba73`; was also Appendix B3). Verified implementation: the dashboard is mapped as a routed endpoint behind `.RequireAuthorization(HangfireDashboardPolicy.Name)`, moving enforcement into the ASP.NET Core authorization pipeline (the empty `DashboardOptions.Authorization = []` is now intentional). The `HangfireDashboard` policy requires an authenticated user plus `SuperAdminRequirement`; `SuperAdminAuthorizationHandler` resolves the caller via `IIdentityResolver` and succeeds only for a registered `UserIdentity` whose email is in the config-sourced `SuperAdminRegistry` (`Authentication:SuperAdmins`; production defaults to `[]` → deny-all, Development/Devtest allow only `demo@appointme.dev`). Covered by `SuperAdminAuthorizationHandlerTests` (9/9 passing). Residual (accepted): the dashboard registers in every non-codegen environment — safe under the deny-by-default allowlist; super-admin trust rests on the IdP-provided email at user registration.
 > - **M6 — No optimistic-concurrency token on any aggregate (silent lost updates) — FIXED and removed** (commit `0bb7021` + follow-ups on 2026-07-17; was also Appendix B11). Every EF-mapped entity across all four DbContexts now carries a non-nullable rowversion concurrency token (`builder.Property<byte[]>("Version").IsRowVersion().IsRequired()`): Booking — `Appointment`, `Attendee`, `BookingCompany`, `ServiceProvider` (migrations `20260709104431_AddAppointmentRowVersion`, `20260717103055_AddBookingProjectionsRowVersion`); CRM — `Customer` (`20260717102104_AddCustomerRowVersion`); Organizations — `Employee`, `Company`, `EmployeeInvitation`, `RolePermissionOverride` (`20260717102457_AddEmployeeAndCompanyRowVersion`, `20260717103102_AddInvitationAndPermissionOverrideRowVersion`); Identity — `User` (`20260717103143_AddUserRowVersion`). All columns are `rowversion, nullable: false`. A global `ConcurrencyExceptionHandler` maps `DbUpdateConcurrencyException` (including Wolverine-wrapped inner exceptions) to `409 Conflict` with code `concurrency_conflict`; conflicts inside Wolverine event/reconciliation handlers surface as exceptions handled by Wolverine's retry policy instead of silent lost updates. Verified: 10/10 entities tokenized in the model snapshots, full test suite green (136 tests), no Dapper `SELECT *` reads affected.
-> - **L1 — `RequireHttpsMetadata` insecure default — FIXED and removed** (commit `8f74451`, 2026-07-21; was also Appendix B23). Per B23's verified remediation: the code fallback in `AuthenticationExtensions.cs` is now `GetValue("Authentication:RequireHttpsMetadata", true)` (applied to both OIDC and JWT Bearer options); the hard-coded `false` was removed from base `appsettings.json`; and an explicit `"RequireHttpsMetadata": false` opt-out was added to `appsettings.Development.json` and `appsettings.Codegen.json` only (the two local/offline paths B23 identified — local Keycloak and the fake `http://codegen` authority). Devtest config and `infra/main.json` already set `true`, so deployed posture is unchanged — the code default now matches it. Any new hosted environment that forgets the setting now gets HTTPS-only metadata by default and fails closed. Covered by `AuthenticationExtensionsTests` (default-absent → `true` on both schemes; explicit `false` still honored), enabled via a new `InternalsVisibleTo("AppointMe.Api.Tests")`. Verified: full solution test suite green (151 tests). Note: the finding's cited line 32 had drifted to line 39 by fix time.
-> - **L3 — Logout is an anonymous GET (logout CSRF) — FIXED and removed** (2026-07-21, working-copy change pending commit; was also Appendix B14/B19). `LogoutEndpoint` now maps `MapPost("/logout")` with `RequireAuthorization()`. POST alone would not have closed the hole — `SignOutAsync`'s cookie-deletion `Set-Cookie` is applied by the browser even when the request carried no cookie (per B14's verification) — so auth is required: a cross-site POST arrives cookieless under `SameSite=Lax` and is challenged before the handler runs. `RequireAuthorization()` deliberately applies the default policy (authenticated user) rather than the registered-user fallback policy, so a signed-in user who has not completed signup can still log out. Frontend: `nav-user.tsx` now uses a `lib/logout.ts` helper submitting a top-level form POST (replacing the `window.location.href` GET) so the OIDC end-session redirect chain still runs as a navigation; the orval client was regenerated (`logout` is now a POST mutation). Verified live against the running stack: cookieless `POST /api/v1/logout` → 302 OIDC login challenge with **no** `appointme.auth` deletion header (a forged request can no longer terminate a session); `GET /api/v1/logout` no longer performs any sign-out (it now yields the same harmless challenge-redirect class as the pre-existing `/login` GET); solution builds, full test suite green, frontend `tsc`/lint clean on changed files. Residual: cross-site protection rests on `SameSite=Lax` + required auth (legacy-browser caveat); the app-wide antiforgery posture remains tracked as open finding L4. A manual login → logout click-through in the browser is recommended, as curl cannot drive the full OIDC session.
+> - **L1 — `RequireHttpsMetadata` insecure default — FIXED and removed** (commit `8f74451`, 2026-07-21; was also Appendix B12/B23/B25). Per B23's verified remediation: the code fallback in `AuthenticationExtensions.cs` is now `GetValue("Authentication:RequireHttpsMetadata", true)` (applied to both OIDC and JWT Bearer options); the hard-coded `false` was removed from base `appsettings.json`; and an explicit `"RequireHttpsMetadata": false` opt-out was added to `appsettings.Development.json` and `appsettings.Codegen.json` only (the two local/offline paths B23 identified — local Keycloak and the fake `http://codegen` authority). Devtest config and `infra/main.json` already set `true`, so deployed posture is unchanged — the code default now matches it. Any new hosted environment that forgets the setting now gets HTTPS-only metadata by default and fails closed. Verified at fix time: default-absent config resolved `RequireHttpsMetadata = true` on both schemes and explicit `false` was still honored; solution builds, full test suite green. (Dedicated unit tests for the default were deliberately not kept — the behavior is config-level and exercised by every environment.) Note: the finding's cited line 32 had drifted to line 39 by fix time.
+> - **L3 — Logout is an anonymous GET (logout CSRF) — FIXED and removed** (commit `ebe8c7b`, 2026-07-21; was also Appendix B14/B19). `LogoutEndpoint` now maps `MapPost("/logout")` with `RequireAuthorization()`. POST alone would not have closed the hole — `SignOutAsync`'s cookie-deletion `Set-Cookie` is applied by the browser even when the request carried no cookie (per B14's verification) — so auth is required: a cross-site POST arrives cookieless under `SameSite=Lax` and is challenged before the handler runs. `RequireAuthorization()` deliberately applies the default policy (authenticated user) rather than the registered-user fallback policy, so a signed-in user who has not completed signup can still log out. Frontend: `nav-user.tsx` now uses a `lib/logout.ts` helper submitting a top-level form POST (replacing the `window.location.href` GET) so the OIDC end-session redirect chain still runs as a navigation; the orval client was regenerated (`logout` is now a POST mutation). Verified live against the running stack: cookieless `POST /api/v1/logout` → 302 OIDC login challenge with **no** `appointme.auth` deletion header (a forged request can no longer terminate a session); `GET /api/v1/logout` no longer performs any sign-out (it now yields the same harmless challenge-redirect class as the pre-existing `/login` GET); solution builds, full test suite green, frontend `tsc`/lint clean on changed files. Residual: cross-site protection rests on `SameSite=Lax` + required auth (legacy-browser caveat); the app-wide antiforgery posture remains tracked as open finding L4. A manual login → logout click-through in the browser is recommended, as curl cannot drive the full OIDC session.
 > - **L5 — Pagination ceiling 1000 rows/request — FIXED and removed** (commit `d6abd85`, 2026-07-17; was also Appendix B17). `PaginationFilter` now clamps to `[1, 100]` (`MinLimit = 1`, `MaxLimit = 100`), capping both per-request row count and the cost of the `COUNT(*) OVER ()` window aggregate; the `MinLimit = 1` change also removes the degenerate `limit=0` page (rows-free `TotalCount` probe) flagged in B17's notes. Silent clamping was deliberately kept instead of a `[Range]` 400 — the option B17's verified remediation endorsed ("friendlier than rejecting; no controller/attribute change strictly required"); `PaginationRequest.Limit` still defaults to 10. Verified 2026-07-21 against the working tree: both paged read paths (`GetCustomers`, `GetTeam`) funnel through `PaginationFilter`, so no other call sites needed changes.
 > - **L6 — Untrusted timezone id rehydrated via non-validating `FindSystemTimeZoneById` — FIXED and removed** (2026-07-17; was also Appendix B16/B30). `BookingCompanySynchronizer.Apply` now reconstructs the timezone from the cross-module `CompanySnapshot` via the validating factory `TimeZoneInfo.Create(snapshot.TimeZone)`, per the value-object convention — an unresolvable id raises a domain `ValidationException` with a clear message instead of an infrastructure `TimeZoneNotFoundException`. The two `FindSystemTimeZoneById` uses in EF `HasConversion` lambdas are intentionally unchanged (DB materialization is a trusted path). Additionally, a Wolverine failure policy (`options.OnException<ValidationException>().MoveToErrorQueue()` in `WolverineHostBuilderExtensions.cs`) dead-letters queued messages that fail validation instead of retrying them — validation failures are deterministic, so retries could never succeed; inline HTTP invocations are unaffected (still mapped to 400 by `ValidationExceptionHandler`). Verified: solution builds, full test suite green (136 tests).
 > - **L7 — HSTS never configured — FIXED and removed** (commit `cee5004`, 2026-07-21; was also Appendix B21). Per the verified remediation: `builder.Services.AddHsts(...)` registered in `Program.cs` with `MaxAge = 365 days` and `IncludeSubDomains = true`, and `app.UseHsts()` added before `UseHttpsRedirection()`, gated to non-Development environments. `Preload` deliberately omitted until the team commits to submitting the domain (and all subdomains) to the browser preload list. Verified: solution builds, API test suite green; `Strict-Transport-Security` confirmed absent when running locally (Development-gated by design), so live confirmation of the header belongs in a deployed Devtest/production environment. Residual (tracked separately as B7/C1): the ForwardedHeaders allow-lists are cleared (`Program.cs:50-55`), so in production `X-Forwarded-Proto` must be trusted only from the real ingress for `Request.IsHttps` — and therefore HSTS emission — to be reliable.
-> - **L8 — No security response headers / no CSP — FIXED and removed** (commit `4069fb7`, 2026-07-21; was also Appendix B22). New `SecurityHeadersMiddleware` (`src/AppointMe.Api/SecurityHeaders/`), wired via `UseAppointMeSecurityHeaders()` immediately after `UseForwardedHeaders()` so static assets, the SPA fallback, and API responses are all covered. Emits `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: strict-origin-when-cross-origin` on every response; headers are applied in `Response.OnStarting` so they survive the `Response.Clear()` that `ExceptionHandlerMiddleware` performs before writing problem-details responses. CSP ships **report-only** (`Content-Security-Policy-Report-Only`: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'` — inline styles required by the `chart.tsx` `<style>` sink and Recharts; `img-src`/`font-src 'self' data:`; `connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'`); rename the header to the enforcing `Content-Security-Policy` once browser violation reports come back clean while exercising the SPA. Covered by `SecurityHeadersMiddlewareTests` (6/6 passing, including a survives-`Response.Clear()` regression test); verified live against the running Aspire stack — all four headers present on both SPA-fallback and API responses, no enforcing CSP header emitted. Residual (intentional): CSP is report-only until tuned; framing is already blocked by the enforcing `X-Frame-Options: DENY`, with `frame-ancestors` taking over when CSP enforcement flips.
+> - **L8 — No security response headers / no CSP — FIXED and removed** (commit `4069fb7`, 2026-07-21; was also Appendix B22/B28). New `SecurityHeadersMiddleware` (`src/AppointMe.Api/SecurityHeaders/`), wired via `UseAppointMeSecurityHeaders()` immediately after `UseForwardedHeaders()` so static assets, the SPA fallback, and API responses are all covered. Emits `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: strict-origin-when-cross-origin` on every response; headers are applied in `Response.OnStarting` so they survive the `Response.Clear()` that `ExceptionHandlerMiddleware` performs before writing problem-details responses. CSP ships **report-only** (`Content-Security-Policy-Report-Only`: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'` — inline styles required by the `chart.tsx` `<style>` sink and Recharts; `img-src`/`font-src 'self' data:`; `connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'`); rename the header to the enforcing `Content-Security-Policy` once browser violation reports come back clean while exercising the SPA. Covered by `SecurityHeadersMiddlewareTests` (6/6 passing, including a survives-`Response.Clear()` regression test); verified live against the running Aspire stack — all four headers present on both SPA-fallback and API responses, no enforcing CSP header emitted. Residual (intentional): CSP is report-only until tuned; framing is already blocked by the enforcing `X-Frame-Options: DENY`, with `frame-ancestors` taking over when CSP enforcement flips.
+> - **L11 — `useCurrentUser` guard is dead code — FIXED and removed** (2026-07-25, working-copy change pending commit; was also Appendix B29). `CurrentUserContext` is now `createContext<GetCurrentUserResponse | null>(null)`, matching the sibling `current-company-context` / `user-access-context`, so the existing `if (context === null) throw` guard in `useCurrentUser` is live: calling the hook outside `CurrentUserProvider` throws instead of silently yielding the anonymous `{ isAuthenticated: false }` default. No behavior change for correctly wired call sites — B29's verification confirmed every current call site sits inside the provider and the provider never supplies null. Verified: frontend `tsc` clean; lint reports nothing new on the changed file (its `react-refresh/only-export-components` warning is the pre-existing pattern shared with the sibling contexts).
 > - All other findings remain open.
 
 ## HIGH
@@ -170,11 +171,6 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 - **Issue:** `enablePurgeProtection: null` (off) and `publicNetworkAccess: 'Enabled'`. RBAC still gates access, so exposure is bounded, but a soft-deleted secret can be permanently purged within the retention window and the vault is internet-reachable.
 - **Remediation:** `enablePurgeProtection: true` and restrict network access (private endpoint / firewall).
 
-### L11 — `useCurrentUser` guard is dead code (fails open to anonymous)
-- **File:** `src/AppointMe.Frontend/src/components/auth/current-user-context.tsx:5`
-- **Issue:** the context is created with a non-null default (`{ isAuthenticated: false }`), so the `if (context === null) throw` guard can never fire. Using the hook outside its provider silently yields the anonymous default instead of throwing, masking a wiring bug (fails closed to a login redirect, so not a security issue — a robustness one).
-- **Remediation:** `createContext<GetCurrentUserResponse | null>(null)` so the guard works, matching the sibling contexts.
-
 ### L12 — `SqlConnection` leaked if `OpenAsync` throws
 - **File:** `src/AppointMe.Shared/Database/SqlConnectionFactory.cs:10-13`
 - **Issue:** the connection is created and `OpenAsync` awaited before it's returned to the caller's `using`. If `OpenAsync` throws (cancellation mid-open, transient failure after a pooled connection is reserved), the instance is never disposed — under load this can exhaust the pool.
@@ -215,7 +211,7 @@ The following were investigated and found **not** to be defects (8 adversarially
 1. H1, H3 (correctness/security, low blast radius). *(H2 done.)*
 2. M1, M2, L2 (auth/session/secrets hygiene). *(L1 done.)*
 3. L9, L4 (transport/CSRF headers — one small middleware + config). *(L3, L7, L8 done.)*
-4. L12, L11 (robustness one-liners). *(L5, L6 done.)*
+4. L12 (robustness one-liners). *(L5, L6, L11 done.)*
 5. M3, M4, M5, L10, L13 (infra + architectural — schedule with a design discussion). *(M6 done.)*
 
 
@@ -647,10 +643,10 @@ There is **no SMTP client, MailKit, or `IEmailSender` in application code** — 
 
 ---
 
-# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 27 listed)
+# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 17 listed)
 
 
-Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22, security response headers; B23, RequireHttpsMetadata default — see the remediation-status note in the register); the original numbering is preserved.
+Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency; B12/B23/B25, RequireHttpsMetadata default; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22/B28, security response headers / CSP; B29, useCurrentUser dead guard — see the remediation-status note in the register); the original numbering is preserved.
 
 
 ## B1. [High] UpdateEmployeeRoles lets a non-owner assign the protected Owner SystemRole, enabling vertical privilege escalation and self-promotion
@@ -1077,57 +1073,6 @@ Configure a distributed L2 backing store and a backplane for HybridCache (e.g. A
 **Notes.** Practical severity today is Low because the app runs single-instance (no .WithReplicas in AppHost/Program.cs) — with one node, RemoveAsync clears the only L1 and there is no staleness. It escalates to Medium/High the moment the API is scaled to more than one instance, which the codebase is explicitly designed for. The staleness is bounded and self-healing (max 1h, per LocalCacheExpiration). This is a consistency/robustness issue, not an immediately exploitable auth bypass, so Immediate/High do not apply to the current state. Recommend fixing before any horizontal scale-out. Also note the reviewer's line should be 32 (RemoveAsync) rather than 30, and the actual configuration fix lives in SharedModule.cs:20.
 
 
-## B12. [Low] RequireHttpsMetadata defaults to false for both OIDC and JWT Bearer, allowing token-signing metadata over HTTP
-
-- **Location:** `src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:32`
-- **Dimension / category:** auth-session / transport
-- **Verdict:** PLAUSIBLE (claimed Medium → final Low)
-- **Needs architectural review:** no
-
-**Explanation.** The single flag `requireHttpsMetadata` is read with a fallback of `false` (line 32) and applied to both the OpenIdConnect handler (`oidc.RequireHttpsMetadata`, line 108) and the JwtBearer handler (`jwt.RequireHttpsMetadata`, line 120). The base appsettings.json ships this as false (line 18), and Development inherits that base. With RequireHttpsMetadata=false the OIDC discovery document and JWKS (the public keys used to verify every id_token / access token signature) may be fetched over plaintext HTTP. An attacker able to MITM that metadata channel can serve a forged JWKS and thereby mint tokens that pass signature validation, defeating the entire token-verification chain. The secure default should be true, relaxed only in Development.
-
-**Evidence.**
-```
-var requireHttpsMetadata = configuration.GetValue("Authentication:RequireHttpsMetadata", false);
-...
-oidc.RequireHttpsMetadata = requireHttpsMetadata;
-...
-jwt.RequireHttpsMetadata = requireHttpsMetadata;
-```
-
-**Proposed remediation.**
-```
-Default to true: `configuration.GetValue("Authentication:RequireHttpsMetadata", true)` and set `"RequireHttpsMetadata": true` in appsettings.json; override to false only in appsettings.Development.json where the local Keycloak may be reached over http.
-```
-
-**Verification.** The code facts are all accurate. AuthenticationExtensions.cs:32 reads `Authentication:RequireHttpsMetadata` with an insecure fallback of `false`, and that single value is applied to both the OpenIdConnect handler (line 108) and the JwtBearer handler (line 120). appsettings.json:18 ships `false`, and appsettings.Development.json contains no override, so Development runs with `false`. So the insecure-default code pattern genuinely exists — this is not refuted.
-
-However, the claimed exploitable impact ("token-signing metadata over HTTP" → forged JWKS → auth bypass) does not materialize in any shipping configuration, because it is neutralized by config elsewhere:
-1. Deployed environment: infra/main.bicepparam sets environmentName='devtest'; main.bicep:134 maps that to ASPNETCORE_ENVIRONMENT=Devtest; app-service.bicep:76-77 pushes that env var; and appsettings.Devtest.json:14 sets RequireHttpsMetadata=true. (The older compiled artifact infra/main.json:1137-1150 likewise hardcodes ASPNETCORE_ENVIRONMENT=Production plus an explicit Authentication__RequireHttpsMetadata=true env var, which — being an environment variable — would override the base appsettings false regardless.) So the actually-deployed app requires HTTPS metadata.
-2. Development: although the flag is false, the Keycloak authority is https://localhost:8082 (appsettings.Development.json:13). RequireHttpsMetadata=false only relaxes the requirement; it does not force an HTTP fetch. Since the authority is HTTPS, discovery and JWKS are still retrieved over HTTPS, so no id_token/access-token signing material ever traverses plaintext HTTP.
-3. There is no appsettings.Production.json. The only residual risk is a hypothetical future Production deployment that sets ASPNETCORE_ENVIRONMENT=Production without also supplying the RequireHttpsMetadata=true env var — then the base false would apply. That is a latent secure-default gap, not a live vulnerability in the current codebase/pipeline.
-
-Net: the finding correctly identifies a real insecure-default anti-pattern worth fixing for defense-in-depth, but its Medium "exploitable MITM/forged-JWKS" framing overstates current risk because every actual runtime path is mitigated (deployed=true; dev uses an HTTPS authority). Downgrading to Low. File/line citations (AuthenticationExtensions.cs:32/108/120 and appsettings.json:18) are all precise.
-
-**Verified remediation.**
-```
-Make the flag secure-by-default so a future Production deployment can't silently inherit an insecure value:
-
-// AuthenticationExtensions.cs:32 — secure default
-var requireHttpsMetadata = configuration.GetValue("Authentication:RequireHttpsMetadata", true);
-
-// appsettings.json — flip the shipped base value
-"Authentication": { "RequireHttpsMetadata": true, ... }
-
-// appsettings.Development.json — only relax locally if you ever run Keycloak over plain HTTP
-"Authentication": { "RequireHttpsMetadata": false }
-
-Devtest/Production already set true (appsettings.Devtest.json:14 and the infra env var), so this change is transparent for them and simply removes the latent risk that a Production run without an explicit override defaults to false.
-```
-
-**Notes.** Mitigations that reduce severity: (1) The deployed environment is Devtest (main.bicepparam environmentName='devtest' → ASPNETCORE_ENVIRONMENT=Devtest → appsettings.Devtest.json:14 RequireHttpsMetadata=true); the stale infra/main.json also hardcodes an explicit true env var which would override appsettings anyway. (2) In Development the Keycloak authority is HTTPS (appsettings.Development.json:13), so no token-signing metadata is fetched over plaintext HTTP even with the flag false. The only residual concern is a future Production deployment (no appsettings.Production.json exists) that forgets to set the env var — which is exactly what the secure-default remediation guards against. Treat as a defense-in-depth hardening item, not a live auth-bypass.
-
-
 ## B13. [Low] Identity-provider client secrets and demo password committed to source control
 
 - **Location:** `src/AppointMe.Api/appsettings.Development.json:15`
@@ -1341,53 +1286,6 @@ Pin AllowedHosts to concrete hostnames in the deployed environments and keep the
 **Notes.** The finding's severity (Low) and its own caveat that redirects use Frontend:BaseUrl are correct, but the explanation's core mechanism is inaccurate: it asserts the forwarded-headers block accepts arbitrary X-Forwarded-Host values, whereas Program.cs enables only XForwardedFor and XForwardedProto. The separate, more material transport issue nearby is KnownProxies.Clear()/KnownIPNetworks.Clear() (Program.cs:53-54), which trusts X-Forwarded-For/Proto from any caller — that belongs to a different finding, not this one. If the deployment sits behind a reverse proxy that already enforces Host, the practical value of tightening AllowedHosts is defense-in-depth only.
 
 
-## B25. [Low] RequireHttpsMetadata defaults to false in the base appsettings, so a hosted environment that omits the override silently disables OIDC metadata TLS enforcement
-
-- **Location:** `src/AppointMe.Api/appsettings.json:18`
-- **Dimension / category:** config-secrets / transport
-- **Verdict:** CONFIRMED (claimed Medium → final Low)
-- **Needs architectural review:** no
-
-**Explanation.** The base appsettings.json — which applies to every environment unless overridden — sets Authentication.RequireHttpsMetadata=false. This is an insecure-by-default posture: RequireHttpsMetadata=false lets the OIDC/JWT middleware fetch the authority's discovery document and JWKS signing keys over plain HTTP, opening a MITM path to substitute token-signing keys and forge access tokens. It works today only because appsettings.Devtest.json:14 explicitly overrides it to true, but a new hosted environment (e.g. a future appsettings.Production.json) that forgets this single line inherits the insecure default with no error. Safe defaults should fail closed.
-
-**Evidence.**
-```
-"Authentication": {
-    "Provider": "Keycloak",
-    "RequireHttpsMetadata": false,
-```
-
-**Proposed remediation.**
-```
-Flip the base default to true in appsettings.json and override to false only in appsettings.Development.json (where localhost Keycloak on http is expected). That way any hosted environment is secure unless it deliberately opts out.
-```
-
-**Verification.** The defect exists as described. appsettings.json:18 sets "RequireHttpsMetadata": false in the base config that every environment inherits unless overridden, and AuthenticationExtensions.cs:32 reads it with configuration.GetValue("Authentication:RequireHttpsMetadata", false) — so the insecure value is the default at BOTH the config and the code layer. That flag is then applied to oidc.RequireHttpsMetadata (line 108) and jwt.RequireHttpsMetadata (line 120), meaning the OIDC discovery document and JWKS signing keys can be fetched over plain HTTP. ASP.NET Core's own framework default for RequireHttpsMetadata is true, so this is a deliberate fail-open weakening. Only appsettings.Devtest.json:14 (and .example) restore true; appsettings.Development.json does not override it and inherits false; no appsettings.Production.json exists. I checked for mitigations and found none that neutralize it: Program.cs has no environment-based fail-closed logic, and app.UseHttpsRedirection()/UseForwardedHeaders() only affect inbound request transport, not the middleware's outbound metadata fetch. HOWEVER, there is no currently exploitable path — all configured environments use https:// authorities and the only hosted-style profile (Devtest) sets true — so the risk is latent (a future hosted environment omitting the override plus an http authority plus a MITM position). This warrants Low, not Medium. I also note the proposed remediation is incomplete: flipping only the base config leaves the false fallback on line 32, so deleting the key still fails open; the code default must be flipped too.
-
-**Verified remediation.**
-```
-Fail closed at both layers. In appsettings.json set the base default to true (or remove the key and rely on a secure code default), and move the false only into appsettings.Development.json where localhost is expected:
-
-// appsettings.json
-"Authentication": {
-  "Provider": "Keycloak",
-  "RequireHttpsMetadata": true,
-  ...
-}
-
-// appsettings.Development.json
-"Authentication": {
-  "RequireHttpsMetadata": false,
-  ...
-}
-
-Critically, also flip the code fallback in AuthenticationExtensions.cs:32 so a missing key does not silently fail open:
-var requireHttpsMetadata = configuration.GetValue("Authentication:RequireHttpsMetadata", true);
-```
-
-**Notes.** The reviewer cited only appsettings.json:18, but the insecure default is also present in code at src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:32 (default value false in the GetValue call). Any remediation that fixes only the config file is incomplete because removing the config key still yields false. No current exploitation: Development, Devtest, and even the Keycloak dev authority use https:// (https://localhost:8082), and Devtest explicitly sets true — the risk is purely a future hosted environment being created without the override. That latent, multi-condition nature is why I downgraded from the claimed Medium to Low. The flag governs outbound OIDC metadata/JWKS TLS enforcement; app-level UseHttpsRedirection does not mitigate it.
-
-
 ## B26. [Low] Key Vault has purge protection disabled and public network access enabled
 
 - **Location:** `infra/modules/key-vault.bicep:27`
@@ -1471,103 +1369,6 @@ Acceptable to keep for local dev: the values only authenticate against local con
 ```
 
 **Notes.** Repo path is public/appointme, so this is a public-facing repository, which is why committing even local-only creds warrants a finding rather than being ignored. Severity stays Low because: the secrets are not valid against any hosted/network-reachable system (Keycloak realm is imported locally; SQL is localhost-only); hosted auth is Entra External ID; the dev TLS private key is correctly git-ignored; and gitleaks value-based allowlisting means the controls degrade safely (a genuinely new secret is still caught). No framework mitigation makes this a false positive — the credentials are genuinely committed — but the surrounding controls cap real-world impact at Low. Reviewer's severity, category, and remediation stance are all correct; the only imprecision is the anchor line (multiple secrets across lines 9/15/23; strongest single anchor is the SQL password at line 9).
-
-
-## B28. [Low] No Content-Security-Policy defined; app contains a raw HTML injection sink (dangerouslySetInnerHTML)
-
-- **Location:** `src/AppointMe.Frontend/index.html:3`
-- **Dimension / category:** frontend-security / transport
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** yes
-
-**Explanation.** index.html declares no Content-Security-Policy (no meta CSP, and none is set here for the response header). The bundle also ships a raw-HTML sink in the vendored shadcn chart component (components/ui/chart.tsx:73 uses dangerouslySetInnerHTML to build a <style> block). Today that sink is fed only developer-authored ChartConfig color/theme values, so it is not currently exploitable, but with no CSP there is no defense-in-depth backstop if any injection sink (this one, or a future one) is ever fed untrusted data. A CSP restricting script-src/style-src/connect-src would contain the blast radius.
-
-**Evidence.**
-```
-<head>
-    <meta charset="UTF-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <link rel="icon" type="image/svg+xml" href="/src/assets/logo.svg"/>
-    <title>AppointMe</title>
-</head>
-```
-
-**Proposed remediation.**
-```
-Serve a Content-Security-Policy via response headers on the SPA host (preferred over a meta tag) restricting default-src to 'self', constraining connect-src to the API origin, and avoiding 'unsafe-inline' for scripts. Because chart.tsx injects a <style> via dangerouslySetInnerHTML, either allow style-src 'unsafe-inline' narrowly or refactor that CSS to nonce-based/CSS-variables so a strict style-src can be used.
-```
-
-**Verification.** All factual claims verified against the code. index.html (lines 3-8) declares no CSP meta tag. The real SPA host is the ASP.NET Core API — Program.cs:72 `app.UseStaticFiles()` and Program.cs:83 `app.MapFallbackToFile("index.html")` serve the built SPA — and Program.cs contains NO response-header middleware at all (no `app.Use(...)` emitting Content-Security-Policy, X-Frame-Options, or X-Content-Type-Options). No nginx/Docker/reverse-proxy config exists in the repo to inject a CSP either. The only `browserSecurityHeaders` hit is in src/AppointMe.Aspire/appointme-realm.json:1724, which is Keycloak's realm config for its own login pages, not the SPA host. So the absence of CSP is genuine and unmitigated. The raw-HTML sink is real: chart.tsx:73 uses `dangerouslySetInnerHTML` to build a `<style>` block, and it is the only such sink in the frontend. The finding is accurate; it is honestly scoped as a Low, defense-in-depth item that is not exploitable today. Two facts make it even less exploitable than the reviewer states: (1) the sink is fed only developer-authored ChartConfig color/theme strings, and (2) the chart component is dead code — `ChartContainer`/`ChartConfig` are not imported anywhere under src/app, so the sink is not reachable in any rendered path. HTTPS is already enforced via UseHttpsRedirection (Program.cs:70), so the claimed 'transport' category is mislabeled — the true gap is a missing content-injection defense-in-depth header, not a transport weakness.
-
-**Verified remediation.**
-```
-Add a Content-Security-Policy response header at the true SPA host, the ASP.NET Core pipeline in src/AppointMe.Api/Program.cs (a response header is preferred over a meta tag). Insert header middleware before UseStaticFiles/MapFallbackToFile, e.g.:
-
-app.Use(async (context, next) =>
-{
-    context.Response.Headers.Append("Content-Security-Policy",
-        "default-src 'self'; " +
-        "connect-src 'self'; " +           // API is same-origin (served by this host)
-        "img-src 'self' data:; " +          // logo.svg + any data: URIs
-        "style-src 'self' 'unsafe-inline'; " + // required: chart.tsx injects a <style> block, and Tailwind/Radix use inline styles
-        "script-src 'self'; " +
-        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
-    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-    context.Response.Headers.Append("X-Frame-Options", "DENY");
-    await next();
-});
-app.UseStaticFiles();
-
-If you prefer to avoid 'unsafe-inline' for style-src, first refactor chart.tsx (ChartStyle) to set the per-chart CSS custom properties via a nonce-tagged <style> or inline `style` custom properties instead of dangerouslySetInnerHTML, then tighten style-src to a nonce. Given the sink is currently unused dead code, deleting components/ui/chart.tsx (or leaving it until a chart feature is actually added) removes the sink entirely and is the lowest-effort option.
-```
-
-**Notes.** Corrected anchor/category: the reviewer anchored to index.html:3 and categorized it as 'transport'. The absence is real there, but the actual fix location is src/AppointMe.Api/Program.cs (before line 72 UseStaticFiles / line 83 MapFallbackToFile), since the API — not a separate SPA host — serves index.html in production. Category is better described as content-security / defense-in-depth than transport; HTTPS transport is already enforced by UseHttpsRedirection (Program.cs:70). Severity Low is appropriate and arguably generous: the sink is unreachable dead code (ChartContainer/ChartConfig not imported anywhere under src/app) and is fed only developer-authored constants, so there is no current exploit path — this is purely a hardening recommendation.
-
-
-## B29. [Low] useCurrentUser context guard is dead code — silently returns anonymous default outside a provider
-
-- **Location:** `src/AppointMe.Frontend/src/components/auth/current-user-context.tsx:5`
-- **Dimension / category:** frontend-security / robustness
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** no
-
-**Explanation.** CurrentUserContext is created with a non-null default value ({ isAuthenticated: false }) at line 5-7, but useCurrentUser guards with `if (context === null) throw ...`. Because the default is never null, that guard can never fire. A component that calls useCurrentUser outside CurrentUserProvider will silently receive the anonymous default ({ isAuthenticated: false }) instead of throwing, which can mask a provider-wiring mistake and cause auth-dependent UI/routing (e.g. useUserState in app-shell.tsx) to render as anonymous rather than surfacing the bug. Unlike this file, the sibling contexts (current-company, user-access) correctly default to null.
-
-**Evidence.**
-```
-const CurrentUserContext = createContext<GetCurrentUserResponse>({
-    isAuthenticated: false,
-});
-...
-export const useCurrentUser = () => {
-    const context = use(CurrentUserContext);
-    if (context === null) {
-        throw new Error('useCurrentUser must be used within a CurrentUserProvider');
-    }
-    return context;
-};
-```
-
-**Proposed remediation.**
-```
-Default the context to null (createContext<GetCurrentUserResponse | null>(null)) like the other auth contexts so the misuse guard in useCurrentUser can actually throw, or drop the dead null-check to make the anonymous-default behavior intentional and explicit.
-```
-
-**Verification.** Read src/AppointMe.Frontend/src/components/auth/current-user-context.tsx in full. Line 5 creates the context as createContext<GetCurrentUserResponse>({ isAuthenticated: false }) — the type parameter is the non-nullable GetCurrentUserResponse (verified in appointme.schemas.ts:77-91, isAuthenticated is a required boolean, no null in the interface itself) and the default value is a non-null object. CurrentUserProvider (lines 9-16) returns null when !data, so it never renders CurrentUserContext with a null value; the provided value is always non-null. Therefore the guard `if (context === null)` at line 20 is unreachable dead code — it can never throw. A component calling useCurrentUser outside the provider silently receives { isAuthenticated: false } instead of an error. This is confirmed to differ from the sibling contexts, which are correct: current-company-context.tsx:12 uses createContext<CurrentCompanyContextValue | null>(null) and user-access-context.tsx:5 uses createContext<GetCurrentUserAccessResponse | null>(null), so their identical null-guards actually fire. No mitigation elsewhere neutralizes this — it is a pure client-side value/type defect determined entirely by this file. Severity is Low and this is robustness, not security: the anonymous default is fail-closed. In app-shell.tsx:8-24 useUserState maps !isAuthenticated to 'anonymous', which StateRouter redirects to /auth/login — i.e. denies access rather than granting it, so there is no auth-bypass. The only harm is masking a provider-wiring bug as a spurious login redirect.
-
-**Verified remediation.**
-```
-Make the context nullable so the guard can fire, matching the sibling contexts:
-
-const CurrentUserContext = createContext<GetCurrentUserResponse | null>(null);
-
-// useCurrentUser's existing `if (context === null) throw ...` (line 20) then
-// correctly surfaces misuse outside CurrentUserProvider.
-
-Alternatively, if the anonymous default is intentional, delete the dead null-check (lines 20-22) and return context directly to make that behavior explicit.
-```
-
-**Notes.** Root cause is the non-null default + non-nullable type parameter on line 5; the dead branch itself is line 20 (the reviewer's cited line). This is a robustness/code-quality issue, not a security vulnerability: the fail-closed anonymous default means a misuse causes a redirect to /auth/login, never an auth bypass. Provider wiring in app-shell.tsx (AppShell wraps Outlet in CurrentUserProvider) means all current call sites (nav-user.tsx, company-selector.tsx, app-shell.tsx, current-company-context.tsx) are inside the provider today, so the dead guard has no runtime effect in practice — it only fails to protect future misuse.
 
 
 ## B31. [Low] SqlConnection leaked when OpenAsync throws (cancellation or connection failure)

@@ -2,9 +2,7 @@ import { useGetCurrentUserSuspense } from '@/api/appointme';
 import { GetCurrentUserResponse } from '@/api/appointme.schemas';
 import { type ReactNode, createContext, use } from 'react';
 
-const CurrentUserContext = createContext<GetCurrentUserResponse>({
-    isAuthenticated: false,
-});
+const CurrentUserContext = createContext<GetCurrentUserResponse | null>(null);
 
 export const CurrentUserProvider = ({ children }: { children: ReactNode }) => {
     const { data } = useGetCurrentUserSuspense();
