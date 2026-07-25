@@ -4,7 +4,7 @@
 
 This is a **read-only assessment**, not a change request. You asked for a Principal-QA-level review of the AppointMe codebase in three phases (structural mapping → robustness/compliance sweep → remediation register), to be presented for evaluation **before** any code is changed. Nothing below has been applied; every item is a proposal with a concrete fix so you can triage first.
 
-**Bottom line:** the codebase is well-architected and, on the whole, defensively sound. The tenant-isolation model, value-object validation discipline, parameterized data access, cookie hardening (`HttpOnly`/`Secure`/`SameSite`), and generic error handling are all correctly implemented. The review surfaced **31 verified issues** (from 39 raised; 8 were adversarially refuted). The material ones cluster into: **within-tenant privilege escalation**, an **unauthenticated admin dashboard** *(since fixed and removed from this report — see the remediation-status note in the register)*, a **reconciliation-job data-loss bug**, and a set of **defense-in-depth / configuration hardening** gaps. No anonymous data-breach or cross-tenant IDOR was found to be currently exploitable.
+**Bottom line:** the codebase is well-architected and, on the whole, defensively sound. The tenant-isolation model, value-object validation discipline, parameterized data access, cookie hardening (`HttpOnly`/`Secure`/`SameSite`), and generic error handling are all correctly implemented. The review surfaced **31 verified issues** (from 39 raised; 8 were adversarially refuted). The material ones cluster into: **within-tenant privilege escalation**, an **unauthenticated admin dashboard** *(since fixed and removed from this report — see the remediation-status note in the register)*, a **reconciliation-job data-loss bug** *(since fixed — see the remediation-status note)*, and a set of **defense-in-depth / configuration hardening** gaps. No anonymous data-breach or cross-tenant IDOR was found to be currently exploitable.
 
 ## Methodology & scope
 
@@ -45,6 +45,7 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 
 > **Remediation status (updated 2026-07-21).** The review is a point-in-time snapshot from 2026-07-08 (base commit `3f5228e`). Fully fixed findings have been **removed** from this register (and from Appendix B, whose numbering is preserved); partially fixed ones remain in place with a status note.
 > - **H2 — Hangfire dashboard exposed at `/admin/jobs` with authorization disabled — FIXED and removed** (commits `a7d4043` → `e65bf41` → `868f278`, merged in PR #3 `0ac8d2a`, refined in `e35ba73`; was also Appendix B3). Verified implementation: the dashboard is mapped as a routed endpoint behind `.RequireAuthorization(HangfireDashboardPolicy.Name)`, moving enforcement into the ASP.NET Core authorization pipeline (the empty `DashboardOptions.Authorization = []` is now intentional). The `HangfireDashboard` policy requires an authenticated user plus `SuperAdminRequirement`; `SuperAdminAuthorizationHandler` resolves the caller via `IIdentityResolver` and succeeds only for a registered `UserIdentity` whose email is in the config-sourced `SuperAdminRegistry` (`Authentication:SuperAdmins`; production defaults to `[]` → deny-all, Development/Devtest allow only `demo@appointme.dev`). Covered by `SuperAdminAuthorizationHandlerTests` (9/9 passing). Residual (accepted): the dashboard registers in every non-codegen environment — safe under the deny-by-default allowlist; super-admin trust rests on the IdP-provided email at user registration.
+> - **H3 — `ReconcileServiceProviders` silently drops all remaining updates/deletes after the first failed record — FIXED and removed** (2026-07-25, working-copy change pending commit; was also Appendix B4). Root cause per B4: the handler pre-loaded tracked `locals` once and reused those instances across the loop, so a single failing record's `ChangeTracker.Clear()` detached every remaining entity — later `Update`/`Delete`/`Restore` mutations produced no SQL and the projection silently diverged. Fixed with the register's preferred shape: `ServiceProviderSynchronizer.Apply` now takes a `ServiceProviderId?` and queries a freshly-tracked instance per invocation (mirroring `UpsertAttendee`/`UpsertBookingCompany`), so a prior tracker clear cannot poison subsequent iterations. The three employee-event handlers (`EmployeeRegistered`/`EmployeeRolesUpdated`/`EmployeeDeleted`) simplified to pass the id, dropping their now-redundant pre-queries. Verified at fix time with throwaway regression tests (EF InMemory harness): updates and deletes ordered after a failed record reproduced the silent data loss against the pre-fix code and persisted correctly after it, with the failed record itself unchanged; the tests were deliberately not kept. Full solution test suite green.
 > - **M2 — Auth cookie has no absolute lifetime / no IdP re-validation — RESOLVED (risk-accepted) and removed** (2026-07-25, working-copy change pending commit; was also Appendix B6). The finding's core defect — session lifetime left to implicit framework defaults rather than a deliberate decision — is fixed: the cookie now sets an explicit `ExpireTimeSpan = TimeSpan.FromDays(7)` with `SlidingExpiration = true` (previously the implicit 14-day sliding default), halving the replay window of a stolen ticket while keeping active sessions alive. The IdP re-validation half (`OnValidatePrincipal` rejecting on id_token expiry) was **deliberately declined** as a product decision: AppointMe is a SaaS template whose only deployment is the Devtest demo — no real users or data — and evaluators must not be re-authenticated frequently; since only the id_token is stored (no refresh token), rejecting on token expiry would end sessions within minutes. Accepted residual: an app session outlives IdP-side logout/deprovisioning for up to the 7-day idle window, and sliding renewal lets an actively-replayed stolen cookie self-renew — bounded by the existing HttpOnly/Secure/SameSite=Lax theft mitigations and immaterial while no real accounts exist. The stricter production recipe (shorter lifetime; persist refresh tokens and revalidate in `OnValidatePrincipal`) is documented in a comment on the `AddCookie` block for template adopters. Verified: solution builds, full test suite green.
 > - **M6 — No optimistic-concurrency token on any aggregate (silent lost updates) — FIXED and removed** (commit `0bb7021` + follow-ups on 2026-07-17; was also Appendix B11). Every EF-mapped entity across all four DbContexts now carries a non-nullable rowversion concurrency token (`builder.Property<byte[]>("Version").IsRowVersion().IsRequired()`): Booking — `Appointment`, `Attendee`, `BookingCompany`, `ServiceProvider` (migrations `20260709104431_AddAppointmentRowVersion`, `20260717103055_AddBookingProjectionsRowVersion`); CRM — `Customer` (`20260717102104_AddCustomerRowVersion`); Organizations — `Employee`, `Company`, `EmployeeInvitation`, `RolePermissionOverride` (`20260717102457_AddEmployeeAndCompanyRowVersion`, `20260717103102_AddInvitationAndPermissionOverrideRowVersion`); Identity — `User` (`20260717103143_AddUserRowVersion`). All columns are `rowversion, nullable: false`. A global `ConcurrencyExceptionHandler` maps `DbUpdateConcurrencyException` (including Wolverine-wrapped inner exceptions) to `409 Conflict` with code `concurrency_conflict`; conflicts inside Wolverine event/reconciliation handlers surface as exceptions handled by Wolverine's retry policy instead of silent lost updates. Verified: 10/10 entities tokenized in the model snapshots, full test suite green (136 tests), no Dapper `SELECT *` reads affected.
 > - **L1 — `RequireHttpsMetadata` insecure default — FIXED and removed** (commit `8f74451`, 2026-07-21; was also Appendix B12/B23/B25). Per B23's verified remediation: the code fallback in `AuthenticationExtensions.cs` is now `GetValue("Authentication:RequireHttpsMetadata", true)` (applied to both OIDC and JWT Bearer options); the hard-coded `false` was removed from base `appsettings.json`; and an explicit `"RequireHttpsMetadata": false` opt-out was added to `appsettings.Development.json` and `appsettings.Codegen.json` only (the two local/offline paths B23 identified — local Keycloak and the fake `http://codegen` authority). Devtest config and `infra/main.json` already set `true`, so deployed posture is unchanged — the code default now matches it. Any new hosted environment that forgets the setting now gets HTTPS-only metadata by default and fails closed. Verified at fix time: default-absent config resolved `RequireHttpsMetadata = true` on both schemes and explicit `false` was still honored; solution builds, full test suite green. (Dedicated unit tests for the default were deliberately not kept — the behavior is config-level and exercised by every environment.) Note: the finding's cited line 32 had drifted to line 39 by fix time.
@@ -81,20 +82,6 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
           code: "role_not_assignable");
   ```
 - **Design review:** decide the intended grant policy. The snippet above blocks `Owner` and any unknown/custom role (`Role.Configurable` = built-ins minus SystemRoles). If the rule should also be "an actor may only grant roles they themselves hold / roles at or below their level," that is a policy decision requiring the actor's principal to be threaded into the domain operation.
-
-### H3 — `ReconcileServiceProviders` silently drops all remaining updates/deletes after the first failed record (data loss)
-- **File:** `src/Booking/AppointMe.Booking/ServiceProviders/ReconcileServiceProviders/ReconcileServiceProvidersCommandHandler.cs:20-41`
-- **Issue:** Unlike the Attendee/BookingCompany reconcilers (which re-query each entity inside `UpsertAsync` per iteration), this handler pre-loads the tracked `locals` list **once** and reuses those tracked instances across the loop. When any single record throws (e.g. `PersonName.Create` rejecting an empty name), the `catch` calls `dbContext.ChangeTracker.Clear()`, which **detaches every entity in `locals`**. All subsequent update/delete/restore operations then mutate detached instances and are never persisted — the projection silently diverges from source.
-- **Remediation:** either re-query per iteration (match the Attendee/BookingCompany pattern), or don't clear the whole tracker on per-item failure. Simplest robust fix — reload `locals` after a failure, or scope work per item:
-  ```csharp
-  catch (Exception ex)
-  {
-      logger.LogError(ex, "Failed to reconcile service provider {Id}", /* id */);
-      dbContext.ChangeTracker.Clear();
-      locals = await LoadLocalsAsync(companyId, cancellationToken); // re-materialize tracked set
-  }
-  ```
-  Preferred: refactor to the same per-entity re-query `UpsertAsync` shape the other two synchronizers use, so one bad record can't poison the batch.
 
 ## MEDIUM
 
@@ -174,16 +161,16 @@ The following were investigated and found **not** to be defects (8 adversarially
 ---
 
 ## Verification plan (after fixes are approved & applied)
-1. **Build/tests:** `dotnet build AppointMe.sln` and `dotnet test` (unit suites under each `*.Tests`). Add regression tests: role-assignment rejects `Owner`/non-configurable roles (H1); reconciliation continues after a bad record (H3). *(L12 was fixed without its suggested regression test — disposal isn't observable via the factory's public surface without a test seam.)*
+1. **Build/tests:** `dotnet build AppointMe.sln` and `dotnet test` (unit suites under each `*.Tests`). Add regression tests: role-assignment rejects `Owner`/non-configurable roles (H1). *(H3 was verified 2026-07-25 with throwaway InMemory-harness tests, deliberately not kept. L12 was fixed without its suggested regression test — disposal isn't observable via the factory's public surface without a test seam.)*
 2. **Run the stack:** `cd src/AppointMe.Aspire && dotnet run` (SQL, Keycloak, Mailpit, API, SPA).
 3. **H1:** as a Manager, `PUT /api/v1/employees/{id}/roles` and `POST /api/v1/invitations` with `{"roles":["Owner"]}` → expect `400 role_not_assignable`.
-4. **H3:** seed a source employee with an invalid name among several valid ones, run the service-provider reconciliation, confirm the valid ones still project.
+4. **H3:** seed a source employee with an invalid name among several valid ones, run the service-provider reconciliation, confirm the valid ones still project. *(Verified 2026-07-25 via throwaway InMemory-harness tests covering exactly this scenario, including the delete path; tests deliberately not kept.)*
 5. **M1:** confirm `/login/demo` is unavailable in deployed configs and `Demo:Enabled=false`; changed to POST.
 6. **Headers (L7/L8):** `curl -I https://localhost:7233/` → confirm `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy` present and the SPA still loads/charts render. *(L7 and L8 done 2026-07-21 — nosniff/DENY/Referrer-Policy verified live; CSP is emitted as `Content-Security-Policy-Report-Only` until tuned. `Strict-Transport-Security` is Development-gated, so verify it in a deployed environment.)*
 7. **Contract:** none of these change the OpenAPI surface, so `/regenerate-api` is not required (H1 adds a validation error code only).
 
 ## Suggested sequencing
-1. H1, H3 (correctness/security, low blast radius). *(H2 done.)*
+1. H1 (correctness/security, low blast radius). *(H2, H3 done.)*
 2. M1, L2 (auth/session/secrets hygiene). *(L1 done; M2 resolved as accepted risk.)*
 3. L9, L4 (transport/CSRF headers — one small middleware + config). *(L3, L7, L8 done.)*
 4. *(Robustness one-liners all done: L5, L6, L11, L12.)*
@@ -618,10 +605,10 @@ There is **no SMTP client, MailKit, or `IEmailSender` in application code** — 
 
 ---
 
-# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 15 listed)
+# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 14 listed)
 
 
-Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed or risk-accepted findings are removed (B3, Hangfire dashboard; B6, cookie session lifetime (risk-accepted); B11, optimistic concurrency; B12/B23/B25, RequireHttpsMetadata default; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22/B28, security response headers / CSP; B29, useCurrentUser dead guard; B31, SqlConnection leak — see the remediation-status note in the register); the original numbering is preserved.
+Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed or risk-accepted findings are removed (B3, Hangfire dashboard; B4, reconciliation data loss; B6, cookie session lifetime (risk-accepted); B11, optimistic concurrency; B12/B23/B25, RequireHttpsMetadata default; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22/B28, security response headers / CSP; B29, useCurrentUser dead guard; B31, SqlConnection leak — see the remediation-status note in the register); the original numbering is preserved.
 
 
 ## B1. [High] UpdateEmployeeRoles lets a non-owner assign the protected Owner SystemRole, enabling vertical privilege escalation and self-promotion
@@ -728,63 +715,6 @@ Add the identical Role.Configurable/SystemRole guard inside RegisterEmployee.Reg
 ```
 
 **Notes.** Exploitation is conditional, which caps severity at High rather than Immediate: the Manager cannot invite their own current company email (blocked by the isExistingEmployee check in InviteEmployeeCommandHandler:20-27), so the attack needs an account whose email matches the invited address to call accept — a second attacker-controlled email/account, or elevating a colleague beyond the Manager's authority. The AcceptInvitation endpoint only RequireAuthorization() and matches currentUser.Email to the invitation email, so any authenticated user with the invited email can accept. The most damaging consequence is that the newly minted Owner holds PermissionPermissions.Manage and other SystemRole grants that are immutable via the permission-config path (UpdatePermissions.ValidateGrants throws for SystemRole), so the escalation cannot be undone through normal admin config once created. Cited file/line (InviteEmployee.cs:13) is the correct anchor; no correction needed. This should be fixed together with the UpdateEmployeeRoles finding using a shared whitelist to avoid divergence.
-
-
-## B4. [High] Reconcile service providers silently drops all updates/deletes after the first failed record
-
-- **Location:** `src/Booking/AppointMe.Booking/ServiceProviders/ReconcileServiceProviders/ReconcileServiceProvidersCommandHandler.cs:41`
-- **Dimension / category:** robustness / correctness
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** no
-
-**Explanation.** Unlike the Attendee and BookingCompany reconcilers (which re-query each entity inside UpsertAsync on every iteration), this handler pre-loads the tracked `locals` list ONCE at lines 20-23 and reuses those tracked ServiceProvider instances across all loop iterations. When any single record throws (e.g. PersonName.Create raising ValidationException for an employee with an empty/invalid name), the catch block calls dbContext.ChangeTracker.Clear(), which DETACHES every entity in `locals`. On all subsequent iterations, ServiceProviderSynchronizer.UpdateServiceProvider/DeleteServiceProvider/RestoreServiceProvider mutate these now-detached POCOs, but because EF Core is no longer tracking them, the following SaveChangesAsync generates no SQL and the mutations are silently lost. The loop appears to succeed (no exception, no error log), so a single bad record silently poisons the projection state of every remaining existing provider in the batch. Only the create path (AddAsync) survives a prior Clear().
-
-**Evidence.**
-```
-catch (Exception exception) when (exception is not OperationCanceledException)
-{
-    logger.LogError(exception, "Failed to reconcile service provider {ProviderId} in company {CompanyId}.",
-        existing?.Id.Value ?? snapshot?.EmployeeId, companyId);
-    dbContext.ChangeTracker.Clear();
-}
-```
-
-**Proposed remediation.**
-```
-Do not reuse pre-loaded tracked entities across iterations that can Clear() the tracker. Either re-query each provider inside the loop iteration (as UpsertAttendee/UpsertBookingCompany do), or after ChangeTracker.Clear() re-attach/re-load the entity before mutating it. Simplest fix: move the per-provider load into the try block so each iteration works with a freshly-tracked entity, e.g. `var tracked = await dbContext.ServiceProviders.IgnoreQueryFilters().SingleOrDefaultAsync(p => p.Id == existing.Id, ct);` and mutate `tracked`.
-```
-
-**Verification.** The defect is real end-to-end. ReconcileServiceProvidersCommandHandler.cs:20-23 loads `locals` once as tracked entities. FullOuterJoin (AppointMe.Shared/Utilities/EnumerableExtensions.cs:15) builds its left dictionary directly from those `locals`, so every `existing` yielded into the loop is a reference to an originally-tracked ServiceProvider instance. ServiceProviderSynchronizer.Apply routes to UpdateServiceProvider/DeleteServiceProvider, which mutate `existing` in place (existing.Update(...), existing.Delete(), existing.Restore()); ServiceProvider.Update (ServiceProviders/UpdateServiceProvider/UpdateServiceProvider.cs) merely assigns Name on the POCO with no re-attach. A realistic trigger exists: PersonName.Create (AppointMe.Shared/Domain/Common/PersonName.cs:39-59) throws ValidationException for empty/oversized names, evaluated inside UpdateServiceProvider (line 54) and CreateServiceProvider (line 63); any per-record exception (including a SaveChangesAsync DB error) also lands in the catch. The catch at line 41 calls dbContext.ChangeTracker.Clear(), which detaches ALL tracked entities, including the ones destined for later iterations. On every subsequent iteration, existing.Update/Delete/Restore mutate a now-detached POCO, and SaveChangesAsync produces no SQL and throws nothing — the mutation is silently lost with no error log. Only the create path (AddAsync of a brand-new instance) survives a prior Clear(). This is unique to this reconciler: the Attendee reconciler (Attendees/ReconcileAttendees/UpsertAttendee.cs:18-20) and BookingCompany reconciler (BookingCompanies/ReconcileBookingCompanies/UpsertBookingCompany.cs:16-17) both re-query the local entity inside UpsertAsync on every iteration, so a prior ChangeTracker.Clear() is harmless for them. No middleware, base class, global filter, or interceptor mitigates this — nothing re-loads or re-attaches locals after Clear().
-
-**Verified remediation.**
-```
-Do not reuse pre-loaded tracked entities across iterations that can Clear() the tracker. Re-query a freshly-tracked entity inside each iteration's try block so a prior Clear() does not leave it detached. In ReconcileServiceProvidersCommandHandler.HandleAsync, replace the loop body:
-
-foreach (var (existing, snapshot) in pairs)
-{
-    try
-    {
-        var tracked = existing is null
-            ? null
-            : await dbContext.ServiceProviders
-                .IgnoreQueryFilters()
-                .SingleOrDefaultAsync(provider => provider.Id == existing.Id, cancellationToken);
-
-        await synchronizer.Apply(tracked, snapshot, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
-    catch (Exception exception) when (exception is not OperationCanceledException)
-    {
-        logger.LogError(exception, "Failed to reconcile service provider {ProviderId} in company {CompanyId}.",
-            existing?.Id.Value ?? snapshot?.EmployeeId, companyId);
-        dbContext.ChangeTracker.Clear();
-    }
-}
-
-(Use `locals`/`pairs` only for pairing keys; fetch the tracked instance per iteration. Note: use cancellationToken, not `ct`.) Alternatively, refactor Apply to accept the snapshot and re-query the local internally, mirroring UpsertAttendee/UpsertBookingCompany.
-```
-
-**Notes.** Line 41 (ChangeTracker.Clear()) is the correct anchor for where detachment happens, but the root cause spans lines 20-34 (loading locals once and reusing those tracked instances across iterations). Severity High rather than Immediate: this is a background projection-reconciliation job, so the impact is silent staleness/corruption of the ServiceProviders read model, not a security/auth/data-breach issue. It requires a triggering condition (at least one record in the batch that throws — e.g. an employee with an empty/invalid name, or any transient SaveChanges failure), and it is persistent: because the failing record recurs on each run, records ordered after it are silently dropped on every reconciliation. The create path is unaffected. Concrete failure scenario: a company batch where employee A (existing provider) has a valid updated name and employee B (existing provider, processed earlier) has an empty first name — B throws ValidationException, Clear() detaches A, A's name update (and any later deletes/restores) is silently lost with no exception and no error log.
 
 
 ## B5. [Medium] Demo login mints a full authenticated session with no credentials via an anonymous GET, and is enabled in a deployed config with a committed password

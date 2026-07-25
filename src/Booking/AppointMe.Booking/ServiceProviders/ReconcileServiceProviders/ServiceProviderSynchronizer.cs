@@ -10,8 +10,17 @@ namespace AppointMe.Booking.ServiceProviders.ReconcileServiceProviders;
 
 public sealed class ServiceProviderSynchronizer(BookingDbContext dbContext)
 {
-    public async Task Apply(ServiceProvider? existing, EmployeeSnapshot? snapshot, CancellationToken cancellationToken)
+    public async Task Apply(ServiceProviderId? providerId, EmployeeSnapshot? snapshot,
+        CancellationToken cancellationToken)
     {
+        ServiceProvider? existing = null;
+        if (providerId is { } id)
+        {
+            existing = await dbContext.ServiceProviders
+                .IgnoreQueryFilters()
+                .SingleOrDefaultAsync(provider => provider.Id == id, cancellationToken);
+        }
+
         var isStaff = snapshot?.Roles.Contains(Role.Staff) == true;
 
         await ((existing, snapshot, isStaff) switch
@@ -22,17 +31,17 @@ public sealed class ServiceProviderSynchronizer(BookingDbContext dbContext)
 
             // Exists, needs update (and potential restoration)
             (existing: not null, snapshot: not null, isStaff: true) =>
-                UpdateServiceProvider(existing, snapshot, cancellationToken),
+                UpdateServiceProvider(existing, snapshot),
 
             // Exists but no longer has role, needs deletion
             (existing: not null, snapshot: _, isStaff: false) =>
-                DeleteServiceProvider(existing, cancellationToken),
+                DeleteServiceProvider(existing),
 
             _ => Task.CompletedTask
         });
     }
 
-    private Task DeleteServiceProvider(ServiceProvider existing, CancellationToken _)
+    private Task DeleteServiceProvider(ServiceProvider existing)
     {
         if (existing.IsDeleted)
         {
@@ -43,8 +52,7 @@ public sealed class ServiceProviderSynchronizer(BookingDbContext dbContext)
         return Task.CompletedTask;
     }
 
-    private Task UpdateServiceProvider(ServiceProvider existing, EmployeeSnapshot snapshot,
-        CancellationToken _)
+    private Task UpdateServiceProvider(ServiceProvider existing, EmployeeSnapshot snapshot)
     {
         if (existing.IsDeleted)
         {

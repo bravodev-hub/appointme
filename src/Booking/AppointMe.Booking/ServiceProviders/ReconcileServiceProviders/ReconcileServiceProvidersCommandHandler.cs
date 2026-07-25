@@ -31,7 +31,7 @@ public class ReconcileServiceProvidersCommandHandler(
         {
             try
             {
-                await synchronizer.Apply(existing, snapshot, cancellationToken);
+                await synchronizer.Apply(existing?.Id, snapshot, cancellationToken);
                 await dbContext.SaveChangesAsync(cancellationToken);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)

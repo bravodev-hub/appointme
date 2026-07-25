@@ -15,12 +15,7 @@ public class EmployeeRegisteredEventHandler(BookingDbContext dbContext, ServiceP
             LastName: @event.LastName,
             Roles: @event.Roles);
 
-        var existing = await dbContext.ServiceProviders
-            .IgnoreQueryFilters()
-            .SingleOrDefaultAsync(provider => provider.Id == new ServiceProviderId(snapshot.EmployeeId),
-                cancellationToken);
-
-        await synchronizer.Apply(existing, snapshot, cancellationToken);
+        await synchronizer.Apply(new ServiceProviderId(snapshot.EmployeeId), snapshot, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

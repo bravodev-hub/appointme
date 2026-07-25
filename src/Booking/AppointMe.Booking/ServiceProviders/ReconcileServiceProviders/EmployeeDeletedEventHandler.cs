@@ -9,11 +9,7 @@ public class EmployeeDeletedEventHandler(BookingDbContext dbContext, ServiceProv
     {
         var providerId = new ServiceProviderId(@event.EmployeeId);
 
-        var existing = await dbContext.ServiceProviders
-            .IgnoreQueryFilters()
-            .SingleOrDefaultAsync(provider => provider.Id == providerId, cancellationToken);
-
-        await synchronizer.Apply(existing, snapshot: null, cancellationToken);
+        await synchronizer.Apply(providerId, snapshot: null, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
