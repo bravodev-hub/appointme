@@ -1,3 +1,4 @@
+using AppointMe.Api.Antiforgery;
 using AppointMe.Api.ApiVersioning;
 using AppointMe.Api.Authentication;
 using AppointMe.Api.Authentication.DemoLogin;
@@ -30,6 +31,7 @@ builder.Services
     .AddAppointMeMultiTenancy(tenancy => tenancy.FromHeader("X-Company-Id"))
     .AddAppointMeAuthentication(builder.Configuration)
     .AddAppointMeAuthorization()
+    .AddAppointMeAntiforgery()
     .AddAppointMeJsonOptions()
     .AddAppointMeOpenApi()
     .AddAppointMeOpenTelemetry();
@@ -86,6 +88,7 @@ app.UseStaticFiles();
 app.UseAppointMeMultiTenancy();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAppointMeAntiforgery();
 
 app.MapEndpoints();
 

@@ -4,6 +4,9 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 export const axiosInstance = axios.create({
     baseURL: '/',
     withCredentials: true,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
+    withXSRFToken: true,
 });
 
 axiosInstance.interceptors.response.use(
