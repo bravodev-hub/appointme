@@ -44,7 +44,8 @@ public sealed class InviteEmployeeCommandHandler(OrganizationsDbContext dbContex
             email: email,
             roles: command.Roles,
             invitedBy: currentUser.Id,
-            now: now
+            now: now,
+            canManageSystemRoles: principal.HasPermission(EmployeePermissions.ManageOwners)
         );
 
         await dbContext.Invitations.AddAsync(invitation, cancellationToken);

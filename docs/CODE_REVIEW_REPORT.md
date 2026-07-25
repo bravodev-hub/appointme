@@ -4,7 +4,7 @@
 
 This is a **read-only assessment**, not a change request. You asked for a Principal-QA-level review of the AppointMe codebase in three phases (structural mapping → robustness/compliance sweep → remediation register), to be presented for evaluation **before** any code is changed. Nothing below has been applied; every item is a proposal with a concrete fix so you can triage first.
 
-**Bottom line:** the codebase is well-architected and, on the whole, defensively sound. The tenant-isolation model, value-object validation discipline, parameterized data access, cookie hardening (`HttpOnly`/`Secure`/`SameSite`), and generic error handling are all correctly implemented. The review surfaced **31 verified issues** (from 39 raised; 8 were adversarially refuted). The material ones cluster into: **within-tenant privilege escalation**, an **unauthenticated admin dashboard** *(since fixed and removed from this report — see the remediation-status note in the register)*, a **reconciliation-job data-loss bug** *(since fixed — see the remediation-status note)*, and a set of **defense-in-depth / configuration hardening** gaps. No anonymous data-breach or cross-tenant IDOR was found to be currently exploitable.
+**Bottom line:** the codebase is well-architected and, on the whole, defensively sound. The tenant-isolation model, value-object validation discipline, parameterized data access, cookie hardening (`HttpOnly`/`Secure`/`SameSite`), and generic error handling are all correctly implemented. The review surfaced **31 verified issues** (from 39 raised; 8 were adversarially refuted). The material ones cluster into: **within-tenant privilege escalation** *(since fixed — multi-owner model with an owner-only `manage_owners` SystemPermission; see the remediation-status note)*, an **unauthenticated admin dashboard** *(since fixed and removed from this report — see the remediation-status note in the register)*, a **reconciliation-job data-loss bug** *(since fixed — see the remediation-status note)*, and a set of **defense-in-depth / configuration hardening** gaps. No anonymous data-breach or cross-tenant IDOR was found to be currently exploitable.
 
 ## Methodology & scope
 
@@ -44,6 +44,7 @@ Auto-discovery via Scrutor: endpoints (`IEndpoint`), permissions (`*Permissions`
 Priority = **Immediate** (exploitable now / data loss) · **High** (serious, needs preconditions) · **Medium** · **Low** (hardening / defense-in-depth). Findings are de-duplicated (several were raised under multiple dimensions).
 
 > **Remediation status (updated 2026-07-21).** The review is a point-in-time snapshot from 2026-07-08 (base commit `3f5228e`). Fully fixed findings have been **removed** from this register (and from Appendix B, whose numbering is preserved); partially fixed ones remain in place with a status note.
+> - **H1 — Within-tenant Owner privilege escalation (both halves) — FIXED and removed** (2026-07-25, working-copy change pending commit; was also Appendix B1/B2). **Design decision (product owner):** AppointMe uses a multi-owner model — Owners may assign and invite other Owners; what must be impossible is a *non-owner* (e.g. Manager) granting or revoking Owner. Enforced via a new `SystemPermission` `employees:manage_owners`, default-granted to `Role.Owner` only — as a SystemPermission it cannot be re-granted to other roles through permission overrides (same protection as `permissions:manage`). Both domain operations take a `canManageSystemRoles` flag resolved from the caller's principal: `Employee.UpdateRoles` rejects any *change* to system-role membership (add **or** remove — a Manager can neither promote a colleague nor sabotage-demote a secondary owner, while keeping an already-held Owner in the submitted set is not a change, so Managers can still edit an owner's other roles), and `EmployeeInvitation.Create` rejects invitations carrying a system role; both throw code `system_role_not_assignable`. The primary owner's Owner role remains locked (`LockedRolesFor`) even against other Owners; custom non-built-in roles (no default grants) remain freely assignable. Frontend: the Owner checkbox in the edit-roles and invite dialogs is disabled without `employees:manage_owners` (existing `isRoleDisabled` hook + `usePermission`); orval client regenerated — the `Permission` map gaining the new key is the only contract change. Covered by kept mock-free domain tests: `UpdateEmployeeRolesTests` (9 — grant/revoke rejected without the permission and allowed with it, no mutation or events on rejection, locked-role and custom-role behavior pinned) and new `InviteEmployeeTests` (3). Full solution test suite green (157 tests). B1's optional self-target guard remains consciously omitted — the permission check is the load-bearing control.
 > - **H2 — Hangfire dashboard exposed at `/admin/jobs` with authorization disabled — FIXED and removed** (commits `a7d4043` → `e65bf41` → `868f278`, merged in PR #3 `0ac8d2a`, refined in `e35ba73`; was also Appendix B3). Verified implementation: the dashboard is mapped as a routed endpoint behind `.RequireAuthorization(HangfireDashboardPolicy.Name)`, moving enforcement into the ASP.NET Core authorization pipeline (the empty `DashboardOptions.Authorization = []` is now intentional). The `HangfireDashboard` policy requires an authenticated user plus `SuperAdminRequirement`; `SuperAdminAuthorizationHandler` resolves the caller via `IIdentityResolver` and succeeds only for a registered `UserIdentity` whose email is in the config-sourced `SuperAdminRegistry` (`Authentication:SuperAdmins`; production defaults to `[]` → deny-all, Development/Devtest allow only `demo@appointme.dev`). Covered by `SuperAdminAuthorizationHandlerTests` (9/9 passing). Residual (accepted): the dashboard registers in every non-codegen environment — safe under the deny-by-default allowlist; super-admin trust rests on the IdP-provided email at user registration.
 > - **H3 — `ReconcileServiceProviders` silently drops all remaining updates/deletes after the first failed record — FIXED and removed** (2026-07-25, working-copy change pending commit; was also Appendix B4). Root cause per B4: the handler pre-loaded tracked `locals` once and reused those instances across the loop, so a single failing record's `ChangeTracker.Clear()` detached every remaining entity — later `Update`/`Delete`/`Restore` mutations produced no SQL and the projection silently diverged. Fixed with the register's preferred shape: `ServiceProviderSynchronizer.Apply` now takes a `ServiceProviderId?` and queries a freshly-tracked instance per invocation (mirroring `UpsertAttendee`/`UpsertBookingCompany`), so a prior tracker clear cannot poison subsequent iterations. The three employee-event handlers (`EmployeeRegistered`/`EmployeeRolesUpdated`/`EmployeeDeleted`) simplified to pass the id, dropping their now-redundant pre-queries. Verified at fix time with throwaway regression tests (EF InMemory harness): updates and deletes ordered after a failed record reproduced the silent data loss against the pre-fix code and persisted correctly after it, with the failed record itself unchanged; the tests were deliberately not kept. Full solution test suite green.
 > - **M2 — Auth cookie has no absolute lifetime / no IdP re-validation — RESOLVED (risk-accepted) and removed** (2026-07-25, working-copy change pending commit; was also Appendix B6). The finding's core defect — session lifetime left to implicit framework defaults rather than a deliberate decision — is fixed: the cookie now sets an explicit `ExpireTimeSpan = TimeSpan.FromDays(7)` with `SlidingExpiration = true` (previously the implicit 14-day sliding default), halving the replay window of a stolen ticket while keeping active sessions alive. The IdP re-validation half (`OnValidatePrincipal` rejecting on id_token expiry) was **deliberately declined** as a product decision: AppointMe is a SaaS template whose only deployment is the Devtest demo — no real users or data — and evaluators must not be re-authenticated frequently; since only the id_token is stored (no refresh token), rejecting on token expiry would end sessions within minutes. Accepted residual: an app session outlives IdP-side logout/deprovisioning for up to the 7-day idle window, and sliding renewal lets an actively-replayed stolen cookie self-renew — bounded by the existing HttpOnly/Secure/SameSite=Lax theft mitigations and immaterial while no real accounts exist. The stricter production recipe (shorter lifetime; persist refresh tokens and revalidate in `OnValidatePrincipal`) is documented in a comment on the `AddCookie` block for template adopters. Verified: solution builds, full test suite green.
@@ -60,28 +61,7 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 
 ## HIGH
 
-### H1 — Within-tenant privilege escalation: any role can be assigned, including `Owner` ⚠ needs design review
-- **Files:** `src/Organizations/AppointMe.Organizations/Employees/UpdateEmployeeRoles/UpdateEmployeeRoles.cs:23` and `src/Organizations/AppointMe.Organizations/Invitations/InviteEmployee/InviteEmployee.cs:13`
-- **Issue:** `Employee.UpdateRoles` and `EmployeeInvitation.Create` bind `Roles` straight from the request and assign them verbatim. The only guard is that *locked* roles can't be *removed*; nothing restricts which roles can be *added*. `RoleFactory.Create("Owner")` returns the real `Role.Owner` **SystemRole** singleton. So a user holding `EmployeePermissions.UpdateRoles` (default: Manager) can self-promote to `Owner`, and a user with `EmployeePermissions.Invite` (default: Manager) can invite an `Owner`. This bypasses the SystemRole protection that the permission-override path *does* enforce (`UpdatePermissions.ValidateGrants` throws `role_permissions_immutable` for any `SystemRole`).
-- **Precondition (why High not Immediate):** attacker must already be a Manager in the tenant; not anonymous.
-- **Remediation (mirror the existing `ValidateGrants` rule — reject non-configurable/system roles):**
-  ```csharp
-  // UpdateEmployeeRoles.UpdateRoles(...), after the empty check:
-  var notAssignable = roles.Where(role => !Role.Configurable.Contains(role)).ToArray();
-  if (notAssignable.Length > 0)
-      throw new ValidationException(
-          $"These roles cannot be assigned: {string.Join(", ", notAssignable.Select(r => r.Name))}",
-          code: "role_not_assignable");
-  ```
-  ```csharp
-  // InviteEmployee.Create(...), after distinctRoles empty check:
-  var notAssignable = distinctRoles.Where(role => !Role.Configurable.Contains(role)).ToArray();
-  if (notAssignable.Count > 0)
-      throw new ValidationException(
-          $"These roles cannot be assigned: {string.Join(", ", notAssignable.Select(r => r.Name))}",
-          code: "role_not_assignable");
-  ```
-- **Design review:** decide the intended grant policy. The snippet above blocks `Owner` and any unknown/custom role (`Role.Configurable` = built-ins minus SystemRoles). If the rule should also be "an actor may only grant roles they themselves hold / roles at or below their level," that is a policy decision requiring the actor's principal to be threaded into the domain operation.
+*(All High findings are resolved — H1, H2, H3; see the remediation-status note above.)*
 
 ## MEDIUM
 
@@ -151,7 +131,7 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 ---
 
 ## Items flagged for architectural realignment / manual design review
-- **H1** — the role-grant authorization policy (who may grant which roles) is a product decision, not just a null-check.
+- **H1** — the role-grant authorization policy (who may grant which roles) is a product decision, not just a null-check. *(Decided 2026-07-25 by the product owner: multi-owner model — only holders of the new `employees:manage_owners` SystemPermission (Owners by default) may grant or revoke Owner. Implemented; see the remediation-status note.)*
 - **L13** — make tenant-membership enforcement a boundary invariant rather than an emergent property of handler signatures.
 - **M5** — latent until horizontal scale-out; decide whether to fix now or gate scale-out on it. *(M6, its former companion here, is done.)*
 
@@ -163,14 +143,14 @@ The following were investigated and found **not** to be defects (8 adversarially
 ## Verification plan (after fixes are approved & applied)
 1. **Build/tests:** `dotnet build AppointMe.sln` and `dotnet test` (unit suites under each `*.Tests`). Add regression tests: role-assignment rejects `Owner`/non-configurable roles (H1). *(H3 was verified 2026-07-25 with throwaway InMemory-harness tests, deliberately not kept. L12 was fixed without its suggested regression test — disposal isn't observable via the factory's public surface without a test seam.)*
 2. **Run the stack:** `cd src/AppointMe.Aspire && dotnet run` (SQL, Keycloak, Mailpit, API, SPA).
-3. **H1:** as a Manager, `PUT /api/v1/employees/{id}/roles` and `POST /api/v1/invitations` with `{"roles":["Owner"]}` → expect `400 role_not_assignable`.
+3. **H1:** as a Manager, `PUT /api/v1/employees/{id}/roles` and `POST /api/v1/invitations` with `{"roles":["Owner"]}` → expect a 400. *(Both halves fixed 2026-07-25 — actual error code is `system_role_not_assignable`; as an Owner the same requests succeed by design (multi-owner model). Covered by kept domain tests; the Owner checkbox is also permission-gated in the UI.)*
 4. **H3:** seed a source employee with an invalid name among several valid ones, run the service-provider reconciliation, confirm the valid ones still project. *(Verified 2026-07-25 via throwaway InMemory-harness tests covering exactly this scenario, including the delete path; tests deliberately not kept.)*
 5. **M1:** confirm `/login/demo` is unavailable in deployed configs and `Demo:Enabled=false`; changed to POST.
 6. **Headers (L7/L8):** `curl -I https://localhost:7233/` → confirm `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy` present and the SPA still loads/charts render. *(L7 and L8 done 2026-07-21 — nosniff/DENY/Referrer-Policy verified live; CSP is emitted as `Content-Security-Policy-Report-Only` until tuned. `Strict-Transport-Security` is Development-gated, so verify it in a deployed environment.)*
-7. **Contract:** none of these change the OpenAPI surface, so `/regenerate-api` is not required (H1 adds a validation error code only).
+7. **Contract:** none of these change the OpenAPI surface, so `/regenerate-api` is not required. *(Superseded for H1 on 2026-07-25: the `employees:manage_owners` permission extends the generated `Permission` enum, so the client was regenerated — the only contract change.)*
 
 ## Suggested sequencing
-1. H1 (correctness/security, low blast radius). *(H2, H3 done.)*
+1. *(All High findings done — H1 completed 2026-07-25, H2, H3.)*
 2. M1, L2 (auth/session/secrets hygiene). *(L1 done; M2 resolved as accepted risk.)*
 3. L9, L4 (transport/CSRF headers — one small middleware + config). *(L3, L7, L8 done.)*
 4. *(Robustness one-liners all done: L5, L6, L11, L12.)*
@@ -605,116 +585,10 @@ There is **no SMTP client, MailKit, or `IEmailSender` in application code** — 
 
 ---
 
-# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 14 listed)
+# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 12 listed)
 
 
-Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed or risk-accepted findings are removed (B3, Hangfire dashboard; B4, reconciliation data loss; B6, cookie session lifetime (risk-accepted); B11, optimistic concurrency; B12/B23/B25, RequireHttpsMetadata default; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22/B28, security response headers / CSP; B29, useCurrentUser dead guard; B31, SqlConnection leak — see the remediation-status note in the register); the original numbering is preserved.
-
-
-## B1. [High] UpdateEmployeeRoles lets a non-owner assign the protected Owner SystemRole, enabling vertical privilege escalation and self-promotion
-
-- **Location:** `src/Organizations/AppointMe.Organizations/Employees/UpdateEmployeeRoles/UpdateEmployeeRoles.cs:23`
-- **Dimension / category:** authz-idor / privilege-escalation
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** yes
-
-**Explanation.** The Roles array is bound directly from the request body (UpdateEmployeeRolesRequest.Roles -> UpdateEmployeeRolesCommand.Roles) and passed to Employee.UpdateRoles. The only guard is that entries in `lockedRoles` are not removed; there is NO check that the roles being ADDED are permitted. `Role.Owner` is deliberately a `SystemRole` and is excluded from `Role.Configurable`, and the permission-override subsystem explicitly forbids touching it (UpdatePermissions.ValidateGrants throws `role_permissions_immutable` for any SystemRole and `system_managed_permission` for the SystemPermission `permissions:manage`). This slice bypasses that entire protection: EmployeePermissions.UpdateRoles is granted by default to the Manager role (EmployeeRolesGrants.DefaultGrants), and the handler applies no self-target guard (unlike DeleteEmployee). So a Manager can PUT /employees/{ownEmployeeId}/roles with body {"roles":["Owner"]} and on the next request be resolved as an Owner, which grants PermissionPermissions.Manage (rewrite all company permission overrides) and CustomerPermissions.Delete — effectively full control of the tenant. `LockedRolesFor` only protects the single primary owner from having Owner removed; it does nothing to stop Owner being granted to others.
-
-**Evidence.**
-```
-var removed = lockedRoles.Where(role => !roles.Contains(role)).ToArray();
-if (removed.Length > 0)
-{
-    throw new ValidationException(...);
-}
-employee.Roles = roles.ToList();  // no check that `roles` excludes SystemRole/Owner
-```
-
-**Proposed remediation.**
-```
-Constrain assignable roles to a whitelist and reject SystemRoles that the caller is not already entitled to grant. e.g. before assigning:
-
-var addedRoles = roles.Except(employee.Roles);
-if (addedRoles.Any(role => role is SystemRole))
-    throw new AccessDeniedException("The Owner role cannot be assigned.");
-if (roles.Any(role => !Role.Configurable.Contains(role) && !lockedRoles.Contains(role)))
-    throw new ValidationException("Only configurable roles may be assigned.");
-
-and add a self-target guard in UpdateEmployeeRolesCommandHandler (mirroring DeleteEmployeeCommandHandler) so a member cannot rewrite their own roles.
-```
-
-**Verification.** Traced the full exploit chain in code and found no mitigation. UpdateEmployeeRoles.UpdateRoles (UpdateEmployeeRoles.cs:9-23) only guards against REMOVING lockedRoles (lines 16-21) then unconditionally assigns employee.Roles = roles.ToList() (line 23); there is no check that added roles exclude SystemRole/Owner. The endpoint (UpdateEmployeeRolesEndpoint.cs:16) binds the request body's Roles[] straight into the command, and RoleJsonConverter is globally registered (src/AppointMe.Api/Json/JsonOptionsExtensions.cs:17) calling Role.Create, so {"roles":["Owner"]} deserializes to the canonical Role.Owner SystemRole (Role.cs:33; confirmed by RoleTests). The handler (UpdateEmployeeRolesCommandHandler.cs:13-18) requires only EmployeePermissions.UpdateRoles — which EmployeeRolesGrants.cs:15-20 grants to Role.Manager by default — and applies no self-target guard, unlike DeleteEmployeeCommandHandler.cs:14-17. LockedRolesFor (CompanyOwnership.cs:12-13) returns [Owner] only for the primary owner and [] otherwise, so for a Manager targeting their own (or any) employee, removed is empty and Owner is assigned and persisted. On the next request UserPrincipalFactory.cs:17-33 reloads the stored roles (rehydrated to the Owner SystemRole via RoleValueConverter/Role.Create) and PermissionResolver.cs:14-17 unions Owner's default grants — including PermissionPermissions.Manage (PermissionRolesGrants.cs:9-12) and CustomerPermissions.Delete (CrmDefaultGrantPolicy.cs:11-16), neither of which Manager holds. This bypasses the SystemRole immutability boundary the codebase explicitly enforces elsewhere (UpdatePermissions.ValidateGrants throws role_permissions_immutable for any SystemRole, UpdatePermissions.cs:95-99). No middleware, FluentValidation validator, or global filter neutralizes it; the only scoping present is companyId on the employee load, so the escalation is within-tenant, not cross-tenant.
-
-**Verified remediation.**
-```
-Add a SystemRole guard inside UpdateRoles (it already receives both roles and lockedRoles), placed after the removed-roles check and before the assignment on line 23. Rejecting only non-locked SystemRoles closes the Owner-escalation hole without breaking the primary owner (whose Owner role is in lockedRoles) or any custom non-BuiltIn roles:
-
-    var addedSystemRoles = roles
-        .Where(role => role is SystemRole && !lockedRoles.Contains(role))
-        .ToArray();
-    if (addedSystemRoles.Length > 0)
-    {
-        throw new ValidationException(
-            $"The {string.Join(", ", addedSystemRoles.Select(role => role.Name))} role cannot be assigned.",
-            code: "system_role_not_assignable");
-    }
-
-    employee.Roles = roles.ToList();
-
-As defense-in-depth, also add a self-target guard in UpdateEmployeeRolesCommandHandler (mirroring DeleteEmployeeCommandHandler.cs:14-17) so a member cannot rewrite their own roles. Note the self-target guard alone is insufficient — without the SystemRole check a Manager could still promote a colleague to Owner — so the SystemRole guard is the load-bearing fix.
-```
-
-**Notes.** Precondition: attacker must already hold a role carrying EmployeePermissions.UpdateRoles (Manager or Owner by default), so this is not anonymous-exploitable — hence High rather than Immediate. It is nonetheless a full within-tenant vertical privilege escalation (any Manager becomes Owner, gaining permissions:manage over all company overrides and customers:delete) that defeats the SystemRole immutability invariant the code enforces in UpdatePermissions.ValidateGrants. Employee.LoadAsync is scoped to companyId, so there is no cross-tenant reach. The reviewer's cited line 16 points at the insufficient removal guard; the actual unvalidated mutation is line 23, where the fix belongs.
-
-
-## B2. [High] InviteEmployee allows creating an invitation with the Owner SystemRole, a second privilege-escalation path
-
-- **Location:** `src/Organizations/AppointMe.Organizations/Invitations/InviteEmployee/InviteEmployee.cs:13`
-- **Dimension / category:** authz-idor / privilege-escalation
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** yes
-
-**Explanation.** EmployeeInvitation.Create accepts arbitrary roles (bound from InviteEmployeeRequest.Roles -> InviteEmployeeCommand.Roles) with no SystemRole/whitelist validation — it only rejects an empty list. EmployeePermissions.Invite is granted by default to Manager. A Manager can therefore POST /invitations with {"roles":["Owner"], ...}; when the recipient accepts (AcceptInvitationCommandHandler calls Employee.Register with invitation.Roles verbatim), a full Owner employee is created. This is the same trust gap as the UpdateEmployeeRoles finding and equally bypasses the SystemRole protection enforced in UpdatePermissions.ValidateGrants.
-
-**Evidence.**
-```
-var distinctRoles = roles.Distinct().ToList();
-if (distinctRoles.Count == 0)
-{
-    throw new ValidationException("At least one role is required.");
-}
-// roles used as-is; no rejection of SystemRole/Owner
-```
-
-**Proposed remediation.**
-```
-Validate that every invited role is in Role.Configurable (reject any SystemRole such as Owner) inside EmployeeInvitation.Create, and/or enforce it in InviteEmployeeCommandHandler after principal.Require(EmployeePermissions.Invite). Apply the same whitelist used to fix UpdateEmployeeRoles.
-```
-
-**Verification.** The end-to-end chain is real. EmployeeRolesGrants.cs grants EmployeePermissions.Invite to Manager, and InviteEmployeeEndpoint's POST /invitations is gated solely by principal.Require(EmployeePermissions.Invite) in InviteEmployeeCommandHandler:11 — so a Manager is authorized to invite. The request body Roles (Role[]) deserializes via RoleJsonConverter.Read -> Role.Create, and RoleFactory.Create (Role.cs:33) returns Role.BuiltIn.FirstOrDefault(name=="Owner"), i.e. the actual SystemRole Owner singleton. InviteEmployee.Create (InviteEmployee.cs:13) only rejects an empty list — no SystemRole/whitelist filter — and stores Roles verbatim. On accept, AcceptInvitationCommandHandler:25-32 passes invitation.Roles straight into Employee.Register, and RegisterEmployee.cs:13 likewise only rejects empty. RoleValueConverter re-materializes the persisted "Owner" back into the real SystemRole Owner via Role.Create, so permission resolution against DefaultGrants (keyed by Role.Owner) matches at runtime. Owner confers strictly more than Manager: PermissionPermissions.Manage (full permission-override control; Manager only has View) and CustomerPermissions.Delete, and these Owner grants are immutable (UpdatePermissions.ValidateGrants:95 throws for any SystemRole, so they can never be revoked via config). No mitigating control exists: the SystemRole rejection present in UpdatePermissions.ValidateGrants is entirely absent from both the invite and register paths, and CompanyOwnership.LockedRolesFor only prevents removing Owner from the primary owner, never adding Owner to a new member. This is the same trust gap as the referenced UpdateEmployeeRoles finding (UpdateEmployeeRoles.cs:9 also lacks a whitelist). The claim that Employee.Register is used verbatim, that Invite is a Manager-default permission, and that the empty-list-only check is the sole validation are all accurate.
-
-**Verified remediation.**
-```
-Reject non-configurable/system roles at the aggregate factory, mirroring UpdatePermissions.ValidateGrants, and add the same guard to Employee.Register for defense-in-depth. In InviteEmployee.Create (src/Organizations/AppointMe.Organizations/Invitations/InviteEmployee/InviteEmployee.cs), after computing distinctRoles:
-
-var distinctRoles = roles.Distinct().ToList();
-if (distinctRoles.Count == 0)
-{
-    throw new ValidationException("At least one role is required.");
-}
-
-var invalidRoles = distinctRoles.Where(role => role is SystemRole || !Role.Configurable.Contains(role)).ToArray();
-if (invalidRoles.Length > 0)
-{
-    throw new ValidationException(
-        $"The following roles cannot be assigned via invitation: {string.Join(", ", invalidRoles.Select(role => role.Name))}",
-        code: "role_not_assignable");
-}
-
-Add the identical Role.Configurable/SystemRole guard inside RegisterEmployee.Register (RegisterEmployee.cs:13) so the invariant holds even if a future caller bypasses the invitation path. Optionally also validate in InviteEmployeeCommandHandler after principal.Require(EmployeePermissions.Invite). Using Role.Configurable (Manager/Staff/Receptionist) rejects both the Owner SystemRole and any arbitrary custom role name that Role.Create would otherwise accept.
-```
-
-**Notes.** Exploitation is conditional, which caps severity at High rather than Immediate: the Manager cannot invite their own current company email (blocked by the isExistingEmployee check in InviteEmployeeCommandHandler:20-27), so the attack needs an account whose email matches the invited address to call accept — a second attacker-controlled email/account, or elevating a colleague beyond the Manager's authority. The AcceptInvitation endpoint only RequireAuthorization() and matches currentUser.Email to the invitation email, so any authenticated user with the invited email can accept. The most damaging consequence is that the newly minted Owner holds PermissionPermissions.Manage and other SystemRole grants that are immutable via the permission-config path (UpdatePermissions.ValidateGrants throws for SystemRole), so the escalation cannot be undone through normal admin config once created. Cited file/line (InviteEmployee.cs:13) is the correct anchor; no correction needed. This should be fixed together with the UpdateEmployeeRoles finding using a shared whitelist to avoid divergence.
+Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed or risk-accepted findings are removed (B1/B2, Owner escalation via role update and invitation; B3, Hangfire dashboard; B4, reconciliation data loss; B6, cookie session lifetime (risk-accepted); B11, optimistic concurrency; B12/B23/B25, RequireHttpsMetadata default; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22/B28, security response headers / CSP; B29, useCurrentUser dead guard; B31, SqlConnection leak — see the remediation-status note in the register); the original numbering is preserved.
 
 
 ## B5. [Medium] Demo login mints a full authenticated session with no credentials via an anonymous GET, and is enabled in a deployed config with a committed password

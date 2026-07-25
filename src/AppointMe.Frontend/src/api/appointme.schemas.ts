@@ -219,6 +219,7 @@ export const Permission = {
     'employees:invite': 'employees:invite',
     'employees:remove': 'employees:remove',
     'employees:update_roles': 'employees:update_roles',
+    'employees:manage_owners': 'employees:manage_owners',
     'customers:view': 'customers:view',
     'customers:create': 'customers:create',
     'customers:update': 'customers:update',

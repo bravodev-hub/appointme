@@ -2,6 +2,7 @@ import { RoleCheckboxGroup } from './role-checkbox-group';
 import { roleSchema } from './roles';
 import { Role, TeamMemberDto } from '@/api/appointme.schemas.ts';
 import { getGetTeamQueryKey, useUpdateRoles } from '@/api/appointme.ts';
+import { usePermission } from '@/components/auth';
 import { SubmitButton } from '@/components/form';
 import { IModalProps } from '@/components/modal-dialog';
 import { Button } from '@/components/ui';
@@ -33,6 +34,7 @@ interface EditEmployeeRolesDialogProps extends IModalProps<void> {
 
 export const EditEmployeeRolesDialog = ({ resolve, visible, employee }: EditEmployeeRolesDialogProps) => {
     const queryClient = useQueryClient();
+    const canManageOwners = usePermission('employees:manage_owners');
     const { mutateAsync: updateRoles } = useUpdateRoles({
         mutation: {
             onSuccess: async () => {
@@ -84,7 +86,10 @@ export const EditEmployeeRolesDialog = ({ resolve, visible, employee }: EditEmpl
                                     <RoleCheckboxGroup
                                         value={field.value}
                                         onChange={field.onChange}
-                                        isRoleDisabled={role => (employee.lockedRoles ?? []).includes(role)}
+                                        isRoleDisabled={role =>
+                                            (employee.lockedRoles ?? []).includes(role) ||
+                                            (role === Role.Owner && !canManageOwners)
+                                        }
                                     />
                                     {fieldState.error && <FieldError errors={[fieldState.error]} />}
                                 </Field>

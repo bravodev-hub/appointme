@@ -1,6 +1,8 @@
 import { getGetTeamQueryKey, useInviteEmployee } from '@/api/appointme.ts';
 import { RoleCheckboxGroup } from './role-checkbox-group';
 import { roleSchema } from './roles';
+import { Role } from '@/api/appointme.schemas.ts';
+import { usePermission } from '@/components/auth';
 import { SubmitButton } from '@/components/form';
 import { IModalProps } from '@/components/modal-dialog';
 import { Button } from '@/components/ui';
@@ -32,6 +34,7 @@ type InviteFormValues = z.infer<typeof formSchema>;
 
 export const InviteEmployeeDialog = ({ resolve, visible }: IModalProps<void>) => {
     const queryClient = useQueryClient();
+    const canManageOwners = usePermission('employees:manage_owners');
     const { mutateAsync: inviteEmployee } = useInviteEmployee({
         mutation: {
             onSuccess: async () => {
@@ -119,7 +122,11 @@ export const InviteEmployeeDialog = ({ resolve, visible }: IModalProps<void>) =>
                             render={({ field, fieldState }) => (
                                 <Field data-invalid={fieldState.invalid}>
                                     <FieldLabel>Roles</FieldLabel>
-                                    <RoleCheckboxGroup value={field.value} onChange={field.onChange} />
+                                    <RoleCheckboxGroup
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        isRoleDisabled={role => role === Role.Owner && !canManageOwners}
+                                    />
                                     {fieldState.error && <FieldError errors={[fieldState.error]} />}
                                 </Field>
                             )}

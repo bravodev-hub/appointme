@@ -15,7 +15,10 @@ public sealed class UpdateEmployeeRolesCommandHandler(OrganizationsDbContext dbC
         var employee = await dbContext.Employees.LoadAsync(new EmployeeId(command.Id), companyId, cancellationToken);
         var company = await dbContext.Companies.LoadAsync(companyId, cancellationToken);
 
-        employee.UpdateRoles(command.Roles.ToHashSet(), company.LockedRolesFor(employee.Id).ToHashSet());
+        employee.UpdateRoles(
+            command.Roles.ToHashSet(),
+            company.LockedRolesFor(employee.Id).ToHashSet(),
+            canManageSystemRoles: principal.HasPermission(EmployeePermissions.ManageOwners));
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

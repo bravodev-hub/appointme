@@ -6,7 +6,7 @@ public static class UpdateEmployeeRoles
 {
     extension(Employee employee)
     {
-        public void UpdateRoles(IReadOnlySet<Role> roles, IReadOnlySet<Role> lockedRoles)
+        public void UpdateRoles(IReadOnlySet<Role> roles, IReadOnlySet<Role> lockedRoles, bool canManageSystemRoles)
         {
             if (roles.Count == 0)
             {
@@ -18,6 +18,20 @@ public static class UpdateEmployeeRoles
             {
                 throw new ValidationException(
                     $"The {string.Join(", ", removed.Select(role => role.Name))} role cannot be removed from this member.");
+            }
+
+            if (!canManageSystemRoles)
+            {
+                var changedSystemRoles = roles.Concat(employee.Roles)
+                    .Where(role => role is SystemRole)
+                    .Where(role => roles.Contains(role) != employee.Roles.Contains(role))
+                    .ToArray();
+                if (changedSystemRoles.Length > 0)
+                {
+                    throw new ValidationException(
+                        $"The {string.Join(", ", changedSystemRoles.Select(role => role.Name))} role can only be assigned or removed by an owner.",
+                        code: "system_role_not_assignable");
+                }
             }
 
             employee.Roles = roles.ToList();

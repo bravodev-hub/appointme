@@ -10,7 +10,8 @@ public static class EmployeeRolesGrants
             EmployeePermissions.View,
             EmployeePermissions.Invite,
             EmployeePermissions.Remove,
-            EmployeePermissions.UpdateRoles
+            EmployeePermissions.UpdateRoles,
+            EmployeePermissions.ManageOwners
         ),
         new(Role.Manager,
             EmployeePermissions.View,
