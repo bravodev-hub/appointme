@@ -45,6 +45,7 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
 
 > **Remediation status (updated 2026-07-21).** The review is a point-in-time snapshot from 2026-07-08 (base commit `3f5228e`). Fully fixed findings have been **removed** from this register (and from Appendix B, whose numbering is preserved); partially fixed ones remain in place with a status note.
 > - **H2 — Hangfire dashboard exposed at `/admin/jobs` with authorization disabled — FIXED and removed** (commits `a7d4043` → `e65bf41` → `868f278`, merged in PR #3 `0ac8d2a`, refined in `e35ba73`; was also Appendix B3). Verified implementation: the dashboard is mapped as a routed endpoint behind `.RequireAuthorization(HangfireDashboardPolicy.Name)`, moving enforcement into the ASP.NET Core authorization pipeline (the empty `DashboardOptions.Authorization = []` is now intentional). The `HangfireDashboard` policy requires an authenticated user plus `SuperAdminRequirement`; `SuperAdminAuthorizationHandler` resolves the caller via `IIdentityResolver` and succeeds only for a registered `UserIdentity` whose email is in the config-sourced `SuperAdminRegistry` (`Authentication:SuperAdmins`; production defaults to `[]` → deny-all, Development/Devtest allow only `demo@appointme.dev`). Covered by `SuperAdminAuthorizationHandlerTests` (9/9 passing). Residual (accepted): the dashboard registers in every non-codegen environment — safe under the deny-by-default allowlist; super-admin trust rests on the IdP-provided email at user registration.
+> - **M2 — Auth cookie has no absolute lifetime / no IdP re-validation — RESOLVED (risk-accepted) and removed** (2026-07-25, working-copy change pending commit; was also Appendix B6). The finding's core defect — session lifetime left to implicit framework defaults rather than a deliberate decision — is fixed: the cookie now sets an explicit `ExpireTimeSpan = TimeSpan.FromDays(7)` with `SlidingExpiration = true` (previously the implicit 14-day sliding default), halving the replay window of a stolen ticket while keeping active sessions alive. The IdP re-validation half (`OnValidatePrincipal` rejecting on id_token expiry) was **deliberately declined** as a product decision: AppointMe is a SaaS template whose only deployment is the Devtest demo — no real users or data — and evaluators must not be re-authenticated frequently; since only the id_token is stored (no refresh token), rejecting on token expiry would end sessions within minutes. Accepted residual: an app session outlives IdP-side logout/deprovisioning for up to the 7-day idle window, and sliding renewal lets an actively-replayed stolen cookie self-renew — bounded by the existing HttpOnly/Secure/SameSite=Lax theft mitigations and immaterial while no real accounts exist. The stricter production recipe (shorter lifetime; persist refresh tokens and revalidate in `OnValidatePrincipal`) is documented in a comment on the `AddCookie` block for template adopters. Verified: solution builds, full test suite green.
 > - **M6 — No optimistic-concurrency token on any aggregate (silent lost updates) — FIXED and removed** (commit `0bb7021` + follow-ups on 2026-07-17; was also Appendix B11). Every EF-mapped entity across all four DbContexts now carries a non-nullable rowversion concurrency token (`builder.Property<byte[]>("Version").IsRowVersion().IsRequired()`): Booking — `Appointment`, `Attendee`, `BookingCompany`, `ServiceProvider` (migrations `20260709104431_AddAppointmentRowVersion`, `20260717103055_AddBookingProjectionsRowVersion`); CRM — `Customer` (`20260717102104_AddCustomerRowVersion`); Organizations — `Employee`, `Company`, `EmployeeInvitation`, `RolePermissionOverride` (`20260717102457_AddEmployeeAndCompanyRowVersion`, `20260717103102_AddInvitationAndPermissionOverrideRowVersion`); Identity — `User` (`20260717103143_AddUserRowVersion`). All columns are `rowversion, nullable: false`. A global `ConcurrencyExceptionHandler` maps `DbUpdateConcurrencyException` (including Wolverine-wrapped inner exceptions) to `409 Conflict` with code `concurrency_conflict`; conflicts inside Wolverine event/reconciliation handlers surface as exceptions handled by Wolverine's retry policy instead of silent lost updates. Verified: 10/10 entities tokenized in the model snapshots, full test suite green (136 tests), no Dapper `SELECT *` reads affected.
 > - **L1 — `RequireHttpsMetadata` insecure default — FIXED and removed** (commit `8f74451`, 2026-07-21; was also Appendix B12/B23/B25). Per B23's verified remediation: the code fallback in `AuthenticationExtensions.cs` is now `GetValue("Authentication:RequireHttpsMetadata", true)` (applied to both OIDC and JWT Bearer options); the hard-coded `false` was removed from base `appsettings.json`; and an explicit `"RequireHttpsMetadata": false` opt-out was added to `appsettings.Development.json` and `appsettings.Codegen.json` only (the two local/offline paths B23 identified — local Keycloak and the fake `http://codegen` authority). Devtest config and `infra/main.json` already set `true`, so deployed posture is unchanged — the code default now matches it. Any new hosted environment that forgets the setting now gets HTTPS-only metadata by default and fails closed. Verified at fix time: default-absent config resolved `RequireHttpsMetadata = true` on both schemes and explicit `false` was still honored; solution builds, full test suite green. (Dedicated unit tests for the default were deliberately not kept — the behavior is config-level and exercised by every environment.) Note: the finding's cited line 32 had drifted to line 39 by fix time.
 > - **L3 — Logout is an anonymous GET (logout CSRF) — FIXED and removed** (commit `ebe8c7b`, 2026-07-21; was also Appendix B14/B19). `LogoutEndpoint` now maps `MapPost("/logout")` with `RequireAuthorization()`. POST alone would not have closed the hole — `SignOutAsync`'s cookie-deletion `Set-Cookie` is applied by the browser even when the request carried no cookie (per B14's verification) — so auth is required: a cross-site POST arrives cookieless under `SameSite=Lax` and is challenged before the handler runs. `RequireAuthorization()` deliberately applies the default policy (authenticated user) rather than the registered-user fallback policy, so a signed-in user who has not completed signup can still log out. Frontend: `nav-user.tsx` now uses a `lib/logout.ts` helper submitting a top-level form POST (replacing the `window.location.href` GET) so the OIDC end-session redirect chain still runs as a navigation; the orval client was regenerated (`logout` is now a POST mutation). Verified live against the running stack: cookieless `POST /api/v1/logout` → 302 OIDC login challenge with **no** `appointme.auth` deletion header (a forged request can no longer terminate a session); `GET /api/v1/logout` no longer performs any sign-out (it now yields the same harmless challenge-redirect class as the pre-existing `/login` GET); solution builds, full test suite green, frontend `tsc`/lint clean on changed files. Residual: cross-site protection rests on `SameSite=Lax` + required auth (legacy-browser caveat); the app-wide antiforgery posture remains tracked as open finding L4. A manual login → logout click-through in the browser is recommended, as curl cannot drive the full OIDC session.
@@ -104,23 +105,6 @@ Priority = **Immediate** (exploitable now / data loss) · **High** (serious, nee
   ```csharp
   // DemoModeExtensions / endpoint mapping — only register when demo is truly intended and not internet-exposed
   if (env.IsDevelopment()) builder.MapPost("/login/demo", DemoLogin).AllowAnonymous();
-  ```
-
-### M2 — Auth cookie has no absolute lifetime and is never re-validated against the IdP
-- **File:** `src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:47-53`
-- **Issue:** the cookie sets `Name`/`HttpOnly`/`SameSite`/`SecurePolicy` but no `ExpireTimeSpan`, no `SlidingExpiration` override, and no `OnValidatePrincipal`. It falls back to the framework default (**14-day sliding**). Since only the `id_token` is stored and never re-checked, the app session is decoupled from Keycloak/Entra: a user disabled or logged out at the IdP stays authenticated until the cookie lapses, and a stolen cookie is valid up to 14 days and self-renews.
-- **Remediation:**
-  ```csharp
-  .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
-  {
-      options.Cookie.Name = "appointme.auth";
-      options.Cookie.HttpOnly = true;
-      options.Cookie.SameSite = SameSiteMode.Lax;
-      options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-      options.ExpireTimeSpan = TimeSpan.FromHours(8);   // absolute-ish session bound
-      options.SlidingExpiration = false;                 // or keep sliding with a hard cap
-      // Optional hardening: options.Events.OnValidatePrincipal to re-check id_token exp / IdP session
-  })
   ```
 
 ### M3 — `UseForwardedHeaders` trusts `X-Forwarded-*` from any client
@@ -200,7 +184,7 @@ The following were investigated and found **not** to be defects (8 adversarially
 
 ## Suggested sequencing
 1. H1, H3 (correctness/security, low blast radius). *(H2 done.)*
-2. M1, M2, L2 (auth/session/secrets hygiene). *(L1 done.)*
+2. M1, L2 (auth/session/secrets hygiene). *(L1 done; M2 resolved as accepted risk.)*
 3. L9, L4 (transport/CSRF headers — one small middleware + config). *(L3, L7, L8 done.)*
 4. *(Robustness one-liners all done: L5, L6, L11, L12.)*
 5. M3, M4, M5, L10, L13 (infra + architectural — schedule with a design discussion). *(M6 done.)*
@@ -634,10 +618,10 @@ There is **no SMTP client, MailKit, or `IEmailSender` in application code** — 
 
 ---
 
-# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 16 listed)
+# Appendix B — All Verified Findings (raw, un-deduplicated: 31 originally; 15 listed)
 
 
-Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed findings are removed (B3, Hangfire dashboard; B11, optimistic concurrency; B12/B23/B25, RequireHttpsMetadata default; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22/B28, security response headers / CSP; B29, useCurrentUser dead guard; B31, SqlConnection leak — see the remediation-status note in the register); the original numbering is preserved.
+Each entry is a finding that survived adversarial verification. These are the raw per-dimension outputs; the register in the main body de-duplicates and re-prioritizes them. Entries for fully fixed or risk-accepted findings are removed (B3, Hangfire dashboard; B6, cookie session lifetime (risk-accepted); B11, optimistic concurrency; B12/B23/B25, RequireHttpsMetadata default; B14/B19, logout CSRF; B16/B30, timezone rehydration; B17, pagination ceiling; B21, HSTS; B22/B28, security response headers / CSP; B29, useCurrentUser dead guard; B31, SqlConnection leak — see the remediation-status note in the register); the original numbering is preserved.
 
 
 ## B1. [High] UpdateEmployeeRoles lets a non-owner assign the protected Owner SystemRole, enabling vertical privilege escalation and self-promotion
@@ -843,73 +827,6 @@ builder.MapPost("/login/demo", DemoLogin)
 ```
 
 **Notes.** The reviewer's file/line anchor (DemoLoginEndpoint.cs:23) is accurate for the anonymous session-minting code; the "deployed config with committed password" half of the finding is anchored in src/AppointMe.Api/appsettings.Devtest.json lines 28-35 (git-tracked, verified via git check-ignore). Severity is at the lower-Medium end and could be argued Low because: (a) it grants only the single, pre-provisioned demo account, not arbitrary users, which is the likely intended behavior of a "try the demo" flow; (b) Devtest is a test/demo environment, not production; and (c) exploitation requires the host to be internet-reachable AND the demo account to actually exist in the Entra tenant with that exact password and native-auth (public client) enabled — otherwise EntraExternalIdDemoUserAuthenticator returns null and the endpoint yields 502, so it is not unconditionally exploitable. It stays at Medium (not Low) because a live IdP credential is committed to a public repo and anonymous cookie-session minting is enabled in a deployed-intent configuration with no host/CSRF gating. Confirm whether app.appointme.dev is actually internet-reachable and whether the demo account is provisioned there to finalize real-world exploitability.
-
-
-## B6. [Medium] Auth cookie has no ExpireTimeSpan / absolute lifetime and no re-validation against the IdP token or session
-
-- **Location:** `src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:47`
-- **Dimension / category:** auth-session / auth-session
-- **Verdict:** CONFIRMED
-- **Needs architectural review:** yes
-
-**Explanation.** The cookie handler sets Name/HttpOnly/SameSite/SecurePolicy but no `ExpireTimeSpan`, no `SlidingExpiration`, and no `OnValidatePrincipal` event. It therefore falls back to the framework defaults (14-day ExpireTimeSpan with sliding expiration on). Since only the id_token is stored and the handler never re-checks the id_token `exp` or the IdP session, the browser session is fully decoupled from the identity provider: a user disabled or logged out at Keycloak/Entra remains authenticated in the app until the cookie lapses, a stolen cookie stays valid for up to 14 days and self-renews on each use, and there is no absolute session cap. There is no server-side revocation mechanism.
-
-**Evidence.**
-```
-.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
-{
-    options.Cookie.Name = "appointme.auth";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-})
-```
-
-**Proposed remediation.**
-```
-Set an explicit `options.ExpireTimeSpan` (e.g. hours, not the 14-day default), decide `SlidingExpiration` deliberately, and add a `CookieAuthenticationEvents.OnValidatePrincipal` that revalidates the stored id_token expiry (and ideally refreshes/rejects), so app sessions honor IdP token lifetime and revocation.
-```
-
-**Verification.** Read src/AppointMe.Api/Authentication/AuthenticationExtensions.cs (lines 47-53): the AddCookie configuration sets Cookie.Name/HttpOnly/SameSite/SecurePolicy only. Grep across src/AppointMe.Api for ExpireTimeSpan, SlidingExpiration, OnValidatePrincipal, CookieAuthenticationEvents, PostConfigure/Configure<CookieAuthenticationOptions>, and UseTokenLifetime returned no matches beyond this block, so none are configured. Consequences confirmed: (1) ExpireTimeSpan falls back to the ASP.NET Core default of 14 days; (2) SlidingExpiration falls back to the default true (self-renewing); (3) OnValidatePrincipal is absent, so the stored token is never re-checked. OnTokenValidated (lines 87-106) stores ONLY the id_token via StoreTokens (no refresh token), and OpenIdConnectOptions.UseTokenLifetime is not set (default false in ASP.NET Core), so the cookie ticket lifetime is decoupled from the id_token exp. CustomizeOidc for Keycloak only appends kc_idp_hint on redirect (KeycloakAuthenticationExtensions.cs:25-38) and Entra sets no CustomizeOidc, so neither affects cookie lifetime. The DemoLogin path (DemoLoginEndpoint.cs:51) signs in with the same default cookie options. Net effect: a user disabled/logged-out at the IdP keeps a valid app session, there is no absolute session cap, and a captured cookie stays valid up to ~14 days and self-renews. No framework/config mitigation exists elsewhere. Mitigating factors that bound severity: HttpOnly blocks XSS-based cookie theft, SecurePolicy.Always requires TLS, and SameSite=Lax limits cross-site leakage — so exploitation requires conditions (a deprovisioned user, or cookie exfiltration via a non-XSS vector), not an active bypass.
-
-**Verified remediation.**
-```
-Anchor: src/AppointMe.Api/Authentication/AuthenticationExtensions.cs:47 (the .AddCookie block). Bound the session and revalidate the stored id_token:
-
-.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
-{
-    options.Cookie.Name = "appointme.auth";
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-
-    // Replace the 14-day sliding default with an explicit, bounded lifetime.
-    options.ExpireTimeSpan = TimeSpan.FromHours(1);
-    options.SlidingExpiration = false; // decide deliberately; false gives an absolute cap
-
-    options.Events.OnValidatePrincipal = async context =>
-    {
-        var idToken = context.Properties.GetTokenValue(OpenIdConnectParameterNames.IdToken);
-        if (idToken is null)
-        {
-            context.RejectPrincipal();
-            await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return;
-        }
-
-        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(idToken);
-        if (jwt.ValidTo < DateTime.UtcNow)
-        {
-            context.RejectPrincipal();
-            await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        }
-    };
-})
-
-Note: because only the id_token is persisted (no refresh token), OnValidatePrincipal can only reject-on-expiry, tying the app session to the id_token lifetime. To also support silent refresh and true IdP-side revocation, persist the refresh token (or introduce back-channel/remote sign-out) and refresh against the IdP inside this event.
-```
-
-**Notes.** Framework defaults verified: CookieAuthenticationOptions.ExpireTimeSpan defaults to 14 days and SlidingExpiration defaults to true; OpenIdConnectOptions.UseTokenLifetime defaults to false in ASP.NET Core, so the ticket is not tied to the token. IsPersistent is not set (default false), so in the browser the cookie is a session cookie — but the encrypted ticket still carries the ~14-day server-side expiry, so a replayed cookie value is accepted server-side up to that window regardless of browser-close behavior. Severity held at Medium (not Immediate/High) because HttpOnly + Secure + SameSite=Lax reduce the theft surface; the concrete residual risks are session-lifetime/revocation gaps requiring specific conditions. The reviewer's file/line (line 47) is precise; no correction needed.
 
 
 ## B7. [Medium] UseForwardedHeaders trusts X-Forwarded-* from any client (KnownProxies/KnownIPNetworks cleared), enabling scheme and client-IP spoofing

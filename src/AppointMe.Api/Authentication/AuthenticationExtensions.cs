@@ -59,6 +59,8 @@ internal static class AuthenticationExtensions
                     options.Cookie.HttpOnly = true;
                     options.Cookie.SameSite = SameSiteMode.Lax;
                     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+                    options.SlidingExpiration = true;
                 })
                 .AddOpenIdConnect()
                 .AddJwtBearer();
