@@ -46,14 +46,14 @@
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.16.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.17.0" />
     <PackageVersion Include="Schick.Keycloak.RestApiClient" Version="26.5.7" />
     <PackageVersion Include="Scrutor" Version="7.0.0" />
-    <PackageVersion Include="WolverineFx" Version="6.19.0" />
-    <PackageVersion Include="WolverineFx.AzureServiceBus" Version="6.19.0" />
-    <PackageVersion Include="WolverineFx.RuntimeCompilation" Version="6.19.0" />
-    <PackageVersion Include="WolverineFx.SqlServer" Version="6.19.0" />
-    <PackageVersion Include="WolverineFx.EntityFrameworkCore" Version="6.19.0" />
+    <PackageVersion Include="WolverineFx" Version="6.24.4" />
+    <PackageVersion Include="WolverineFx.AzureServiceBus" Version="6.24.4" />
+    <PackageVersion Include="WolverineFx.RuntimeCompilation" Version="6.24.4" />
+    <PackageVersion Include="WolverineFx.SqlServer" Version="6.24.4" />
+    <PackageVersion Include="WolverineFx.EntityFrameworkCore" Version="6.24.4" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.8.0" />
