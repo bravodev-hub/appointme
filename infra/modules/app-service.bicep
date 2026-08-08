@@ -28,9 +28,6 @@ param tags object = {}
 @description('Name of the Key Vault secret holding the SQL connection string.')
 param sqlConnectionStringSecretName string = 'AppointMeSql'
 
-@description('Name of the Key Vault secret holding the Service Bus connection string.')
-param messagingConnectionStringSecretName string = 'AppointMeMessaging'
-
 @description('Name of the Key Vault secret holding the Storage connection string for Data Protection.')
 param dataProtectionConnectionStringSecretName string = 'DataProtectionStorage'
 
@@ -91,10 +88,6 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'ConnectionStrings__AppointMeSql'
           value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/${sqlConnectionStringSecretName}/)'
-        }
-        {
-          name: 'ConnectionStrings__AppointMeMessaging'
-          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/${messagingConnectionStringSecretName}/)'
         }
         {
           name: 'ConnectionStrings__DataProtectionStorage'

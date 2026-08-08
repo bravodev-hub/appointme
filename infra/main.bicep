@@ -40,7 +40,6 @@ var names = {
   sqlDatabase: 'appointme'
   containerRegistry: take('acrappointme${environmentName}${shortSuffix}', 50)
   storageAccount: take('stappointme${environmentName}${shortSuffix}', 24)
-  serviceBus: take('sb-appointme-${environmentName}-${shortSuffix}', 50)
   appServicePlan: 'asp-appointme-${environmentName}'
   appService: take('app-appointme-${environmentName}-${shortSuffix}', 60)
 }
@@ -103,15 +102,6 @@ module storage 'modules/storage.bicep' = {
   }
 }
 
-module serviceBus 'modules/service-bus.bicep' = {
-  name: 'service-bus'
-  params: {
-    location: location
-    namespaceName: names.serviceBus
-    tags: defaultTags
-  }
-}
-
 module appServicePlan 'modules/app-service-plan.bicep' = {
   name: 'app-service-plan'
   params: {
@@ -163,6 +153,5 @@ output keyVaultName string = keyVault.outputs.name
 output keyVaultUri string = keyVault.outputs.uri
 output sqlServerFqdn string = sql.outputs.serverFqdn
 output sqlDatabaseName string = sql.outputs.databaseName
-output serviceBusNamespace string = serviceBus.outputs.name
 output storageAccountName string = storage.outputs.accountName
 output appInsightsConnectionString string = appInsights.outputs.connectionString

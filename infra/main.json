@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "879802379229680022"
+      "templateHash": "13468016559731241197"
     }
   },
   "parameters": {
@@ -36,40 +36,17 @@
         "description": "SQL admin password."
       }
     },
-    "entraExternalIdAuthority": {
-      "type": "string",
-      "metadata": {
-        "description": "Entra External ID authority URL — e.g. https://<tenant>.ciamlogin.com/<tenantId>/v2.0."
-      }
-    },
-    "entraExternalIdClientId": {
-      "type": "string",
-      "metadata": {
-        "description": "Entra External ID app client id (the API/SPA registration)."
-      }
-    },
-    "entraExternalIdApiAudience": {
-      "type": "string",
-      "metadata": {
-        "description": "Entra External ID API audience (typically api://<client-id>)."
-      }
-    },
-    "entraIdentityTenantId": {
-      "type": "string",
-      "metadata": {
-        "description": "Entra tenant id (GUID) for the Graph-based identity-provisioning client."
-      }
-    },
-    "entraIdentityDomain": {
-      "type": "string",
-      "metadata": {
-        "description": "Tenant primary domain (<prefix>.onmicrosoft.com) used as the Issuer on consumer Identities created via Graph."
-      }
-    },
     "initialContainerImage": {
       "type": "string",
       "metadata": {
         "description": "Container image reference to deploy initially. CI updates this per-SHA."
+      }
+    },
+    "customHostname": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional custom hostname to bind to the App Service (e.g. app.appointme.dev). Leave empty to skip custom-domain provisioning. See infra/modules/custom-domain.bicep for DNS preconditions."
       }
     }
   },
@@ -89,7 +66,6 @@
       "sqlDatabase": "appointme",
       "containerRegistry": "[take(format('acrappointme{0}{1}', parameters('environmentName'), variables('shortSuffix')), 50)]",
       "storageAccount": "[take(format('stappointme{0}{1}', parameters('environmentName'), variables('shortSuffix')), 24)]",
-      "serviceBus": "[take(format('sb-appointme-{0}-{1}', parameters('environmentName'), variables('shortSuffix')), 50)]",
       "appServicePlan": "[format('asp-appointme-{0}', parameters('environmentName'))]",
       "appService": "[take(format('app-appointme-{0}-{1}', parameters('environmentName'), variables('shortSuffix')), 60)]"
     }
@@ -743,98 +719,6 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "service-bus",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "namespaceName": {
-            "value": "[variables('names').serviceBus]"
-          },
-          "tags": {
-            "value": "[variables('defaultTags')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.43.8.12551",
-              "templateHash": "8584215679005714552"
-            }
-          },
-          "parameters": {
-            "location": {
-              "type": "string",
-              "metadata": {
-                "description": "Azure region for all resources."
-              }
-            },
-            "namespaceName": {
-              "type": "string",
-              "metadata": {
-                "description": "Globally-unique Service Bus namespace name."
-              }
-            },
-            "tags": {
-              "type": "object",
-              "defaultValue": {},
-              "metadata": {
-                "description": "Tags applied to the namespace."
-              }
-            },
-            "sku": {
-              "type": "string",
-              "defaultValue": "Standard",
-              "metadata": {
-                "description": "Service Bus SKU. Standard or higher is required for topics/subscriptions; devtest default: Standard."
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.ServiceBus/namespaces",
-              "apiVersion": "2022-10-01-preview",
-              "name": "[parameters('namespaceName')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "sku": {
-                "name": "[parameters('sku')]",
-                "tier": "[parameters('sku')]"
-              },
-              "properties": {
-                "publicNetworkAccess": "Enabled",
-                "minimumTlsVersion": "1.2"
-              }
-            }
-          ],
-          "outputs": {
-            "id": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.ServiceBus/namespaces', parameters('namespaceName'))]"
-            },
-            "name": {
-              "type": "string",
-              "value": "[parameters('namespaceName')]"
-            },
-            "endpoint": {
-              "type": "string",
-              "value": "[reference(resourceId('Microsoft.ServiceBus/namespaces', parameters('namespaceName')), '2022-10-01-preview').serviceBusEndpoint]"
-            }
-          }
-        }
-      }
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
       "name": "app-service-plan",
       "properties": {
         "expressionEvaluationOptions": {
@@ -951,24 +835,7 @@
           "appInsightsConnectionString": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'app-insights'), '2025-04-01').outputs.connectionString.value]"
           },
-          "entraExternalIdAuthority": {
-            "value": "[parameters('entraExternalIdAuthority')]"
-          },
-          "entraExternalIdClientId": {
-            "value": "[parameters('entraExternalIdClientId')]"
-          },
-          "entraExternalIdApiAudience": {
-            "value": "[parameters('entraExternalIdApiAudience')]"
-          },
-          "entraIdentityTenantId": {
-            "value": "[parameters('entraIdentityTenantId')]"
-          },
-          "entraIdentityDomain": {
-            "value": "[parameters('entraIdentityDomain')]"
-          },
-          "frontendBaseUrl": {
-            "value": "[format('https://{0}.azurewebsites.net', variables('names').appService)]"
-          },
+          "aspNetCoreEnvironment": "[if(equals(parameters('environmentName'), 'devtest'), createObject('value', 'Devtest'), createObject('value', parameters('environmentName')))]",
           "tags": {
             "value": "[variables('defaultTags')]"
           }
@@ -980,7 +847,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.43.8.12551",
-              "templateHash": "11398331453358560632"
+              "templateHash": "1849111634811141655"
             }
           },
           "parameters": {
@@ -1026,40 +893,11 @@
                 "description": "Application Insights connection string for OTLP exporter."
               }
             },
-            "entraExternalIdAuthority": {
+            "aspNetCoreEnvironment": {
               "type": "string",
+              "defaultValue": "Devtest",
               "metadata": {
-                "description": "Entra External ID tenant authority (e.g. https://<tenant>.ciamlogin.com/<tenantId>/v2.0)."
-              }
-            },
-            "entraExternalIdClientId": {
-              "type": "string",
-              "metadata": {
-                "description": "Entra External ID app client id."
-              }
-            },
-            "entraExternalIdApiAudience": {
-              "type": "string",
-              "metadata": {
-                "description": "Entra External ID API audience (typically api://<client-id>)."
-              }
-            },
-            "entraIdentityTenantId": {
-              "type": "string",
-              "metadata": {
-                "description": "Entra tenant id (GUID) used by the Graph-based identity-provisioning client (EntraIdentity)."
-              }
-            },
-            "entraIdentityDomain": {
-              "type": "string",
-              "metadata": {
-                "description": "Tenant primary domain (e.g. <prefix>.onmicrosoft.com) used as the Issuer on consumer Identities created via Graph."
-              }
-            },
-            "frontendBaseUrl": {
-              "type": "string",
-              "metadata": {
-                "description": "Frontend base URL (the API serves the SPA, so this is the app URL)."
+                "description": "ASP.NET Core environment name. Selects which appsettings.<Env>.json overlays appsettings.json."
               }
             },
             "tags": {
@@ -1076,13 +914,6 @@
                 "description": "Name of the Key Vault secret holding the SQL connection string."
               }
             },
-            "messagingConnectionStringSecretName": {
-              "type": "string",
-              "defaultValue": "AppointMeMessaging",
-              "metadata": {
-                "description": "Name of the Key Vault secret holding the Service Bus connection string."
-              }
-            },
             "dataProtectionConnectionStringSecretName": {
               "type": "string",
               "defaultValue": "DataProtectionStorage",
@@ -1094,7 +925,7 @@
               "type": "string",
               "defaultValue": "EntraExternalIdClientSecret",
               "metadata": {
-                "description": "Name of the Key Vault secret holding the Entra External ID client secret."
+                "description": "Name of the Key Vault secret holding the Entra External ID client secret (reused for EntraIdentity Graph client)."
               }
             }
           },
@@ -1135,71 +966,27 @@
                     },
                     {
                       "name": "ASPNETCORE_ENVIRONMENT",
-                      "value": "Production"
+                      "value": "[parameters('aspNetCoreEnvironment')]"
                     },
                     {
                       "name": "ASPNETCORE_FORWARDEDHEADERS_ENABLED",
                       "value": "true"
                     },
                     {
-                      "name": "Authentication__Provider",
-                      "value": "EntraExternalId"
-                    },
-                    {
-                      "name": "Authentication__RequireHttpsMetadata",
-                      "value": "true"
-                    },
-                    {
-                      "name": "Authentication__EntraExternalId__Authority",
-                      "value": "[parameters('entraExternalIdAuthority')]"
-                    },
-                    {
-                      "name": "Authentication__EntraExternalId__ClientId",
-                      "value": "[parameters('entraExternalIdClientId')]"
-                    },
-                    {
-                      "name": "Authentication__EntraExternalId__ApiAudience",
-                      "value": "[parameters('entraExternalIdApiAudience')]"
-                    },
-                    {
                       "name": "Authentication__EntraExternalId__ClientSecret",
                       "value": "[format('@Microsoft.KeyVault(SecretUri={0}secrets/{1}/)', parameters('keyVaultUri'), parameters('entraExternalIdClientSecretSecretName'))]"
-                    },
-                    {
-                      "name": "EntraIdentity__TenantId",
-                      "value": "[parameters('entraIdentityTenantId')]"
-                    },
-                    {
-                      "name": "EntraIdentity__ClientId",
-                      "value": "[parameters('entraExternalIdClientId')]"
-                    },
-                    {
-                      "name": "EntraIdentity__Domain",
-                      "value": "[parameters('entraIdentityDomain')]"
                     },
                     {
                       "name": "EntraIdentity__ClientSecret",
                       "value": "[format('@Microsoft.KeyVault(SecretUri={0}secrets/{1}/)', parameters('keyVaultUri'), parameters('entraExternalIdClientSecretSecretName'))]"
                     },
                     {
-                      "name": "Wolverine__Transport",
-                      "value": "AzureServiceBus"
-                    },
-                    {
                       "name": "ConnectionStrings__AppointMeSql",
                       "value": "[format('@Microsoft.KeyVault(SecretUri={0}secrets/{1}/)', parameters('keyVaultUri'), parameters('sqlConnectionStringSecretName'))]"
                     },
                     {
-                      "name": "ConnectionStrings__AppointMeMessaging",
-                      "value": "[format('@Microsoft.KeyVault(SecretUri={0}secrets/{1}/)', parameters('keyVaultUri'), parameters('messagingConnectionStringSecretName'))]"
-                    },
-                    {
                       "name": "ConnectionStrings__DataProtectionStorage",
                       "value": "[format('@Microsoft.KeyVault(SecretUri={0}secrets/{1}/)', parameters('keyVaultUri'), parameters('dataProtectionConnectionStringSecretName'))]"
-                    },
-                    {
-                      "name": "Frontend__BaseUrl",
-                      "value": "[parameters('frontendBaseUrl')]"
                     },
                     {
                       "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
@@ -1326,6 +1113,192 @@
         "[resourceId('Microsoft.Resources/deployments', 'key-vault')]",
         "[resourceId('Microsoft.Resources/deployments', 'container-registry')]"
       ]
+    },
+    {
+      "condition": "[not(empty(parameters('customHostname')))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "custom-domain",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "siteName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'app-service'), '2025-04-01').outputs.name.value]"
+          },
+          "appServicePlanId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'app-service-plan'), '2025-04-01').outputs.id.value]"
+          },
+          "customHostname": {
+            "value": "[parameters('customHostname')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('defaultTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.43.8.12551",
+              "templateHash": "11247972763419194987"
+            }
+          },
+          "parameters": {
+            "siteName": {
+              "type": "string",
+              "metadata": {
+                "description": "Web app name to bind the custom hostname to."
+              }
+            },
+            "appServicePlanId": {
+              "type": "string",
+              "metadata": {
+                "description": "App Service Plan resource id — the cert lives at plan scope."
+              }
+            },
+            "customHostname": {
+              "type": "string",
+              "metadata": {
+                "description": "Custom hostname to bind (e.g. app.appointme.dev). Must be a subdomain; apex requires extra DNS setup not handled here."
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags applied to the certificate resource."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/sites/hostNameBindings",
+              "apiVersion": "2023-12-01",
+              "name": "[format('{0}/{1}', parameters('siteName'), parameters('customHostname'))]",
+              "properties": {
+                "siteName": "[parameters('siteName')]",
+                "hostNameType": "Verified",
+                "sslState": "Disabled"
+              }
+            },
+            {
+              "type": "Microsoft.Web/certificates",
+              "apiVersion": "2023-12-01",
+              "name": "[format('mc-{0}', replace(parameters('customHostname'), '.', '-'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "canonicalName": "[parameters('customHostname')]",
+                "serverFarmId": "[parameters('appServicePlanId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites/hostNameBindings', parameters('siteName'), parameters('customHostname'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "[format('ssl-binding-{0}', replace(parameters('customHostname'), '.', '-'))]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "siteName": {
+                    "value": "[parameters('siteName')]"
+                  },
+                  "customHostname": {
+                    "value": "[parameters('customHostname')]"
+                  },
+                  "certificateThumbprint": {
+                    "value": "[reference(resourceId('Microsoft.Web/certificates', format('mc-{0}', replace(parameters('customHostname'), '.', '-'))), '2023-12-01').thumbprint]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.43.8.12551",
+                      "templateHash": "12364165925767111385"
+                    }
+                  },
+                  "parameters": {
+                    "siteName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Web app name (parent for the binding)."
+                      }
+                    },
+                    "customHostname": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Custom hostname (e.g. app.appointme.dev)."
+                      }
+                    },
+                    "certificateThumbprint": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Managed certificate thumbprint, read from the cert resource in the parent module."
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Web/sites/hostNameBindings",
+                      "apiVersion": "2023-12-01",
+                      "name": "[format('{0}/{1}', parameters('siteName'), parameters('customHostname'))]",
+                      "properties": {
+                        "siteName": "[parameters('siteName')]",
+                        "hostNameType": "Verified",
+                        "sslState": "SniEnabled",
+                        "thumbprint": "[parameters('certificateThumbprint')]"
+                      }
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/certificates', format('mc-{0}', replace(parameters('customHostname'), '.', '-')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "hostnameBindingId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/sites/hostNameBindings', parameters('siteName'), parameters('customHostname'))]"
+            },
+            "certificateThumbprint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/certificates', format('mc-{0}', replace(parameters('customHostname'), '.', '-'))), '2023-12-01').thumbprint]"
+            },
+            "hostname": {
+              "type": "string",
+              "value": "[parameters('customHostname')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'app-service')]",
+        "[resourceId('Microsoft.Resources/deployments', 'app-service-plan')]"
+      ]
     }
   ],
   "outputs": {
@@ -1356,10 +1329,6 @@
     "sqlDatabaseName": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'sql'), '2025-04-01').outputs.databaseName.value]"
-    },
-    "serviceBusNamespace": {
-      "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'service-bus'), '2025-04-01').outputs.name.value]"
     },
     "storageAccountName": {
       "type": "string",

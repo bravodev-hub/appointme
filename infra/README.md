@@ -12,7 +12,6 @@ Bicep modules that provision a single `devtest` environment for AppointMe.
 | `modules/sql.bicep`             | Azure SQL Server + database (`S0`) + `Allow Azure services` firewall rule |
 | `modules/container-registry.bicep` | Azure Container Registry (Basic)                          |
 | `modules/storage.bicep`         | Storage Account + private blob container `data-protection-keys` |
-| `modules/service-bus.bicep`     | Service Bus namespace (Standard)                            |
 | `modules/app-service-plan.bicep` | Linux App Service Plan (B1)                                |
 | `modules/app-service.bicep`     | Web App for Containers + system-assigned managed identity + Key Vault references for secrets |
 | `modules/role-assignments.bicep` | `AcrPull` + `Key Vault Secrets User` on the App Service identity |
@@ -204,7 +203,6 @@ The App Service reads secrets via Key Vault references. Populate these secret na
 | Secret name                    | How to populate                                                                                          |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | `AppointMeSql`                 | Full SQL connection string: `Server=tcp:<server>.database.windows.net,1433;Initial Catalog=appointme;User ID=<login>;Password=<password>;Encrypt=True;TrustServerCertificate=False;` |
-| `AppointMeMessaging`           | `az servicebus namespace authorization-rule keys list --resource-group rg-appointme-devtest --namespace-name <sb-name> --name RootManageSharedAccessKey --query primaryConnectionString -o tsv` |
 | `DataProtectionStorage`        | `az storage account show-connection-string --resource-group rg-appointme-devtest --name <storage-name> --query connectionString -o tsv` |
 | `EntraExternalIdClientSecret`  | Client secret value from the External ID app registration (step 1.4)                                     |
 
@@ -214,7 +212,6 @@ Example seeding:
 KV=$(az deployment group show -g rg-appointme-devtest -n main --query 'properties.outputs.keyVaultName.value' -o tsv)
 
 az keyvault secret set --vault-name "$KV" --name AppointMeSql --value "..."
-az keyvault secret set --vault-name "$KV" --name AppointMeMessaging --value "..."
 az keyvault secret set --vault-name "$KV" --name DataProtectionStorage --value "..."
 az keyvault secret set --vault-name "$KV" --name EntraExternalIdClientSecret --value "..."
 
@@ -226,9 +223,19 @@ After the restart, EF migrations run on container startup before the API starts 
 
 ## Wolverine in Azure
 
-`Wolverine:Transport=AzureServiceBus` is set in App Service settings. Wolverine auto-provisions queues based on the message types it discovers in the assembly (`.AutoProvision()` in `WolverineHostBuilderExtensions.cs`). No manual queue creation is required for devtest.
+Devtest runs `Wolverine:Transport=SqlDurable` (set in
+`src/AppointMe.Api/appsettings.Devtest.json`): durable local queues on top of
+the SQL outbox. Messages survive restarts, and no broker is provisioned —
+Azure Service Bus was removed from this template's devtest footprint to cut
+cost.
 
-The SQL outbox is still active — Service Bus is the wire transport, SQL is the durability layer.
+To opt back into a real broker, set `Wolverine:Transport=AzureServiceBus`,
+provision a Service Bus namespace, seed an `AppointMeMessaging` connection
+string secret in Key Vault, and add the corresponding
+`ConnectionStrings__AppointMeMessaging` Key Vault reference back to
+`infra/modules/app-service.bicep`. Wolverine auto-provisions queues on
+startup (`.AutoProvision()` in `WolverineHostBuilderExtensions.cs`); the SQL
+outbox stays active as the durability layer either way.
 
 ## Prod-hardening checklist
 
@@ -236,7 +243,7 @@ When promoting beyond devtest:
 
 - [ ] App Service Plan → S1 or P1v3 for deployment slots and zone-redundancy
 - [ ] Azure SQL → Entra-only auth (drop the SQL login + password), enable Microsoft Defender for SQL, tune backup retention
-- [ ] Private endpoints for SQL, Storage, Service Bus, Key Vault, ACR
+- [ ] Private endpoints for SQL, Storage, Key Vault, ACR (and Service Bus, if you opt back into it)
 - [ ] VNet integration for the App Service
 - [ ] WAF (Azure Front Door or App Gateway) in front of the App Service
 - [ ] Customer-managed keys for Storage and Key Vault
