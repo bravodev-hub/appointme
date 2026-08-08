@@ -13,6 +13,7 @@ const PERMISSION_LABELS: Record<Permission, string> = {
     'employees:invite': 'Invite employees',
     'employees:remove': 'Remove employees',
     'employees:update_roles': 'Manage employee roles',
+    'employees:manage_owners': 'Manage company owners',
     'invitations:resend': 'Resend invitations',
     'invitations:cancel': 'Cancel invitations',
     'permissions:view': 'View role permissions',
