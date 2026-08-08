@@ -22,4 +22,14 @@ export default tseslint.config(
             'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
         },
     },
+    {
+        // Vendored shadcn/ui components ship cva variants and hooks alongside
+        // their components by upstream design. Keeping them unsplit makes
+        // future shadcn updates diff cleanly; the trade-off is full-reload
+        // HMR when editing these files.
+        files: ['src/components/ui/**/*.tsx'],
+        rules: {
+            'react-refresh/only-export-components': 'off',
+        },
+    },
 );
