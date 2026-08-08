@@ -52,7 +52,11 @@ builder.Services.AddDemoMode(builder.Configuration);
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    // The Cloudflare Worker fronting devtest rewrites Host to the azurewebsites
+    // origin and carries the public hostname here instead.
+    options.ForwardedHostHeaderName = "X-Original-Host";
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 });
