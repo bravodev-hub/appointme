@@ -1,3 +1,4 @@
+import { APP_VERSION } from './version';
 import { FormattedDate } from '@/components/format';
 
 export const Footer = () => {
@@ -7,6 +8,7 @@ export const Footer = () => {
             <span className='font-extralight'>
                 Appoint<span className='font-semibold'>Me</span>
             </span>
+            <span className='text-gray-400'> · {APP_VERSION}</span>
         </footer>
     );
 };
