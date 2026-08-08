@@ -16,7 +16,7 @@ export const Login = () => {
         }
 
         window.location.href = `/api/v1/login?${query.toString()}`;
-    }, []);
+    }, [params]);
 
     return (
         <Empty>

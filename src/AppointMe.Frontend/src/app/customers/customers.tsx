@@ -68,6 +68,7 @@ export const Customers = () => {
         { query: { placeholderData: keepPreviousData } },
     );
 
+    // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table is on the React Compiler's incompatible-library list; the compiler skips this component either way
     const table = useReactTable({
         data: response?.customers.items ?? [],
         columns: Columns,

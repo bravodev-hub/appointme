@@ -54,6 +54,7 @@ export const Team = () => {
         },
     );
 
+    // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table is on the React Compiler's incompatible-library list; the compiler skips this component either way
     const table = useReactTable({
         data: team?.members.items ?? [],
         columns: Columns,
