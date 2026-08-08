@@ -7,10 +7,10 @@ param name string
 @description('Tags applied to the plan.')
 param tags object = {}
 
-@description('Plan SKU. Devtest default: B1. Use S1+ for deployment slots.')
+@description('Plan SKU. Devtest default: F1 (free; no Always On, no custom-domain bindings — the Cloudflare Worker fronts the custom domain). Use B1+ for App Service-managed custom domains, S1+ for deployment slots.')
 param sku object = {
-  name: 'B1'
-  tier: 'Basic'
+  name: 'F1'
+  tier: 'Free'
 }
 
 resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {

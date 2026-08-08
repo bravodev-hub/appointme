@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "13468016559731241197"
+      "templateHash": "6599619739178429666"
     }
   },
   "parameters": {
@@ -743,7 +743,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.43.8.12551",
-              "templateHash": "9110113356505179416"
+              "templateHash": "14629056246471300066"
             }
           },
           "parameters": {
@@ -769,11 +769,11 @@
             "sku": {
               "type": "object",
               "defaultValue": {
-                "name": "B1",
-                "tier": "Basic"
+                "name": "F1",
+                "tier": "Free"
               },
               "metadata": {
-                "description": "Plan SKU. Devtest default: B1. Use S1+ for deployment slots."
+                "description": "Plan SKU. Devtest default: F1 (free; no Always On, no custom-domain bindings — the Cloudflare Worker fronts the custom domain). Use B1+ for App Service-managed custom domains, S1+ for deployment slots."
               }
             }
           },

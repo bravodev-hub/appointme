@@ -12,7 +12,7 @@ Bicep modules that provision a single `devtest` environment for AppointMe.
 | `modules/sql.bicep`             | Azure SQL Server + database (`S0`) + `Allow Azure services` firewall rule |
 | `modules/container-registry.bicep` | Azure Container Registry (Basic)                          |
 | `modules/storage.bicep`         | Storage Account + private blob container `data-protection-keys` |
-| `modules/app-service-plan.bicep` | Linux App Service Plan (B1)                                |
+| `modules/app-service-plan.bicep` | Linux App Service Plan (F1, free)                          |
 | `modules/app-service.bicep`     | Web App for Containers + system-assigned managed identity + Key Vault references for secrets |
 | `modules/role-assignments.bicep` | `AcrPull` + `Key Vault Secrets User` on the App Service identity |
 
@@ -23,9 +23,9 @@ Outside the Bicep deliberately:
 - **Microsoft Entra External ID tenant**, user flows, and app registration. Tenant creation is portal-only; app registration on an existing tenant is doable via the Graph API but noisy in Bicep. See [Set up Entra External ID](#1-set-up-microsoft-entra-external-id) below.
 - **Keycloak** — local dev only. The app's `Authentication:Provider` config selects between `Keycloak` (local) and `EntraExternalId` (devtest/prod).
 - **Secrets in Key Vault** — the operator (or a follow-up script) seeds them after first deploy.
-- **Custom domain + DNS** — devtest uses the generated `*.azurewebsites.net` hostname.
+- **Custom domain + DNS** — on F1, App Service custom-domain bindings are not available; devtest serves `app.appointme.dev` through a Cloudflare Worker host-rewrite proxy (`infra/cloudflare-worker/`, deploy with `npx wrangler deploy`). On B1+ you can instead bind the domain directly via `modules/custom-domain.bicep` (App Service Managed Certificate).
 - **WAF, private endpoints, VNet integration, customer-managed keys** — production hardening, see [the prod-hardening checklist](#prod-hardening-checklist).
-- **Deployment slots** — requires Standard (S1) plan or higher; devtest runs B1.
+- **Deployment slots** — requires Standard (S1) plan or higher; devtest runs F1.
 
 ---
 
