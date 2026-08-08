@@ -9,7 +9,7 @@ Bicep modules that provision a single `devtest` environment for AppointMe.
 | `modules/log-analytics.bicep`   | Log Analytics workspace (PerGB2018, 30-day retention)       |
 | `modules/app-insights.bicep`    | Workspace-linked Application Insights                       |
 | `modules/key-vault.bicep`       | Key Vault (RBAC mode, standard tier, soft-delete on)        |
-| `modules/sql.bicep`             | Azure SQL Server + database (`S0`) + `Allow Azure services` firewall rule |
+| `modules/sql.bicep`             | Azure SQL Server + database (`Basic`) + `Allow Azure services` firewall rule |
 | `modules/container-registry.bicep` | Azure Container Registry (Basic)                          |
 | `modules/storage.bicep`         | Storage Account + private blob container `data-protection-keys` |
 | `modules/app-service-plan.bicep` | Linux App Service Plan (F1, free)                          |

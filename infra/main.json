@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.43.8.12551",
-      "templateHash": "6599619739178429666"
+      "templateHash": "10200956314397828994"
     }
   },
   "parameters": {
@@ -98,7 +98,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.43.8.12551",
-              "templateHash": "8198407583114853323"
+              "templateHash": "578020234916723059"
             }
           },
           "parameters": {
@@ -127,6 +127,13 @@
               "metadata": {
                 "description": "Data retention in days. Devtest default: 30."
               }
+            },
+            "dailyQuotaGb": {
+              "type": "string",
+              "defaultValue": "0.5",
+              "metadata": {
+                "description": "Daily ingestion cap in GB — protects against runaway ingestion cost; Azure notifies when the cap is hit. Devtest default: 0.5. Set to '-1' to disable. (String because Bicep has no decimal literals.)"
+              }
             }
           },
           "resources": [
@@ -145,7 +152,7 @@
                   "enableLogAccessUsingOnlyResourcePermissions": true
                 },
                 "workspaceCapping": {
-                  "dailyQuotaGb": -1
+                  "dailyQuotaGb": "[json(parameters('dailyQuotaGb'))]"
                 }
               }
             }
@@ -393,7 +400,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.43.8.12551",
-              "templateHash": "14253207457452161421"
+              "templateHash": "12619071026776977351"
             }
           },
           "parameters": {
@@ -437,11 +444,11 @@
             "databaseSku": {
               "type": "object",
               "defaultValue": {
-                "name": "S0",
-                "tier": "Standard"
+                "name": "Basic",
+                "tier": "Basic"
               },
               "metadata": {
-                "description": "Database SKU. Devtest default: S0."
+                "description": "Database SKU. Devtest default: Basic (5 DTU, 2 GB cap). Use S0+ when the demo dataset outgrows it."
               }
             }
           },

@@ -17,10 +17,10 @@ param administratorLoginPassword string
 @description('Tags applied to the server and database.')
 param tags object = {}
 
-@description('Database SKU. Devtest default: S0.')
+@description('Database SKU. Devtest default: Basic (5 DTU, 2 GB cap). Use S0+ when the demo dataset outgrows it.')
 param databaseSku object = {
-  name: 'S0'
-  tier: 'Standard'
+  name: 'Basic'
+  tier: 'Basic'
 }
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
