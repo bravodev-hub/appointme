@@ -86,6 +86,7 @@ build-image:
         --registry "$ACR_NAME"
         --image "$IMAGE_REPO:$CI_COMMIT_SHORT_SHA"
         --image "$IMAGE_REPO:latest"
+        --build-arg APP_VERSION="$CI_COMMIT_SHORT_SHA"
         --file src/AppointMe.Api/Dockerfile
         .
   rules:

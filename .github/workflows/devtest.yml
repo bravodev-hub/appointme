@@ -110,6 +110,7 @@ jobs:
             --registry "${{ secrets.ACR_NAME }}" \
             --image "$IMAGE_REPO:${GITHUB_SHA::8}" \
             --image "$IMAGE_REPO:latest" \
+            --build-arg APP_VERSION="${GITHUB_SHA::8}" \
             --file src/AppointMe.Api/Dockerfile \
             .
 
