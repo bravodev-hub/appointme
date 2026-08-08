@@ -63,7 +63,7 @@ The **client secret is never committed** — it lives only in Key Vault (step 5)
 
 ### 2. Bootstrap GitLab OIDC federated identity
 
-The GitLab pipeline (`.gitlab-ci.yml`) authenticates to Azure with OIDC federated credentials — no static client secrets in the repo or CI.
+The GitLab pipeline (`.gitlab-ci.yml`) authenticates to Azure with OIDC federated credentials — no static client secrets in the repo or CI. (The GitHub pipeline reuses the same identity — see step 4.)
 
 ```bash
 # Create a user-assigned managed identity for the CI deployer
@@ -113,6 +113,58 @@ Add these under **Settings → CI/CD → Variables**. Mark them **Protected** (e
 | `APP_SERVICE_NAME`      | Web App name from Bicep output (no URL, just the name)       |
 
 The pipeline derives the ACR login server as `$ACR_NAME.azurecr.io`, so no separate variable is needed for it.
+
+### 4. Bootstrap GitHub OIDC federated identity
+
+The GitHub Actions pipeline (`.github/workflows/devtest.yml`) authenticates the
+same way — OIDC federated credentials on the **same** CI identity created in
+step 2. Both CI providers are supported side by side; add whichever federated
+credentials match where you host the repo.
+
+GitHub needs **two** federated credentials, because a job that targets a GitHub
+*environment* presents a different `sub` claim than a plain branch job:
+
+```bash
+# For the build-image job (branch-scoped subject)
+az identity federated-credential create \
+  --identity-name id-appointme-devtest-ci \
+  --resource-group rg-appointme-devtest \
+  --name github-main \
+  --issuer https://token.actions.githubusercontent.com \
+  --subject "repo:<owner>/<repo>:ref:refs/heads/main" \
+  --audiences api://AzureADTokenExchange
+
+# For the deploy-devtest job (environment-scoped subject)
+az identity federated-credential create \
+  --identity-name id-appointme-devtest-ci \
+  --resource-group rg-appointme-devtest \
+  --name github-env-devtest \
+  --issuer https://token.actions.githubusercontent.com \
+  --subject "repo:<owner>/<repo>:environment:devtest" \
+  --audiences api://AzureADTokenExchange
+```
+
+The identity's role assignments from step 2 (Contributor on the ACR, Website
+Contributor on the Web App) cover the GitHub pipeline too — nothing extra to
+grant.
+
+### 5. GitHub Actions secrets
+
+Add these under **Settings → Secrets and variables → Actions** (or via
+`gh secret set`). Names are identical to the GitLab variables in step 3:
+
+| Secret                  | Value                                                        |
+| ----------------------- | ------------------------------------------------------------ |
+| `AZURE_CLIENT_ID`       | `clientId` of the user-assigned identity (`az identity show -n id-appointme-devtest-ci -g rg-appointme-devtest --query clientId -o tsv`) |
+| `AZURE_TENANT_ID`       | Azure tenant ID **of the tenant holding the devtest subscription** (`az account show --subscription <sub-id> --query tenantId -o tsv`) |
+| `AZURE_SUBSCRIPTION_ID` | Subscription holding the devtest resource group              |
+| `AZURE_RESOURCE_GROUP`  | `rg-appointme-devtest`                                       |
+| `ACR_NAME`              | ACR name from Bicep output `containerRegistryName` (no `.azurecr.io`) |
+| `APP_SERVICE_NAME`      | Web App name from Bicep output (no URL, just the name)       |
+
+The deploy job targets a GitHub environment named `devtest`; it is created
+automatically on first deploy (or pre-create it under **Settings →
+Environments** to attach protection rules).
 
 ---
 
