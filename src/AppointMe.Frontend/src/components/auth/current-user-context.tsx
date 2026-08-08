@@ -1,8 +1,6 @@
+import { CurrentUserContext } from './use-current-user';
 import { useGetCurrentUserSuspense } from '@/api/appointme';
-import { GetCurrentUserResponse } from '@/api/appointme.schemas';
-import { type ReactNode, createContext, use } from 'react';
-
-const CurrentUserContext = createContext<GetCurrentUserResponse | null>(null);
+import { type ReactNode } from 'react';
 
 export const CurrentUserProvider = ({ children }: { children: ReactNode }) => {
     const { data } = useGetCurrentUserSuspense();
@@ -11,13 +9,4 @@ export const CurrentUserProvider = ({ children }: { children: ReactNode }) => {
     }
 
     return <CurrentUserContext value={data}>{children}</CurrentUserContext>;
-};
-
-export const useCurrentUser = () => {
-    const context = use(CurrentUserContext);
-    if (context === null) {
-        throw new Error('useCurrentUser must be used within a CurrentUserProvider');
-    }
-
-    return context;
 };

@@ -1,7 +1,7 @@
 import { NavItem } from './nav-data';
 import { ProBadge } from './pro-badge';
 import { useActiveNavIds } from '@/app/router';
-import { useUserAccess } from '@/components/auth/user-access-context';
+import { useUserAccess } from '@/components/auth/use-user-access';
 import {
     SidebarGroup,
     SidebarGroupContent,

@@ -1,15 +1,8 @@
-import { useCurrentUser } from './current-user-context';
-import { CompanyMembership } from '@/api/appointme.schemas';
+import { CurrentCompanyContext } from './use-current-company';
+import { useCurrentUser } from './use-current-user';
 import { currentCompanyStore, useCurrentCompanyId } from '@/components/auth';
 import { useQueryClient } from '@tanstack/react-query';
-import { type ReactNode, createContext, use, useCallback, useEffect, useMemo } from 'react';
-
-interface CurrentCompanyContextValue {
-    currentCompany: CompanyMembership;
-    setCurrentCompany: (companyId: string) => Promise<void>;
-}
-
-const CurrentCompanyContext = createContext<CurrentCompanyContextValue | null>(null);
+import { type ReactNode, useCallback, useEffect, useMemo } from 'react';
 
 export const CurrentCompanyProvider = ({ children }: { children: ReactNode }) => {
     const queryClient = useQueryClient();
@@ -53,12 +46,4 @@ export const CurrentCompanyProvider = ({ children }: { children: ReactNode }) =>
             {children}
         </CurrentCompanyContext.Provider>
     );
-};
-
-export const useCurrentCompany = () => {
-    const context = use(CurrentCompanyContext);
-    if (context === null) {
-        throw new Error('useCurrentCompany must be used within a CurrentCompanyProvider');
-    }
-    return context;
 };

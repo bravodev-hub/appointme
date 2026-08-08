@@ -4,3 +4,6 @@ export * from './current-user-context';
 export * from './user-access-context';
 export * from './use-permission';
 export * from './can';
+export * from './use-current-user';
+export * from './use-user-access';
+export * from './use-current-company';
