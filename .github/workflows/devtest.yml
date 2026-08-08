@@ -1,3 +1,25 @@
+# CI/CD for AppointMe (GitHub Actions)
+#
+# Mirror of .gitlab-ci.yml — this repo is a SaaS template and both GitLab and
+# GitHub pipelines are supported.
+#
+# Flow:
+#   test           — build the solution and run all tests (every PR + main)
+#   build-image    — build the API container in ACR (az acr build, server-side) on main
+#   deploy-devtest — repoint the devtest Web App at the new image on main
+#
+# Azure auth is secret-less via GitHub OIDC federation: GitHub mints an ID token,
+# Azure trusts it through federated credentials on the CI identity.
+#
+# Required repo Actions secrets (Settings → Secrets and variables → Actions):
+#   AZURE_CLIENT_ID        clientId of the CI managed identity
+#   AZURE_TENANT_ID        Azure tenant ID
+#   AZURE_SUBSCRIPTION_ID  subscription holding the devtest resource group
+#   AZURE_RESOURCE_GROUP   e.g. rg-appointme-devtest
+#   ACR_NAME               ACR name (Bicep output containerRegistryName, no .azurecr.io)
+#   APP_SERVICE_NAME       Web App name (Bicep output)
+# See the one-time Azure setup in infra/README.md (GitHub OIDC section).
+
 name: devtest
 
 on:
@@ -10,13 +32,18 @@ permissions:
   id-token: write
   contents: read
 
+# Cancel superseded runs on PRs (mirrors GitLab `interruptible: true`).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
-  DOTNET_VERSION: '10.0.x'
-  NODE_VERSION: '22'
-  IMAGE_NAME: appointme-api
+  IMAGE_REPO: appointme-api
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
 
 jobs:
-  build-and-test:
+  test:
     name: Build and test
     runs-on: ubuntu-latest
     steps:
@@ -25,111 +52,104 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore AppointMe.sln
+
+      - name: Build
+        run: dotnet build AppointMe.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test AppointMe.sln -c Release --no-build --logger "console;verbosity=normal"
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: yarn
-          cache-dependency-path: src/AppointMe.Frontend/yarn.lock
-
-      - name: Restore .NET
-        run: dotnet restore AppointMe.sln
-
-      - name: Build .NET
-        run: dotnet build AppointMe.sln --no-restore -c Release
-
-      - name: Test
-        run: dotnet test AppointMe.sln --no-build -c Release --collect:"XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx"
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: '**/TestResults/**/*'
-          if-no-files-found: warn
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/AppointMe.Frontend/package-lock.json
 
       - name: Frontend install
         working-directory: src/AppointMe.Frontend
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Frontend lint
         working-directory: src/AppointMe.Frontend
-        run: yarn lint
+        run: npm run lint
 
       - name: Frontend build
         working-directory: src/AppointMe.Frontend
-        run: yarn build
+        run: npm run build
 
-  publish-image:
-    name: Build and push image
+  build-image:
+    name: Build image in ACR
     runs-on: ubuntu-latest
-    needs: build-and-test
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    outputs:
-      image_tag: ${{ steps.meta.outputs.tag }}
+    needs: test
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@v4
 
-      - name: Azure login
+      - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: ACR login
-        run: az acr login --name ${{ secrets.ACR_NAME }}
+      - name: Build image (az acr build)
+        run: |
+          az acr build \
+            --registry "${{ secrets.ACR_NAME }}" \
+            --image "$IMAGE_REPO:${GITHUB_SHA::8}" \
+            --image "$IMAGE_REPO:latest" \
+            --file src/AppointMe.Api/Dockerfile \
+            .
 
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Compute image tag
-        id: meta
-        run: echo "tag=${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: src/AppointMe.Api/Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ${{ steps.meta.outputs.tag }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  deploy:
-    name: Deploy to App Service
+  deploy-devtest:
+    name: Deploy to devtest
     runs-on: ubuntu-latest
-    needs: publish-image
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    environment: devtest
+    needs: build-image
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # environment.url cannot reference the secrets context, so it comes from a
+    # step output instead.
+    environment:
+      name: devtest
+      url: ${{ steps.app-url.outputs.url }}
     steps:
-      - name: Azure login
+      - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Update container image on App Service
+      - name: Point Web App at new image
         run: |
           az webapp config container set \
-            --name ${{ secrets.APP_SERVICE_NAME }} \
-            --resource-group ${{ secrets.RESOURCE_GROUP }} \
-            --container-image-name ${{ needs.publish-image.outputs.image_tag }}
+            --name "${{ secrets.APP_SERVICE_NAME }}" \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --container-image-name "${{ secrets.ACR_NAME }}.azurecr.io/$IMAGE_REPO:${GITHUB_SHA::8}"
 
-      - name: Restart App Service
-        run: az webapp restart --name ${{ secrets.APP_SERVICE_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }}
-
-      - name: Show URL
+      # Force a pull of the new tag; EF migrations run on container startup.
+      - name: Restart Web App
         run: |
-          URL=$(az webapp show --name ${{ secrets.APP_SERVICE_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} --query defaultHostName -o tsv)
-          echo "## Deployed" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Image: \`${{ needs.publish-image.outputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- URL: https://$URL" >> "$GITHUB_STEP_SUMMARY"
+          az webapp restart \
+            --name "${{ secrets.APP_SERVICE_NAME }}" \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}"
+
+      - name: Resolve app URL
+        id: app-url
+        run: |
+          HOST=$(az webapp show \
+            --name "${{ secrets.APP_SERVICE_NAME }}" \
+            --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+            --query defaultHostName -o tsv)
+          echo "url=https://$HOST" >> "$GITHUB_OUTPUT"
