@@ -6,7 +6,7 @@ export interface BreadcrumbItem {
 }
 
 interface BreadcrumbHandle {
-    breadcrumb: string | ((match: any) => string);
+    breadcrumb: string | ((match: UIMatch) => string);
     group?: boolean;
 }
 

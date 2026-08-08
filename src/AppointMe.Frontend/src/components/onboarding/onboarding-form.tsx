@@ -88,7 +88,7 @@ export const OnboardingForm = ({ className, ...props }: ComponentProps<'form'>) 
             await onboarding({ data });
             await queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
             navigate('/');
-        } catch (error: any) {
+        } catch {
             setError('root', {
                 type: 'server',
                 message: 'Something went wrong. Please try again.',

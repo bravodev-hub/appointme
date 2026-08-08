@@ -1,4 +1,5 @@
 import { getGetTeamQueryKey, useInviteEmployee } from '@/api/appointme.ts';
+import { isAxiosError } from 'axios';
 import { RoleCheckboxGroup } from './role-checkbox-group';
 import { roleSchema } from './roles';
 import { Role } from '@/api/appointme.schemas.ts';
@@ -57,25 +58,27 @@ export const InviteEmployeeDialog = ({ resolve, visible }: IModalProps<void>) =>
             toast.success('Invitation sent successfully');
             reset();
             resolve();
-        } catch (error: any) {
-            const code = error.response?.data?.code;
-            switch (error.response?.status) {
-                case 409:
-                    if (code === 'employee_already_exists') {
-                        setError('email', {
-                            type: 'server',
-                            message: 'An employee with this email already exists',
-                        });
-                        return;
-                    }
-                    if (code === 'invitation_already_exists') {
-                        setError('email', {
-                            type: 'server',
-                            message: 'A pending invitation already exists for this email',
-                        });
-                        return;
-                    }
-                    break;
+        } catch (error) {
+            if (isAxiosError(error)) {
+                const code = error.response?.data?.code;
+                switch (error.response?.status) {
+                    case 409:
+                        if (code === 'employee_already_exists') {
+                            setError('email', {
+                                type: 'server',
+                                message: 'An employee with this email already exists',
+                            });
+                            return;
+                        }
+                        if (code === 'invitation_already_exists') {
+                            setError('email', {
+                                type: 'server',
+                                message: 'A pending invitation already exists for this email',
+                            });
+                            return;
+                        }
+                        break;
+                }
             }
 
             setError('root', {

@@ -1,4 +1,5 @@
 import { useSignup } from '@/api/appointme.ts';
+import { isAxiosError } from 'axios';
 import G from '@/assets/g.svg?react';
 import { Spinner } from '@/components/ui';
 import { Button } from '@/components/ui/button';
@@ -34,30 +35,32 @@ export const SignupForm = ({ className, ...props }: ComponentProps<'form'>) => {
         try {
             await signup({ data });
             navigate(`/auth/verify-email/${data.email}`);
-        } catch (error: any) {
-            const code = error.response?.data?.code;
-            const status = error.response?.status;
+        } catch (error) {
+            if (isAxiosError(error)) {
+                const code = error.response?.data?.code;
+                const status = error.response?.status;
 
-            if (status === 409 && code === 'email_already_exists') {
-                setError(
-                    'email',
-                    { type: 'server', message: 'This email is already registered' },
-                    { shouldFocus: true },
-                );
-                return;
-            }
+                if (status === 409 && code === 'email_already_exists') {
+                    setError(
+                        'email',
+                        { type: 'server', message: 'This email is already registered' },
+                        { shouldFocus: true },
+                    );
+                    return;
+                }
 
-            if (status === 400 && code === 'invalid_email_for_idp') {
-                setError(
-                    'email',
-                    {
-                        type: 'server',
-                        message:
-                            'This email format isn’t supported (e.g. “+” aliases). Please use a different email.',
-                    },
-                    { shouldFocus: true },
-                );
-                return;
+                if (status === 400 && code === 'invalid_email_for_idp') {
+                    setError(
+                        'email',
+                        {
+                            type: 'server',
+                            message:
+                                'This email format isn’t supported (e.g. “+” aliases). Please use a different email.',
+                        },
+                        { shouldFocus: true },
+                    );
+                    return;
+                }
             }
 
             setError('root', {

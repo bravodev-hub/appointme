@@ -13,6 +13,8 @@ import { Table as ReactTable, Row, RowData, flexRender } from '@tanstack/react-t
 import { ReactNode } from 'react';
 
 declare module '@tanstack/react-table' {
+    // The type parameters must match TanStack's declaration to merge, even though unused here.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     interface ColumnMeta<TData extends RowData, TValue = unknown> {
         className?: string;
         /** Overrides `className` for header cells only (e.g. different sticky background). */

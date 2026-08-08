@@ -11,7 +11,7 @@ interface IModalInstance<T> {
 }
 
 export const ModalDialogProvider = ({ children }: PropsWithChildren) => {
-    const [modals, setModals] = useState<IModalInstance<any>[]>([]);
+    const [modals, setModals] = useState<IModalInstance<unknown>[]>([]);
 
     const close = useCallback((id: string) => {
         setModals(modals => modals.map(modal => (modal.id === id ? { ...modal, open: false } : modal)));
@@ -33,7 +33,7 @@ export const ModalDialogProvider = ({ children }: PropsWithChildren) => {
                         resolve(value);
                     },
                 };
-                setModals(modals => [...modals, instance]);
+                setModals(modals => [...modals, instance as IModalInstance<unknown>]);
             });
         },
         [close],
