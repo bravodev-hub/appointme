@@ -1,12 +1,15 @@
 # AppointMe — Azure devtest infrastructure
 
 Bicep modules that provision a single `devtest` environment for AppointMe.
+Deployment runs from **GitHub Actions** (`.github/workflows/devtest.yml`); a
+GitLab pipeline (`.gitlab-ci.yml`) is maintained as an alternative for teams
+hosting the template on GitLab — see [GitLab setup](#4-gitlab-setup-alternative).
 
 ## What this provisions
 
 | Module                          | Resource                                                    |
 | ------------------------------- | ----------------------------------------------------------- |
-| `modules/log-analytics.bicep`   | Log Analytics workspace (PerGB2018, 30-day retention)       |
+| `modules/log-analytics.bicep`   | Log Analytics workspace (PerGB2018, 30-day retention, 0.5 GB/day ingestion cap) |
 | `modules/app-insights.bicep`    | Workspace-linked Application Insights                       |
 | `modules/key-vault.bicep`       | Key Vault (RBAC mode, standard tier, soft-delete on)        |
 | `modules/sql.bicep`             | Azure SQL Server + database (`Basic`) + `Allow Azure services` firewall rule |
@@ -15,6 +18,7 @@ Bicep modules that provision a single `devtest` environment for AppointMe.
 | `modules/app-service-plan.bicep` | Linux App Service Plan (F1, free)                          |
 | `modules/app-service.bicep`     | Web App for Containers + system-assigned managed identity + Key Vault references for secrets |
 | `modules/role-assignments.bicep` | `AcrPull` + `Key Vault Secrets User` on the App Service identity |
+| `modules/custom-domain.bicep` + `custom-domain-ssl-binding.bicep` | *(optional, B1+ plans only)* hostname binding + free App Service Managed Certificate — see [Custom domain](#custom-domain-on-the-free-tier) |
 
 ## What this does NOT provision
 
@@ -23,7 +27,7 @@ Outside the Bicep deliberately:
 - **Microsoft Entra External ID tenant**, user flows, and app registration. Tenant creation is portal-only; app registration on an existing tenant is doable via the Graph API but noisy in Bicep. See [Set up Entra External ID](#1-set-up-microsoft-entra-external-id) below.
 - **Keycloak** — local dev only. The app's `Authentication:Provider` config selects between `Keycloak` (local) and `EntraExternalId` (devtest/prod).
 - **Secrets in Key Vault** — the operator (or a follow-up script) seeds them after first deploy.
-- **Custom domain + DNS** — on F1, App Service custom-domain bindings are not available; devtest serves `app.appointme.dev` through a Cloudflare Worker host-rewrite proxy (`infra/cloudflare-worker/`, deploy with `npx wrangler deploy`). On B1+ you can instead bind the domain directly via `modules/custom-domain.bicep` (App Service Managed Certificate).
+- **Custom domain + DNS** — on F1, App Service custom-domain bindings are not available; devtest serves the custom domain through a Cloudflare Worker instead — see [Custom domain](#custom-domain-on-the-free-tier).
 - **WAF, private endpoints, VNet integration, customer-managed keys** — production hardening, see [the prod-hardening checklist](#prod-hardening-checklist).
 - **Deployment slots** — requires Standard (S1) plan or higher; devtest runs F1.
 
@@ -37,20 +41,11 @@ Outside the Bicep deliberately:
 2. In the new tenant, **App registrations → New registration**:
    - Name: `appointme-api-devtest`
    - Supported account types: **Accounts in any organizational directory and personal Microsoft accounts** (or restricted, per your policy).
-   - Redirect URI (Web): `https://<your-app-service>.azurewebsites.net/signin-oidc` — leave blank for now if you haven't deployed yet; update after first deploy.
+   - Redirect URI (Web): `https://<your-app-service>.azurewebsites.net/signin-oidc` — leave blank for now if you haven't deployed yet; update after first deploy. If you front the app with a custom domain (see [Custom domain](#custom-domain-on-the-free-tier)), also register `https://<your-public-host>/signin-oidc`.
 3. **Authentication → Implicit grant and hybrid flows** — leave both off (we use authorization code flow).
-4. **Certificates & secrets → New client secret** — create one, copy the value immediately (paste into Key Vault in step 5).
+4. **Certificates & secrets → New client secret** — create one, copy the value immediately (paste into Key Vault when [seeding secrets](#seed-key-vault)).
 5. **Expose an API → Add a scope** — define a scope like `access_as_user`. Note the App ID URI (e.g. `api://<client-id>`) — this is your `ApiAudience`.
 6. **User flows → New user flow** — create a Sign-up and sign-in flow. Wire it to the app registration.
-
-You'll need these values for Bicep + Key Vault:
-
-| Value                          | Where it comes from                                |
-| ------------------------------ | -------------------------------------------------- |
-| `entraExternalIdAuthority`     | `https://<tenant>.ciamlogin.com/<tenantId>/v2.0`  |
-| `entraExternalIdClientId`      | App registration → Application (client) ID         |
-| `entraExternalIdApiAudience`   | Expose an API → Application ID URI                 |
-| `EntraExternalIdClientSecret`  | Certificates & secrets → secret value (Key Vault) |
 
 The non-secret identifiers (authority, client ID, API audience, tenant ID) go in `src/AppointMe.Api/appsettings.Devtest.json`. Copy the template and fill in your tenant's values:
 
@@ -58,30 +53,25 @@ The non-secret identifiers (authority, client ID, API audience, tenant ID) go in
 cp src/AppointMe.Api/appsettings.Devtest.example.json src/AppointMe.Api/appsettings.Devtest.json
 ```
 
-The **client secret is never committed** — it lives only in Key Vault (step 5) and is injected as the `Authentication__EntraExternalId__ClientSecret` app setting via a Key Vault reference.
+| Value           | Where it comes from                                |
+| --------------- | -------------------------------------------------- |
+| `Authority`     | `https://<tenant>.ciamlogin.com/<tenantId>/v2.0`  |
+| `ClientId`      | App registration → Application (client) ID         |
+| `ApiAudience`   | Expose an API → Application ID URI                 |
 
-### 2. Bootstrap GitLab OIDC federated identity
+The **client secret is never committed** — it lives only in Key Vault and is injected as the `Authentication__EntraExternalId__ClientSecret` app setting via a Key Vault reference.
 
-The GitLab pipeline (`.gitlab-ci.yml`) authenticates to Azure with OIDC federated credentials — no static client secrets in the repo or CI. (The GitHub pipeline reuses the same identity — see step 4.)
+### 2. Create the CI deployer identity
+
+Both CI providers authenticate to Azure with OIDC federated credentials on one
+user-assigned managed identity — no static client secrets in the repo or CI.
 
 ```bash
 # Create a user-assigned managed identity for the CI deployer
 az identity create \
   --name id-appointme-devtest-ci \
   --resource-group rg-appointme-devtest
-
-# Subject claim restricts which pipeline can use the identity. Lock to the main branch.
-# GitLab's ID-token `sub` claim format is: project_path:<group>/<project>:ref_type:branch:ref:<branch>
-az identity federated-credential create \
-  --identity-name id-appointme-devtest-ci \
-  --resource-group rg-appointme-devtest \
-  --name gitlab-main \
-  --issuer https://gitlab.com \
-  --subject "project_path:bravo-dev/appointme:ref_type:branch:ref:main" \
-  --audiences api://AzureADTokenExchange
 ```
-
-The `--audiences` value must match the `aud` requested in the `id_tokens` block of `.gitlab-ci.yml` (`api://AzureADTokenExchange`).
 
 Grant the identity the roles it needs to do its job:
 
@@ -98,30 +88,10 @@ az role assignment create --assignee $PRINCIPAL_ID --role Contributor --scope $(
 az role assignment create --assignee $PRINCIPAL_ID --role "Website Contributor" --scope $(az webapp show -n <web-app-name> -g rg-appointme-devtest --query id -o tsv)
 ```
 
-### 3. GitLab CI/CD variables
+### 3. GitHub setup
 
-Add these under **Settings → CI/CD → Variables**. Mark them **Protected** (exposed only to protected branches/tags — make sure `main` is a protected branch), and **Masked** where the value allows:
-
-| Variable                | Value                                                        |
-| ----------------------- | ------------------------------------------------------------ |
-| `AZURE_CLIENT_ID`       | `clientId` of the user-assigned identity (`az identity show -n id-appointme-devtest-ci -g rg-appointme-devtest --query clientId -o tsv`) |
-| `AZURE_TENANT_ID`       | Your Azure tenant ID                                         |
-| `AZURE_SUBSCRIPTION_ID` | Subscription holding the devtest resource group              |
-| `AZURE_RESOURCE_GROUP`  | `rg-appointme-devtest`                                       |
-| `ACR_NAME`              | ACR name from Bicep output `containerRegistryName` (no `.azurecr.io`) |
-| `APP_SERVICE_NAME`      | Web App name from Bicep output (no URL, just the name)       |
-
-The pipeline derives the ACR login server as `$ACR_NAME.azurecr.io`, so no separate variable is needed for it.
-
-### 4. Bootstrap GitHub OIDC federated identity
-
-The GitHub Actions pipeline (`.github/workflows/devtest.yml`) authenticates the
-same way — OIDC federated credentials on the **same** CI identity created in
-step 2. Both CI providers are supported side by side; add whichever federated
-credentials match where you host the repo.
-
-GitHub needs **two** federated credentials, because a job that targets a GitHub
-*environment* presents a different `sub` claim than a plain branch job:
+**Federated credentials.** GitHub needs **two**, because a job that targets a
+GitHub *environment* presents a different `sub` claim than a plain branch job:
 
 ```bash
 # For the build-image job (branch-scoped subject)
@@ -143,14 +113,10 @@ az identity federated-credential create \
   --audiences api://AzureADTokenExchange
 ```
 
-The identity's role assignments from step 2 (Contributor on the ACR, Website
-Contributor on the Web App) cover the GitHub pipeline too — nothing extra to
-grant.
+The `--audiences` value must match what `azure/login` requests (`api://AzureADTokenExchange`, its default).
 
-### 5. GitHub Actions secrets
-
-Add these under **Settings → Secrets and variables → Actions** (or via
-`gh secret set`). Names are identical to the GitLab variables in step 3:
+**Actions secrets** — add under **Settings → Secrets and variables → Actions**
+(or via `gh secret set`):
 
 | Secret                  | Value                                                        |
 | ----------------------- | ------------------------------------------------------------ |
@@ -161,9 +127,45 @@ Add these under **Settings → Secrets and variables → Actions** (or via
 | `ACR_NAME`              | ACR name from Bicep output `containerRegistryName` (no `.azurecr.io`) |
 | `APP_SERVICE_NAME`      | Web App name from Bicep output (no URL, just the name)       |
 
-The deploy job targets a GitHub environment named `devtest`; it is created
-automatically on first deploy (or pre-create it under **Settings →
-Environments** to attach protection rules).
+The pipeline derives the ACR login server as `$ACR_NAME.azurecr.io`, so no separate secret is needed for it.
+
+**Actions variables** — optional, same settings page:
+
+| Variable         | Value                                                              |
+| ---------------- | ------------------------------------------------------------------ |
+| `APP_PUBLIC_URL` | Public URL shown on the deployments page (e.g. `https://app.example.com`). A *variable*, not a secret — GitHub refuses secret-derived environment URLs. |
+
+**Environment.** The deploy job targets a GitHub environment named `devtest`;
+it is created automatically on first deploy (or pre-create it under
+**Settings → Environments** to attach protection rules). GitHub Actions must
+be enabled on the repo (**Settings → Actions**) — fresh org repos may have it
+disabled, which leaves dispatched runs stuck in `queued` forever.
+
+### 4. GitLab setup (alternative)
+
+The GitLab pipeline (`.gitlab-ci.yml`) reuses the same identity from step 2 —
+add a GitLab federated credential alongside the GitHub ones (both CI providers
+work side by side):
+
+```bash
+# GitLab's ID-token `sub` claim format is: project_path:<group>/<project>:ref_type:branch:ref:<branch>
+az identity federated-credential create \
+  --identity-name id-appointme-devtest-ci \
+  --resource-group rg-appointme-devtest \
+  --name gitlab-main \
+  --issuer https://gitlab.com \
+  --subject "project_path:<group>/<project>:ref_type:branch:ref:main" \
+  --audiences api://AzureADTokenExchange
+```
+
+The `--audiences` value must match the `aud` requested in the `id_tokens`
+block of `.gitlab-ci.yml` (`api://AzureADTokenExchange`).
+
+**CI/CD variables** — add under **Settings → CI/CD → Variables**, same names
+and values as the GitHub secrets table above (`AZURE_CLIENT_ID`,
+`AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`,
+`ACR_NAME`, `APP_SERVICE_NAME`). Mark them **Protected** (make sure `main` is
+a protected branch) and **Masked** where the value allows.
 
 ---
 
@@ -171,14 +173,18 @@ Environments** to attach protection rules).
 
 ```bash
 # 1. Create the resource group
-az group create --name rg-appointme-devtest --location uksouth
+az group create --name rg-appointme-devtest --location westeurope
 
-# 2. Provide secrets/params via env vars (do NOT commit real values)
+# 2. Provide the SQL admin password via env var (do NOT commit real values)
 export SQL_ADMIN_PASSWORD='<a-strong-password>'
-export ENTRA_AUTHORITY='https://<tenant>.ciamlogin.com/<tenantId>/v2.0'
-export ENTRA_CLIENT_ID='<client-id>'
-export ENTRA_API_AUDIENCE='api://<client-id>'
-export HANGFIRE_ADMINS='you@example.com,colleague@example.com'
+
+# Optional overrides read by main.bicepparam:
+#   INITIAL_CONTAINER_IMAGE — placeholder image for the very first deploy
+#                             (default: mcr.microsoft.com/azuredocs/aci-helloworld:latest)
+#   CUSTOM_HOSTNAME         — binds a custom domain via App Service Managed
+#                             Certificate. Requires a B1+ plan; leave UNSET on
+#                             the default F1 plan (bindings are not supported
+#                             there — see "Custom domain on the free tier").
 
 # 3. Preview the plan
 az deployment group what-if \
@@ -194,7 +200,25 @@ az deployment group create \
   --query 'properties.outputs'
 ```
 
-The first deploy uses `mcr.microsoft.com/azuredocs/aci-helloworld:latest` as a placeholder so App Service can start before any AppointMe image exists. CI replaces the image on the next `main` push.
+The first deploy uses a public hello-world container as a placeholder so App Service can start before any AppointMe image exists. CI replaces the image on the next `main` push.
+
+## Custom domain on the free tier
+
+The F1 plan does not allow App Service hostname bindings, so devtest serves
+its custom domain entirely at the Cloudflare edge:
+
+- Cloudflare terminates TLS for the domain (proxied DNS record).
+- A Worker (`infra/cloudflare-worker/`, deploy with `npx wrangler deploy`)
+  intercepts `your-host/*`, forwards to the `*.azurewebsites.net` origin, and
+  carries the public hostname in an `X-Original-Host` header.
+- The app maps that header via `ForwardedHeadersOptions` in `Program.cs`, so
+  OIDC redirects and generated URLs stay on the public domain.
+- Set the `APP_PUBLIC_URL` Actions variable (step 3) so the GitHub
+  deployments page links to the right URL.
+
+On a B1+ plan you can skip all of this: set `CUSTOM_HOSTNAME` and let
+`modules/custom-domain.bicep` bind the domain with a free App Service Managed
+Certificate.
 
 ## Seed Key Vault
 
