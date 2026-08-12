@@ -5,7 +5,15 @@ import { SubmitButton } from '@/components/form';
 import { IModalProps } from '@/components/modal-dialog';
 import { Avatar, AvatarFallback, Button, Input } from '@/components/ui';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -93,6 +101,7 @@ export const ScheduleAppointmentDialog = ({ resolve, visible, initialSlot }: Sch
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Schedule appointment</DialogTitle>
+                    <DialogDescription>Pick a customer, staff member, and time slot.</DialogDescription>
                 </DialogHeader>
                 <form id='schedule-appointment-form' onSubmit={handleSubmit(onSubmit)}>
                     <FieldGroup>
