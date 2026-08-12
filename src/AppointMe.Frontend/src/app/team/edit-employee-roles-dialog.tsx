@@ -15,7 +15,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { FieldError, FieldGroup, FieldLegend, FieldSet } from '@/components/ui/field';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
@@ -81,8 +81,8 @@ export const EditEmployeeRolesDialog = ({ resolve, visible, employee }: EditEmpl
                             name='roles'
                             control={control}
                             render={({ field, fieldState }) => (
-                                <Field data-invalid={fieldState.invalid}>
-                                    <FieldLabel>Roles</FieldLabel>
+                                <FieldSet data-invalid={fieldState.invalid}>
+                                    <FieldLegend variant='label'>Roles</FieldLegend>
                                     <RoleCheckboxGroup
                                         value={field.value}
                                         onChange={field.onChange}
@@ -92,7 +92,7 @@ export const EditEmployeeRolesDialog = ({ resolve, visible, employee }: EditEmpl
                                         }
                                     />
                                     {fieldState.error && <FieldError errors={[fieldState.error]} />}
-                                </Field>
+                                </FieldSet>
                             )}
                         />
                         {formState.errors.root && <FieldError errors={[formState.errors.root]} />}

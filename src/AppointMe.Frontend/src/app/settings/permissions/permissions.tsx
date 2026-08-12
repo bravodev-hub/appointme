@@ -109,6 +109,8 @@ export const Permissions = () => {
                     <SearchIcon />
                 </InputGroupAddon>
                 <InputGroupInput
+                    id='permission-search'
+                    name='permission-search'
                     type='search'
                     aria-label='Search permissions'
                     placeholder='Search permissions'

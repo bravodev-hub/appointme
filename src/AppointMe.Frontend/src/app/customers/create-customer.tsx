@@ -125,9 +125,9 @@ export const CreateCustomer = () => {
                             control={control}
                             render={({ field, fieldState }) => (
                                 <Field data-invalid={fieldState.invalid}>
-                                    <FieldLabel>Gender</FieldLabel>
-                                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
-                                        <SelectTrigger className='w-full'>
+                                    <FieldLabel htmlFor='gender'>Gender</FieldLabel>
+                                    <Select name='gender' value={field.value ?? ''} onValueChange={field.onChange}>
+                                        <SelectTrigger id='gender' className='w-full'>
                                             <SelectValue placeholder='Select gender' />
                                         </SelectTrigger>
                                         <SelectContent>

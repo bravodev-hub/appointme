@@ -110,12 +110,13 @@ export const ScheduleAppointmentDialog = ({ resolve, visible, initialSlot }: Sch
                             control={control}
                             render={({ field, fieldState }) => (
                                 <Field data-invalid={fieldState.invalid}>
-                                    <FieldLabel>
+                                    <FieldLabel htmlFor='client'>
                                         Client <span className='text-destructive'>*</span>
                                     </FieldLabel>
                                     <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
                                         <PopoverTrigger asChild>
                                             <Button
+                                                id='client'
                                                 type='button'
                                                 variant='outline'
                                                 role='combobox'
@@ -225,7 +226,7 @@ export const ScheduleAppointmentDialog = ({ resolve, visible, initialSlot }: Sch
                                     <FieldLabel htmlFor='providerId'>
                                         Staff <span className='text-destructive'>*</span>
                                     </FieldLabel>
-                                    <Select value={field.value} onValueChange={field.onChange}>
+                                    <Select name='providerId' value={field.value} onValueChange={field.onChange}>
                                         <SelectTrigger id='providerId' aria-label='Staff' className='w-full'>
                                             <SelectValue placeholder='Select staff' />
                                         </SelectTrigger>

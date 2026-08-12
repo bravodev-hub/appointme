@@ -80,7 +80,7 @@ export const RescheduleAppointmentDialog = ({ resolve, visible, appointment }: R
                                     <FieldLabel htmlFor='providerId'>
                                         Service provider <span className='text-destructive'>*</span>
                                     </FieldLabel>
-                                    <Select value={field.value} onValueChange={field.onChange}>
+                                    <Select name='providerId' value={field.value} onValueChange={field.onChange}>
                                         <SelectTrigger id='providerId' aria-label='Service provider' className='w-full'>
                                             <SelectValue placeholder='Select provider' />
                                         </SelectTrigger>

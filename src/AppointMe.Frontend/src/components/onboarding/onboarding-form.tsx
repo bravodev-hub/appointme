@@ -132,7 +132,7 @@ export const OnboardingForm = ({ className, ...props }: ComponentProps<'form'>) 
                             render={({ field, fieldState }) => (
                                 <Field data-invalid={fieldState.invalid}>
                                     <FieldLabel htmlFor='timeZone'>Timezone</FieldLabel>
-                                    <Select value={field.value} onValueChange={field.onChange}>
+                                    <Select name='timeZone' value={field.value} onValueChange={field.onChange}>
                                         <SelectTrigger id='timeZone'>
                                             <SelectValue placeholder='Select timezone' />
                                         </SelectTrigger>

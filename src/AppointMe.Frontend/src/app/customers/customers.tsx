@@ -95,6 +95,10 @@ export const Customers = () => {
                         <SearchIcon />
                     </InputGroupAddon>
                     <InputGroupInput
+                        id='customer-search'
+                        name='customer-search'
+                        type='search'
+                        aria-label='Search customers'
                         placeholder='Search by name, email...'
                         value={search}
                         onChange={event => setSearch(event.target.value)}

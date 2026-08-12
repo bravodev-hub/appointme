@@ -16,7 +16,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
@@ -123,15 +123,15 @@ export const InviteEmployeeDialog = ({ resolve, visible }: IModalProps<void>) =>
                             name='roles'
                             control={control}
                             render={({ field, fieldState }) => (
-                                <Field data-invalid={fieldState.invalid}>
-                                    <FieldLabel>Roles</FieldLabel>
+                                <FieldSet data-invalid={fieldState.invalid}>
+                                    <FieldLegend variant='label'>Roles</FieldLegend>
                                     <RoleCheckboxGroup
                                         value={field.value}
                                         onChange={field.onChange}
                                         isRoleDisabled={role => role === Role.Owner && !canManageOwners}
                                     />
                                     {fieldState.error && <FieldError errors={[fieldState.error]} />}
-                                </Field>
+                                </FieldSet>
                             )}
                         />
                         {formState.errors.root && <FieldError errors={[formState.errors.root]} />}

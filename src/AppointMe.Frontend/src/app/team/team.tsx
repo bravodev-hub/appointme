@@ -122,6 +122,10 @@ export const Team = () => {
                         <SearchIcon />
                     </InputGroupAddon>
                     <InputGroupInput
+                        id='team-search'
+                        name='team-search'
+                        type='search'
+                        aria-label='Search team members'
                         placeholder='Search by name, email...'
                         value={search}
                         onChange={event => setSearch(event.target.value)}
