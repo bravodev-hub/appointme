@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
         plugins: [svgr(), react(), tailwindcss(), mkcert()],
         resolve: {
             alias: {
-                '@': path.resolve(__dirname, './src'),
+                '@': path.resolve(import.meta.dirname, './src'),
             },
         },
         server: {
