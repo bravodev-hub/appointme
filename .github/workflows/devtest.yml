@@ -1,8 +1,5 @@
 # CI/CD for AppointMe (GitHub Actions)
 #
-# Mirror of .gitlab-ci.yml — this repo is a SaaS template and both GitLab and
-# GitHub pipelines are supported.
-#
 # Flow:
 #   test           — build the solution and run all tests (every PR + main)
 #   build-image    — build the API container in ACR (az acr build, server-side) on main
@@ -32,7 +29,7 @@ permissions:
   id-token: write
   contents: read
 
-# Cancel superseded runs on PRs (mirrors GitLab `interruptible: true`).
+# Cancel superseded runs on PRs.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

@@ -1,6 +1,5 @@
-# SAST for AppointMe (GitHub Actions) — parity with the GitLab pipeline's
-# Security/SAST.gitlab-ci.yml include. Results appear under
-# Security → Code scanning. Free for public repos.
+# SAST for AppointMe. Results appear under Security → Code scanning.
+# Free for public repos.
 
 name: codeql
 
