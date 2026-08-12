@@ -20,7 +20,6 @@ export default defineConfig({
                 },
             },
             clean: true,
-            prettier: true,
         },
         hooks: {
             afterAllFilesWrite: 'prettier --write',
