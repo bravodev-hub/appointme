@@ -4,7 +4,7 @@ import { queryClient } from '@/lib/query-client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { StrictMode } from 'react';
-import { RouterProvider } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 
 export const App = () => {
     return (

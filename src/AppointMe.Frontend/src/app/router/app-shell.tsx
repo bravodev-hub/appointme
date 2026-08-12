@@ -1,7 +1,7 @@
 import { CurrentUserProvider, useCurrentUser } from '@/components/auth';
 import { Spinner } from '@/components/ui';
 import { Suspense } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router';
 
 type UserState = 'anonymous' | 'needs-onboarding' | 'has-invitations' | 'active';
 

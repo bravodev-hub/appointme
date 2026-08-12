@@ -14,7 +14,7 @@ import { ErrorScreen } from '@/components/error';
 import { ModalDialogProvider } from '@/components/modal-dialog';
 import { Spinner } from '@/components/ui';
 import { Suspense } from 'react';
-import { Navigate, createBrowserRouter } from 'react-router-dom';
+import { Navigate, createBrowserRouter } from 'react-router';
 
 export const router = createBrowserRouter([
     {

@@ -1,6 +1,6 @@
 import { ConfirmDialog, useModalDialog } from '@/components/modal-dialog';
 import { useEffect } from 'react';
-import { useBlocker } from 'react-router-dom';
+import { useBlocker } from 'react-router';
 
 interface DirtyNavigationGuardOptions {
     when: boolean;

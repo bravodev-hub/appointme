@@ -11,7 +11,7 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 interface NavMainProps {
     items: NavItem[];

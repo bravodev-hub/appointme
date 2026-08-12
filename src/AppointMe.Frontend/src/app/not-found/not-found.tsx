@@ -1,5 +1,5 @@
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 export const NotFound = () => {
     return (

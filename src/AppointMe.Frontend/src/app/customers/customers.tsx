@@ -17,7 +17,7 @@ import { RowSelectionState, VisibilityState, getCoreRowModel, useReactTable } fr
 import { PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
 export const Customers = () => {

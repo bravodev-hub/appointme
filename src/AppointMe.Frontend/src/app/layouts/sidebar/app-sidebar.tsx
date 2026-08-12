@@ -14,7 +14,7 @@ import {
     useSidebar,
 } from '@/components/ui';
 import { ComponentProps } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
     const { isMobile, setOpenMobile } = useSidebar();

@@ -2,7 +2,7 @@ import { Footer } from './footer';
 import { Header } from './header';
 import { AppSidebar } from './sidebar';
 import { SidebarInset, SidebarProvider, Toaster } from '@/components/ui';
-import { Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router';
 
 export const Layout = () => {
     return (

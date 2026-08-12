@@ -12,7 +12,7 @@ import {
     SidebarTrigger,
 } from '@/components/ui';
 import { Fragment } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 export const Header = () => {
     const breadcrumbs = useBreadcrumbs();

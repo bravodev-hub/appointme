@@ -1,4 +1,4 @@
-import { UIMatch, useMatches } from 'react-router-dom';
+import { UIMatch, useMatches } from 'react-router';
 
 export interface BreadcrumbItem {
     title: string;

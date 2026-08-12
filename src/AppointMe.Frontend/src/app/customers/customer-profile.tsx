@@ -6,7 +6,7 @@ import { useModalDialog } from '@/components/modal-dialog';
 import { Avatar, AvatarFallback, Button, Skeleton } from '@/components/ui';
 import { isAxiosError } from 'axios';
 import { ReactNode } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router';
 
 const Field = ({ label, value }: { label: string; value: ReactNode }) => (
     <div>
