@@ -63,4 +63,28 @@ public sealed class CustomersRepository(IDbConnectionFactory connectionFactory)
             .QueryWithPaginationAsync<CustomerRecord>(template.RawSql, template.Parameters);
         return records.Select(record => record.ToDto()).ToPagedResult(pagination, totalCount);
     }
+
+    public async Task<IReadOnlyList<DateTimeOffset>> GetRegistrationDates(DateTimeOffsetPeriod range,
+        CompanyId companyId, CancellationToken cancellationToken)
+    {
+        using var connection = await connectionFactory.OpenConnectionAsync(cancellationToken);
+        var commandDefinition = new CommandDefinition(
+            """
+            SELECT
+                [RegistrationDate]
+            FROM [crm].[Customers]
+            WHERE
+                [CompanyId] = @CompanyId
+                AND [IsDeleted] = 0
+                AND [RegistrationDate] >= @From
+                AND [RegistrationDate] < @To
+            """, new
+            {
+                CompanyId = companyId.Value,
+                From = range.Start,
+                To = range.End
+            }, cancellationToken: cancellationToken);
+        var results = await connection.QueryAsync<DateTimeOffset>(commandDefinition);
+        return results.ToList();
+    }
 }

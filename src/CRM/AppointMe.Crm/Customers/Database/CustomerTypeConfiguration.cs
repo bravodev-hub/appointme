@@ -53,6 +53,9 @@ public sealed class CustomerTypeConfiguration : IEntityTypeConfiguration<Custome
         builder.Property(customer => customer.IsDeleted)
             .IsRequired();
 
+        builder.HasIndex(customer => new { customer.CompanyId, customer.RegistrationDate })
+            .HasFilter("[IsDeleted] = 0");
+
         builder.Property<string>("SearchKey")
             .HasComputedColumnSql(
                 "LOWER(CONCAT([FirstName], ' ', ISNULL([LastName], ''), ' ', ISNULL([Email], '')))",

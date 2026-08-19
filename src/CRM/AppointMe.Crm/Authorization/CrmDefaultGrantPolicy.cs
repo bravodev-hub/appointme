@@ -12,12 +12,14 @@ public sealed class CrmDefaultGrantPolicy : IDefaultGrantPolicy
             CustomerPermissions.View,
             CustomerPermissions.Create,
             CustomerPermissions.Update,
-            CustomerPermissions.Delete
+            CustomerPermissions.Delete,
+            CustomerPermissions.ViewStatistics
         ),
         new(Role.Manager,
             CustomerPermissions.View,
             CustomerPermissions.Create,
-            CustomerPermissions.Update
+            CustomerPermissions.Update,
+            CustomerPermissions.ViewStatistics
         ),
         new(Role.Staff,
             CustomerPermissions.View

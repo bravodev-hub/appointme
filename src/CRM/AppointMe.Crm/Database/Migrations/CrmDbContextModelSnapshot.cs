@@ -18,7 +18,7 @@ namespace AppointMe.Crm.Database.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("crm")
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -60,6 +60,9 @@ namespace AppointMe.Crm.Database.Migrations
                         .HasColumnType("rowversion");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "RegistrationDate")
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Customers", "crm");
                 });

@@ -2,6 +2,7 @@ using AppointMe.Booking.Appointments.Database;
 using AppointMe.Booking.Appointments.SeedDemoAppointments;
 using AppointMe.Booking.Attendees.ReconcileAttendees;
 using AppointMe.Booking.BookingCompanies.ReconcileBookingCompanies;
+using AppointMe.Booking.Dashboard.Database;
 using AppointMe.Booking.Database;
 using AppointMe.Booking.Infrastructure;
 using AppointMe.Booking.ServiceProviders.Database;
@@ -39,6 +40,7 @@ public static class BookingModule
                     new SqlConnectionFactory(serviceProvider.GetRequiredService<ConnectionStrings>().AppointMeSql))
                 .AddScoped<AppointmentsRepository>()
                 .AddScoped<ServiceProvidersRepository>()
+                .AddScoped<DashboardRepository>()
                 .AddScoped<BookingCompanySynchronizer>()
                 .AddScoped<BookingCompanyReconciliationJob>()
                 .AddScoped<ServiceProviderSynchronizer>()

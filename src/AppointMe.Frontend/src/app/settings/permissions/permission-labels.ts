@@ -6,6 +6,8 @@ const RESOURCE_LABELS: Record<string, string> = {
     invitations: 'Invitations',
     permissions: 'Role permissions',
     appointments: 'Appointments',
+    'appointments.statistics': 'Appointment statistics',
+    'customers.statistics': 'Customer statistics',
 };
 
 const PERMISSION_LABELS: Record<Permission, string> = {
@@ -22,10 +24,12 @@ const PERMISSION_LABELS: Record<Permission, string> = {
     'customers:create': 'Create customers',
     'customers:update': 'Update customers',
     'customers:delete': 'Delete customers',
+    'customers.statistics:view': 'View customer statistics',
     'appointments:view': 'View appointments',
     'appointments:schedule': 'Schedule appointments',
     'appointments:reschedule': 'Reschedule appointments',
     'appointments:cancel': 'Cancel appointments',
+    'appointments.statistics:view': 'View appointment statistics',
 };
 
 export const labelForPermission = (key: string) => PERMISSION_LABELS[key as Permission] ?? key;

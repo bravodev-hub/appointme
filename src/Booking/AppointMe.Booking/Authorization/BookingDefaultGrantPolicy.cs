@@ -12,13 +12,15 @@ public sealed class BookingDefaultGrantPolicy : IDefaultGrantPolicy
             AppointmentPermissions.View,
             AppointmentPermissions.Schedule,
             AppointmentPermissions.Reschedule,
-            AppointmentPermissions.Cancel
+            AppointmentPermissions.Cancel,
+            AppointmentPermissions.ViewStatistics
         ),
         new(Role.Manager,
             AppointmentPermissions.View,
             AppointmentPermissions.Schedule,
             AppointmentPermissions.Reschedule,
-            AppointmentPermissions.Cancel
+            AppointmentPermissions.Cancel,
+            AppointmentPermissions.ViewStatistics
         ),
         new(Role.Staff,
             AppointmentPermissions.View,

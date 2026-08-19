@@ -1,6 +1,6 @@
 import { NavItem } from './nav-data';
-import { ProBadge } from './pro-badge';
 import { useActiveNavIds } from '@/app/router';
+import { hasPermission } from '@/components/auth';
 import { useUserAccess } from '@/components/auth/use-user-access';
 import {
     SidebarGroup,
@@ -29,31 +29,26 @@ export const NavMain = ({ items, label }: NavMainProps) => {
             <SidebarGroupContent className='flex flex-col gap-2'>
                 <SidebarMenu>
                     {items
-                        .filter(item => !item.permission || permissions.includes(item.permission))
+                        .filter(item => !item.permission || hasPermission(permissions, item.permission))
                         .map(item => {
                             const content = (
                                 <>
                                     {item.icon && <item.icon />}
                                     <span>{item.title}</span>
-                                    {item.pro && <ProBadge />}
                                 </>
                             );
 
                             return (
                                 <SidebarMenuItem key={item.title}>
-                                    {item.pro ? (
-                                        <SidebarMenuButton tooltip={item.title}>{content}</SidebarMenuButton>
-                                    ) : (
-                                        <SidebarMenuButton
-                                            tooltip={item.title}
-                                            asChild
-                                            isActive={activeNavIds.has(item.navId)}
-                                        >
-                                            <Link to={item.url} onClick={() => isMobile && setOpenMobile(false)}>
-                                                {content}
-                                            </Link>
-                                        </SidebarMenuButton>
-                                    )}
+                                    <SidebarMenuButton
+                                        tooltip={item.title}
+                                        asChild
+                                        isActive={activeNavIds.has(item.navId)}
+                                    >
+                                        <Link to={item.url} onClick={() => isMobile && setOpenMobile(false)}>
+                                            {content}
+                                        </Link>
+                                    </SidebarMenuButton>
                                 </SidebarMenuItem>
                             );
                         })}

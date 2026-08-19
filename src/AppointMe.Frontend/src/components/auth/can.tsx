@@ -3,7 +3,7 @@ import { usePermission } from '@/components/auth';
 import { ReactNode } from 'react';
 
 interface CanProps {
-    permission: Permission;
+    permission: Permission | Permission[];
     children: ReactNode;
     fallback?: ReactNode;
 }

@@ -13,6 +13,12 @@ import type {
     GetCurrentUserResponse,
     GetCustomersParams,
     GetCustomersResponse,
+    GetDashboardStatsParams,
+    GetDashboardStatsResponse,
+    GetNewCustomerStatsParams,
+    GetNewCustomerStatsResponse,
+    GetPeakHoursParams,
+    GetPeakHoursResponse,
     GetPendingInvitationsResponse,
     GetPermissionsResponse,
     GetTeamParams,
@@ -1778,6 +1784,169 @@ export function useGetCustomersSuspense<TData = Awaited<ReturnType<typeof getCus
     return withQueryKey(query, queryOptions.queryKey);
 }
 
+export const getNewCustomerStats = (params: GetNewCustomerStatsParams, signal?: AbortSignal) => {
+    return apiClient<GetNewCustomerStatsResponse>({
+        url: `/api/v1/crm/dashboard/new-customers`,
+        method: 'GET',
+        params,
+        signal,
+    });
+};
+
+export const getGetNewCustomerStatsQueryKey = (params?: GetNewCustomerStatsParams) => {
+    return [`/api/v1/crm/dashboard/new-customers`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetNewCustomerStatsQueryOptions = <
+    TData = Awaited<ReturnType<typeof getNewCustomerStats>>,
+    TError = unknown,
+>(
+    params: GetNewCustomerStatsParams,
+    options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData>> },
+) => {
+    const { query: queryOptions } = options ?? {};
+
+    const queryKey = queryOptions?.queryKey ?? getGetNewCustomerStatsQueryKey(params);
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNewCustomerStats>>> = ({ signal }) =>
+        getNewCustomerStats(params, signal);
+
+    return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+        Awaited<ReturnType<typeof getNewCustomerStats>>,
+        TError,
+        TData
+    > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetNewCustomerStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getNewCustomerStats>>>;
+export type GetNewCustomerStatsQueryError = unknown;
+
+export function useGetNewCustomerStats<TData = Awaited<ReturnType<typeof getNewCustomerStats>>, TError = unknown>(
+    params: GetNewCustomerStatsParams,
+    options: {
+        query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData>> &
+            Pick<
+                DefinedInitialDataOptions<
+                    Awaited<ReturnType<typeof getNewCustomerStats>>,
+                    TError,
+                    Awaited<ReturnType<typeof getNewCustomerStats>>
+                >,
+                'initialData'
+            >;
+    },
+    queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetNewCustomerStats<TData = Awaited<ReturnType<typeof getNewCustomerStats>>, TError = unknown>(
+    params: GetNewCustomerStatsParams,
+    options?: {
+        query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData>> &
+            Pick<
+                UndefinedInitialDataOptions<
+                    Awaited<ReturnType<typeof getNewCustomerStats>>,
+                    TError,
+                    Awaited<ReturnType<typeof getNewCustomerStats>>
+                >,
+                'initialData'
+            >;
+    },
+    queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetNewCustomerStats<TData = Awaited<ReturnType<typeof getNewCustomerStats>>, TError = unknown>(
+    params: GetNewCustomerStatsParams,
+    options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetNewCustomerStats<TData = Awaited<ReturnType<typeof getNewCustomerStats>>, TError = unknown>(
+    params: GetNewCustomerStatsParams,
+    options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+    const queryOptions = getGetNewCustomerStatsQueryOptions(params, options);
+
+    const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    };
+
+    return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetNewCustomerStatsSuspenseQueryOptions = <
+    TData = Awaited<ReturnType<typeof getNewCustomerStats>>,
+    TError = unknown,
+>(
+    params: GetNewCustomerStatsParams,
+    options?: {
+        query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData>>;
+    },
+) => {
+    const { query: queryOptions } = options ?? {};
+
+    const queryKey = queryOptions?.queryKey ?? getGetNewCustomerStatsQueryKey(params);
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNewCustomerStats>>> = ({ signal }) =>
+        getNewCustomerStats(params, signal);
+
+    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
+        Awaited<ReturnType<typeof getNewCustomerStats>>,
+        TError,
+        TData
+    > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetNewCustomerStatsSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getNewCustomerStats>>>;
+export type GetNewCustomerStatsSuspenseQueryError = unknown;
+
+export function useGetNewCustomerStatsSuspense<
+    TData = Awaited<ReturnType<typeof getNewCustomerStats>>,
+    TError = unknown,
+>(
+    params: GetNewCustomerStatsParams,
+    options: {
+        query: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData>>;
+    },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetNewCustomerStatsSuspense<
+    TData = Awaited<ReturnType<typeof getNewCustomerStats>>,
+    TError = unknown,
+>(
+    params: GetNewCustomerStatsParams,
+    options?: {
+        query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData>>;
+    },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetNewCustomerStatsSuspense<
+    TData = Awaited<ReturnType<typeof getNewCustomerStats>>,
+    TError = unknown,
+>(
+    params: GetNewCustomerStatsParams,
+    options?: {
+        query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData>>;
+    },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetNewCustomerStatsSuspense<
+    TData = Awaited<ReturnType<typeof getNewCustomerStats>>,
+    TError = unknown,
+>(
+    params: GetNewCustomerStatsParams,
+    options?: {
+        query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData>>;
+    },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+    const queryOptions = getGetNewCustomerStatsSuspenseQueryOptions(params, options);
+
+    const query = useSuspenseQuery(queryOptions, queryClient) as UseSuspenseQueryResult<TData, TError> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    };
+
+    return withQueryKey(query, queryOptions.queryKey);
+}
+
 export const getServiceProviders = (signal?: AbortSignal) => {
     return apiClient<ServiceProviderDto[]>({ url: `/api/v1/booking/service-providers`, method: 'GET', signal });
 };
@@ -1916,6 +2085,290 @@ export function useGetServiceProvidersSuspense<
     queryClient?: QueryClient,
 ): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
     const queryOptions = getGetServiceProvidersSuspenseQueryOptions(options);
+
+    const query = useSuspenseQuery(queryOptions, queryClient) as UseSuspenseQueryResult<TData, TError> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    };
+
+    return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getPeakHours = (params: GetPeakHoursParams, signal?: AbortSignal) => {
+    return apiClient<GetPeakHoursResponse>({
+        url: `/api/v1/booking/dashboard/peak-hours`,
+        method: 'GET',
+        params,
+        signal,
+    });
+};
+
+export const getGetPeakHoursQueryKey = (params?: GetPeakHoursParams) => {
+    return [`/api/v1/booking/dashboard/peak-hours`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetPeakHoursQueryOptions = <TData = Awaited<ReturnType<typeof getPeakHours>>, TError = unknown>(
+    params: GetPeakHoursParams,
+    options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData>> },
+) => {
+    const { query: queryOptions } = options ?? {};
+
+    const queryKey = queryOptions?.queryKey ?? getGetPeakHoursQueryKey(params);
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPeakHours>>> = ({ signal }) =>
+        getPeakHours(params, signal);
+
+    return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+        Awaited<ReturnType<typeof getPeakHours>>,
+        TError,
+        TData
+    > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetPeakHoursQueryResult = NonNullable<Awaited<ReturnType<typeof getPeakHours>>>;
+export type GetPeakHoursQueryError = unknown;
+
+export function useGetPeakHours<TData = Awaited<ReturnType<typeof getPeakHours>>, TError = unknown>(
+    params: GetPeakHoursParams,
+    options: {
+        query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData>> &
+            Pick<
+                DefinedInitialDataOptions<
+                    Awaited<ReturnType<typeof getPeakHours>>,
+                    TError,
+                    Awaited<ReturnType<typeof getPeakHours>>
+                >,
+                'initialData'
+            >;
+    },
+    queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetPeakHours<TData = Awaited<ReturnType<typeof getPeakHours>>, TError = unknown>(
+    params: GetPeakHoursParams,
+    options?: {
+        query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData>> &
+            Pick<
+                UndefinedInitialDataOptions<
+                    Awaited<ReturnType<typeof getPeakHours>>,
+                    TError,
+                    Awaited<ReturnType<typeof getPeakHours>>
+                >,
+                'initialData'
+            >;
+    },
+    queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetPeakHours<TData = Awaited<ReturnType<typeof getPeakHours>>, TError = unknown>(
+    params: GetPeakHoursParams,
+    options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetPeakHours<TData = Awaited<ReturnType<typeof getPeakHours>>, TError = unknown>(
+    params: GetPeakHoursParams,
+    options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+    const queryOptions = getGetPeakHoursQueryOptions(params, options);
+
+    const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    };
+
+    return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetPeakHoursSuspenseQueryOptions = <TData = Awaited<ReturnType<typeof getPeakHours>>, TError = unknown>(
+    params: GetPeakHoursParams,
+    options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData>> },
+) => {
+    const { query: queryOptions } = options ?? {};
+
+    const queryKey = queryOptions?.queryKey ?? getGetPeakHoursQueryKey(params);
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPeakHours>>> = ({ signal }) =>
+        getPeakHours(params, signal);
+
+    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
+        Awaited<ReturnType<typeof getPeakHours>>,
+        TError,
+        TData
+    > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetPeakHoursSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getPeakHours>>>;
+export type GetPeakHoursSuspenseQueryError = unknown;
+
+export function useGetPeakHoursSuspense<TData = Awaited<ReturnType<typeof getPeakHours>>, TError = unknown>(
+    params: GetPeakHoursParams,
+    options: { query: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetPeakHoursSuspense<TData = Awaited<ReturnType<typeof getPeakHours>>, TError = unknown>(
+    params: GetPeakHoursParams,
+    options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetPeakHoursSuspense<TData = Awaited<ReturnType<typeof getPeakHours>>, TError = unknown>(
+    params: GetPeakHoursParams,
+    options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetPeakHoursSuspense<TData = Awaited<ReturnType<typeof getPeakHours>>, TError = unknown>(
+    params: GetPeakHoursParams,
+    options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+    const queryOptions = getGetPeakHoursSuspenseQueryOptions(params, options);
+
+    const query = useSuspenseQuery(queryOptions, queryClient) as UseSuspenseQueryResult<TData, TError> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    };
+
+    return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getDashboardStats = (params: GetDashboardStatsParams, signal?: AbortSignal) => {
+    return apiClient<GetDashboardStatsResponse>({
+        url: `/api/v1/booking/dashboard/stats`,
+        method: 'GET',
+        params,
+        signal,
+    });
+};
+
+export const getGetDashboardStatsQueryKey = (params?: GetDashboardStatsParams) => {
+    return [`/api/v1/booking/dashboard/stats`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetDashboardStatsQueryOptions = <
+    TData = Awaited<ReturnType<typeof getDashboardStats>>,
+    TError = unknown,
+>(
+    params: GetDashboardStatsParams,
+    options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>> },
+) => {
+    const { query: queryOptions } = options ?? {};
+
+    const queryKey = queryOptions?.queryKey ?? getGetDashboardStatsQueryKey(params);
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardStats>>> = ({ signal }) =>
+        getDashboardStats(params, signal);
+
+    return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+        Awaited<ReturnType<typeof getDashboardStats>>,
+        TError,
+        TData
+    > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetDashboardStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardStats>>>;
+export type GetDashboardStatsQueryError = unknown;
+
+export function useGetDashboardStats<TData = Awaited<ReturnType<typeof getDashboardStats>>, TError = unknown>(
+    params: GetDashboardStatsParams,
+    options: {
+        query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>> &
+            Pick<
+                DefinedInitialDataOptions<
+                    Awaited<ReturnType<typeof getDashboardStats>>,
+                    TError,
+                    Awaited<ReturnType<typeof getDashboardStats>>
+                >,
+                'initialData'
+            >;
+    },
+    queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetDashboardStats<TData = Awaited<ReturnType<typeof getDashboardStats>>, TError = unknown>(
+    params: GetDashboardStatsParams,
+    options?: {
+        query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>> &
+            Pick<
+                UndefinedInitialDataOptions<
+                    Awaited<ReturnType<typeof getDashboardStats>>,
+                    TError,
+                    Awaited<ReturnType<typeof getDashboardStats>>
+                >,
+                'initialData'
+            >;
+    },
+    queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetDashboardStats<TData = Awaited<ReturnType<typeof getDashboardStats>>, TError = unknown>(
+    params: GetDashboardStatsParams,
+    options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetDashboardStats<TData = Awaited<ReturnType<typeof getDashboardStats>>, TError = unknown>(
+    params: GetDashboardStatsParams,
+    options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+    const queryOptions = getGetDashboardStatsQueryOptions(params, options);
+
+    const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    };
+
+    return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetDashboardStatsSuspenseQueryOptions = <
+    TData = Awaited<ReturnType<typeof getDashboardStats>>,
+    TError = unknown,
+>(
+    params: GetDashboardStatsParams,
+    options?: {
+        query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>>;
+    },
+) => {
+    const { query: queryOptions } = options ?? {};
+
+    const queryKey = queryOptions?.queryKey ?? getGetDashboardStatsQueryKey(params);
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardStats>>> = ({ signal }) =>
+        getDashboardStats(params, signal);
+
+    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
+        Awaited<ReturnType<typeof getDashboardStats>>,
+        TError,
+        TData
+    > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetDashboardStatsSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardStats>>>;
+export type GetDashboardStatsSuspenseQueryError = unknown;
+
+export function useGetDashboardStatsSuspense<TData = Awaited<ReturnType<typeof getDashboardStats>>, TError = unknown>(
+    params: GetDashboardStatsParams,
+    options: { query: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>> },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetDashboardStatsSuspense<TData = Awaited<ReturnType<typeof getDashboardStats>>, TError = unknown>(
+    params: GetDashboardStatsParams,
+    options?: {
+        query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>>;
+    },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetDashboardStatsSuspense<TData = Awaited<ReturnType<typeof getDashboardStats>>, TError = unknown>(
+    params: GetDashboardStatsParams,
+    options?: {
+        query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>>;
+    },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetDashboardStatsSuspense<TData = Awaited<ReturnType<typeof getDashboardStats>>, TError = unknown>(
+    params: GetDashboardStatsParams,
+    options?: {
+        query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData>>;
+    },
+    queryClient?: QueryClient,
+): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+    const queryOptions = getGetDashboardStatsSuspenseQueryOptions(params, options);
 
     const query = useSuspenseQuery(queryOptions, queryClient) as UseSuspenseQueryResult<TData, TError> & {
         queryKey: DataTag<QueryKey, TData, TError>;

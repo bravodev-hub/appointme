@@ -102,6 +102,64 @@ export interface GetCustomersResponse {
     customers: PagedResultOfCustomerDto;
 }
 
+export interface TrendBucketDto {
+    bucketStart: string;
+    appointments: number;
+    cancellations: number;
+}
+
+export interface StaffLoadDto {
+    providerId: string;
+    name: string;
+    bookings: number;
+    bookedMinutes: number;
+    capacityMinutes: number;
+}
+
+export interface GetDashboardStatsResponse {
+    appointments: number;
+    /** @nullable */
+    compareAppointments: number | null;
+    bookedMinutes: number;
+    /** @nullable */
+    compareBookedMinutes: number | null;
+    capacityMinutes: number;
+    /** @nullable */
+    utilizationPercent: number | null;
+    /** @nullable */
+    compareUtilizationPercent: number | null;
+    returningAppointments: number;
+    /** @nullable */
+    returningClientRatePercent: number | null;
+    /** @nullable */
+    compareReturningClientRatePercent: number | null;
+    trendBuckets: TrendBucketDto[];
+    compareTrendBuckets: TrendBucketDto[];
+    staffLoad: StaffLoadDto[];
+}
+
+export interface NewCustomerBucketDto {
+    bucketStart: string;
+    count: number;
+}
+
+export interface GetNewCustomerStatsResponse {
+    total: number;
+    /** @nullable */
+    compareTotal: number | null;
+    buckets: NewCustomerBucketDto[];
+    compareBuckets: NewCustomerBucketDto[];
+}
+
+export interface PeakHoursDayDto {
+    isoWeekday: number;
+    hourlyAverages: number[];
+}
+
+export interface GetPeakHoursResponse {
+    days: PeakHoursDayDto[];
+}
+
 export type Role = (typeof Role)[keyof typeof Role];
 
 export const Role = {
@@ -224,10 +282,12 @@ export const Permission = {
     'customers:create': 'customers:create',
     'customers:update': 'customers:update',
     'customers:delete': 'customers:delete',
+    'customersstatistics:view': 'customers.statistics:view',
     'appointments:view': 'appointments:view',
     'appointments:schedule': 'appointments:schedule',
     'appointments:reschedule': 'appointments:reschedule',
     'appointments:cancel': 'appointments:cancel',
+    'appointmentsstatistics:view': 'appointments.statistics:view',
 } as const;
 
 export interface RegisterCustomerRequest {
@@ -321,6 +381,30 @@ export type GetCustomersParams = {
     search?: string;
     limit: number;
     page: number;
+};
+
+export type GetNewCustomerStatsParams = {
+    From: string;
+    To: string;
+    CompareFrom?: string;
+    CompareTo?: string;
+    Bucket: string;
+    TimeZone: string;
+};
+
+export type GetPeakHoursParams = {
+    From: string;
+    To: string;
+    TimeZone: string;
+};
+
+export type GetDashboardStatsParams = {
+    From: string;
+    To: string;
+    CompareFrom?: string;
+    CompareTo?: string;
+    Bucket: string;
+    TimeZone: string;
 };
 
 export type GetAppointmentsParams = {

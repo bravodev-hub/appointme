@@ -15,7 +15,7 @@ export const navData: NavData = {
             url: '/dashboard',
             navId: 'dashboard',
             icon: ChartPieIcon,
-            pro: true,
+            permission: ['appointments.statistics:view', 'customers.statistics:view'],
         },
         {
             title: 'Team',
@@ -53,6 +53,6 @@ export interface NavItem {
     url: string;
     navId: string;
     icon?: LucideIcon;
-    permission?: Permission;
-    pro?: boolean;
+    /** A single permission, or an array meaning "any of these". */
+    permission?: Permission | Permission[];
 }

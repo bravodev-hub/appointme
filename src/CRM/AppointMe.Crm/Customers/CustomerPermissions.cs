@@ -10,4 +10,5 @@ public static class CustomerPermissions
     public static readonly Permission Create = new(Customers, "create");
     public static readonly Permission Update = new(Customers, "update");
     public static readonly Permission Delete = new(Customers, "delete");
+    public static readonly Permission ViewStatistics = new($"{Customers}.statistics", "view");
 }

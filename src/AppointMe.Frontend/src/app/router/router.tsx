@@ -3,6 +3,7 @@ import { Appointments } from '@/app/appointments';
 import { Login } from '@/app/auth/login';
 import { Signup, VerifyEmail } from '@/app/auth/signup';
 import { CreateCustomer, CustomerProfile, Customers } from '@/app/customers';
+import { Dashboard } from '@/app/dashboard';
 import { Invitations } from '@/app/invitations';
 import { Layout, RootLayout } from '@/app/layouts';
 import { NotFound } from '@/app/not-found';
@@ -75,6 +76,11 @@ export const router = createBrowserRouter([
                                     {
                                         index: true,
                                         element: <Navigate to='/appointments' replace />,
+                                    },
+                                    {
+                                        path: 'dashboard',
+                                        element: <Dashboard />,
+                                        handle: { breadcrumb: 'Dashboard', navId: 'dashboard' },
                                     },
                                     {
                                         path: 'appointments',
