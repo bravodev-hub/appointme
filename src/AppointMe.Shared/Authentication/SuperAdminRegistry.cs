@@ -1,4 +1,4 @@
-namespace AppointMe.Api.Authorization;
+namespace AppointMe.Shared.Authentication;
 
 /// <summary>
 /// Holds the configured set of super-admin identities (by email). Membership is

@@ -1,4 +1,4 @@
-namespace AppointMe.Api.Authorization;
+namespace AppointMe.Shared.Authentication;
 
 /// <summary>
 /// Platform-level "super admin" role. Unlike the per-company business roles

@@ -1,4 +1,4 @@
-import { ProBadge } from './pro-badge';
+import { ProBadge } from './nav-badge';
 import { useCurrentUser } from '@/components/auth';
 import {
     Avatar,

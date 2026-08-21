@@ -1,7 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using AppointMe.Api.Authentication.EntraExternalId;
 using AppointMe.Api.Authentication.Keycloak;
-using AppointMe.Api.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

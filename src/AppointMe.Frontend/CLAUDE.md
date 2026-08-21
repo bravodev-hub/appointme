@@ -13,9 +13,12 @@ npm run generate:api      # Regenerate API client from backend OpenAPI (needs As
 
 **Type-check from CI/scripts**:
 ```bash
-npx tsc --noEmit --ignoreDeprecations 6.0
+npx tsc -b                              # the whole solution (what `npm run build` runs)
+npx tsc --noEmit -p tsconfig.app.json   # app sources only, faster inner loop
 ```
-The `--ignoreDeprecations 6.0` flag silences a pre-existing `baseUrl` deprecation warning in `tsconfig.json`. Without it, `tsc --noEmit` fails on that warning even when there are no actual type errors.
+**Always pass a project.** The root `tsconfig.json` is a solution-style config — `files: []` plus `references` to `tsconfig.app.json` / `tsconfig.node.json`. A bare `npx tsc --noEmit` therefore checks **nothing** and exits 0, silently passing over real type errors. Use `-b` (which walks the references) or point `-p` at a leaf project.
+
+No `--ignoreDeprecations` flag is needed. The deprecated `baseUrl` lives only in the root `tsconfig.json`, and both commands above bypass it — `tsconfig.app.json` declares bare `paths`, which needs no `baseUrl`. `--ignoreDeprecations` is also rejected outright when combined with `-b` (`error TS5094`).
 
 **API regeneration**: `npm run generate:api` calls orval which fetches `https://localhost:7233/openapi/v1.json`. The backend must be running via Aspire (`cd src/AppointMe.Aspire && dotnet run` from the repo root). `NODE_TLS_REJECT_UNAUTHORIZED=0` is set in the script because mkcert certs are self-signed.
 

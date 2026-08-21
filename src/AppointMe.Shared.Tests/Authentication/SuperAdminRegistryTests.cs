@@ -1,6 +1,6 @@
-using AppointMe.Api.Authorization;
+using AppointMe.Shared.Authentication;
 
-namespace AppointMe.Api.Tests.Authorization;
+namespace AppointMe.Shared.Tests.Authentication;
 
 public class SuperAdminRegistryTests
 {

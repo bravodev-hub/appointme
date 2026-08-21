@@ -1,6 +1,6 @@
 ---
 name: regenerate-api
-description: Regenerate the AppointMe frontend API client (orval/TanStack Query hooks + TypeScript schemas) after the backend OpenAPI surface changes. Use this whenever backend endpoints, request/response DTOs, or other contract-affecting types are added, removed, or modified — e.g. after editing files under src/AppointMe.Api, *Endpoint.cs, *Request.cs, *Response.cs, controllers, or anything that affects the OpenAPI JSON at https://localhost:7233/openapi/v1.json. The skill waits for the backend to be reachable, then runs `yarn generate:api` and reports the diff on src/api/.
+description: Regenerate the AppointMe frontend API client (orval/TanStack Query hooks + TypeScript schemas) after the backend OpenAPI surface changes. Use this whenever backend endpoints, request/response DTOs, or other contract-affecting types are added, removed, or modified — e.g. after editing files under src/AppointMe.Api, *Endpoint.cs, *Request.cs, *Response.cs, controllers, or anything that affects the OpenAPI JSON at https://localhost:7233/openapi/v1.json. The skill waits for the backend to be reachable, then runs `npm run generate:api` and reports the diff on src/api/.
 ---
 
 # regenerate-api
@@ -22,7 +22,7 @@ Do **not** invoke it for backend-only changes that don't touch the contract (int
 
 - Aspire (or at least the `AppointMe.Api` project) must be running and serving the new code.
 - The OpenAPI endpoint is `https://localhost:7233/openapi/v1.json` (self-signed cert, that's expected).
-- `yarn` is available in `src/AppointMe.Frontend/`.
+- `npm` is available in `src/AppointMe.Frontend/`. This project is npm-based (`package-lock.json`, no `yarn.lock`) — never invoke `yarn` here, it would write a competing lockfile.
 
 The orval script in `package.json` sets `NODE_TLS_REJECT_UNAUTHORIZED=0` for the self-signed cert — don't add `-k` flags anywhere else.
 
@@ -74,7 +74,7 @@ git status --short src/api/
 ### 4. Run the generator
 
 ```bash
-cd src/AppointMe.Frontend && yarn generate:api
+cd src/AppointMe.Frontend && npm run generate:api
 ```
 
 Watch for:
@@ -90,10 +90,10 @@ cd src/AppointMe.Frontend && git diff --stat src/api/
 Then check whether existing call sites still type-check against the new client:
 
 ```bash
-cd src/AppointMe.Frontend && yarn tsc --noEmit --ignoreDeprecations 6.0
+cd src/AppointMe.Frontend && npx tsc -b
 ```
 
-The `--ignoreDeprecations 6.0` flag is required — there's a pre-existing `baseUrl` deprecation in `tsconfig.json` that otherwise fails `tsc --noEmit` (see the frontend CLAUDE.md).
+`tsc` **must** be pointed at a project. The root `tsconfig.json` is solution-style (`files: []` + `references`), so a bare `tsc --noEmit` checks nothing and exits 0 — it will happily "pass" a client that no longer matches its call sites. Use `-b` (what `npm run build` runs) or `-p tsconfig.app.json` for app sources only. No `--ignoreDeprecations` flag is needed; see the frontend CLAUDE.md.
 
 If `tsc` reports errors, those are **call sites that need updating to match the new contract** — fix them in the same task; don't leave the codebase in a broken state.
 

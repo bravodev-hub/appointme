@@ -10,7 +10,6 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-    SidebarSeparator,
     useSidebar,
 } from '@/components/ui';
 import { ComponentProps } from 'react';
@@ -37,8 +36,8 @@ export const AppSidebar = ({ ...props }: ComponentProps<typeof Sidebar>) => {
             </SidebarHeader>
             <SidebarContent>
                 <NavMain items={navData.navMain} />
-                <SidebarSeparator className='mx-0' />
-                <NavMain items={navData.navSettings} label='Settings' />
+                <NavMain items={navData.navSettings} label='Settings' separated />
+                <NavMain items={navData.navAdmin} label='Administration' separated />
             </SidebarContent>
             <SidebarFooter>
                 <NavUser />

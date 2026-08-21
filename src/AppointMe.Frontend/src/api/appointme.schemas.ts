@@ -88,6 +88,7 @@ export interface GetCurrentUserResponse {
     /** @nullable */
     companies?: CompanyMembership[] | null;
     hasMembership?: boolean;
+    isSuperAdmin?: boolean;
 }
 
 export interface PagedResultOfCustomerDto {

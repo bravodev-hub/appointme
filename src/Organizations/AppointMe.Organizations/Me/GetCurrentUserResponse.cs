@@ -10,6 +10,7 @@ public sealed record GetCurrentUserResponse
     public bool HasPendingInvitations { get; init; }
     public IReadOnlyList<CompanyMembership>? Companies { get; init; }
     public bool HasMembership { get; init; }
+    public bool IsSuperAdmin { get; init; }
 }
 
 public sealed record CompanyMembership

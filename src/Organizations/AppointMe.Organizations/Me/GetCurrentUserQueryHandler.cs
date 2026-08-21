@@ -5,7 +5,7 @@ using AppointMe.Organizations.Invitations.Database;
 
 namespace AppointMe.Organizations.Me;
 
-public sealed class GetCurrentUserQueryHandler(OrganizationsDbContext dbContext)
+public sealed class GetCurrentUserQueryHandler(OrganizationsDbContext dbContext, SuperAdminRegistry superAdmins)
 {
     public async Task<GetCurrentUserResponse> HandleAsync(GetCurrentUserQuery query, IIdentity identity,
         CancellationToken cancellationToken)
@@ -49,6 +49,7 @@ public sealed class GetCurrentUserQueryHandler(OrganizationsDbContext dbContext)
             Companies = companyMemberships,
             HasPendingInvitations = hasPendingInvitations,
             HasMembership = companyMemberships.Length != 0,
+            IsSuperAdmin = superAdmins.IsSuperAdmin(user.Email.Value),
         };
     }
 }
