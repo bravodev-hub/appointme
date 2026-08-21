@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\AppointMe.Shared\AppointMe.Shared.csproj" />
+    <ProjectReference Include="..\..\Organizations\AppointMe.Organizations.Contracts\AppointMe.Organizations.Contracts.csproj" />
     <ProjectReference Include="..\AppointMe.Crm.Contracts\AppointMe.Crm.Contracts.csproj" />
   </ItemGroup>
 

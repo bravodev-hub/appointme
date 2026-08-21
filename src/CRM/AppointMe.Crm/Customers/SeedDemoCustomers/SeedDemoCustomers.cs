@@ -5,7 +5,7 @@ namespace AppointMe.Crm.Customers.SeedDemoCustomers;
 
 public sealed class SeedDemoCustomers(TimeProvider timeProvider)
 {
-    public IEnumerable<Customer> Generate(CompanyId companyId, int count)
+    public IEnumerable<Customer> Generate(CompanyId companyId, int count, DateTimeOffset? registrationDate = null)
     {
         var faker = new Faker();
         return Enumerable.Range(0, count)
@@ -16,6 +16,6 @@ public sealed class SeedDemoCustomers(TimeProvider timeProvider)
                 dateOfBirth: DateOfBirth.Create(DateOnly.FromDateTime(person.DateOfBirth), timeProvider),
                 gender: person.Gender == Bogus.DataSets.Name.Gender.Female ? Gender.Female : Gender.Male,
                 email: Email.Create(person.Email),
-                registrationDate: faker.Date.PastOffset()));
+                registrationDate: registrationDate ?? faker.Date.PastOffset()));
     }
 }

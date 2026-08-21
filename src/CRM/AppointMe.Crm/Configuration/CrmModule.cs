@@ -2,8 +2,10 @@ using AppointMe.Crm.Contracts.Customers;
 using AppointMe.Crm.Customers;
 using AppointMe.Crm.Customers.Database;
 using AppointMe.Crm.Customers.SeedDemoCustomers;
+using AppointMe.Crm.Customers.TopUpDemoCustomers;
 using AppointMe.Crm.Database;
 using AppointMe.Shared.Configuration;
+using AppointMe.Shared.Jobs;
 using AppointMe.Shared.Authorization.Permissions;
 using AppointMe.Shared.Database;
 using AppointMe.Shared.Database.Migrations;
@@ -36,7 +38,9 @@ public static class CrmModule
                 .AddScoped<CustomersRepository>()
                 .AddScoped<ICustomerRehydrationSource, CustomerRehydrationSource>()
                 .AddScoped<SeedDemoCustomers>()
-                .AddPermissions(ModuleAssembly.Instance);
+                .AddScoped<TopUpDemoCustomersJob>()
+                .AddPermissions(ModuleAssembly.Instance)
+                .AddRecurringJobs(ModuleAssembly.Instance);
         }
     }
 }

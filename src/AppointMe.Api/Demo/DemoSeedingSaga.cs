@@ -10,7 +10,7 @@ namespace AppointMe.Api.Demo;
 
 public sealed class DemoSeedingSaga : Saga
 {
-    private const int CustomerCount = 100;
+    private const int CustomerCount = 400;
     private const int AppointmentsPerAttendee = 3;
 
     public Guid Id { get; set; }
@@ -43,7 +43,7 @@ public sealed class DemoSeedingSaga : Saga
 
         CustomerSeedingTriggered = true;
         return new SeedDemoCustomersCommand(CustomersExpected)
-            .WithTenantId(@event.CompanyId.ToString());
+            .WithCompany(@event.CompanyId);
     }
 
     public object Handle([SagaIdentityFrom(nameof(AttendeeProjected.CompanyId))] AttendeeProjected @event)
@@ -55,6 +55,6 @@ public sealed class DemoSeedingSaga : Saga
         }
 
         return new SeedDemoAppointmentsCommand(@event.AttendeeId, AppointmentsPerAttendee)
-            .WithTenantId(@event.CompanyId.ToString());
+            .WithCompany(@event.CompanyId);
     }
 }

@@ -1,5 +1,6 @@
 using AppointMe.Booking.Appointments.Database;
 using AppointMe.Booking.Appointments.SeedDemoAppointments;
+using AppointMe.Booking.Appointments.TopUpDemoAppointments;
 using AppointMe.Booking.Attendees.ReconcileAttendees;
 using AppointMe.Booking.BookingCompanies.ReconcileBookingCompanies;
 using AppointMe.Booking.Dashboard.Database;
@@ -48,6 +49,7 @@ public static class BookingModule
                 .AddScoped<AttendeeSynchronizer>()
                 .AddScoped<AttendeeReconciliationJob>()
                 .AddScoped<SeedDemoAppointments>()
+                .AddScoped<TopUpDemoAppointmentsJob>()
                 .AddPermissions(BookingModuleAssembly.Instance)
                 .AddRecurringJobs(BookingModuleAssembly.Instance);
         }
