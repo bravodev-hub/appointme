@@ -21,7 +21,9 @@ export const PeriodPicker = ({ period }: PeriodPickerProps) => (
             <Button variant='outline' size='sm'>
                 <CalendarIcon />
                 {PERIOD_LABELS[period.preset]}
-                <span className='text-muted-foreground font-mono text-xs font-normal'>{period.rangeLabel}</span>
+                <span className='text-muted-foreground hidden font-mono text-xs font-normal sm:inline'>
+                    {period.rangeLabel}
+                </span>
                 <ChevronDownIcon className='text-muted-foreground' />
             </Button>
         </DropdownMenuTrigger>

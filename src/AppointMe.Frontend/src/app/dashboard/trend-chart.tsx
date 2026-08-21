@@ -15,10 +15,16 @@ import {
     EmptyDescription,
     EmptyHeader,
     EmptyTitle,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
     Skeleton,
     ToggleGroup,
     ToggleGroupItem,
 } from '@/components/ui';
+import { useIsMobile } from '@/hooks';
 import { keepPreviousData } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
@@ -50,10 +56,21 @@ const bucketLabel = (bucketStart: string, bucket: DashboardPeriod['bucket']): st
     return date.toLocaleString(undefined, { month: 'short' });
 };
 
+// Narrow screens can't fit the full tick ("Mon, 17"), so drop everything but the
+// leading date part; month buckets are already short enough.
+const shortBucketLabel = (bucketStart: string, bucket: DashboardPeriod['bucket']): string => {
+    const date = Temporal.PlainDate.from(bucketStart);
+    if (bucket === 'month') {
+        return date.toLocaleString(undefined, { month: 'short' });
+    }
+    return date.toLocaleString(undefined, { day: 'numeric' });
+};
+
 const formatValue = (value: number, series: SeriesKey): string =>
     series === 'revenue' ? `£${value.toLocaleString()}` : value.toLocaleString();
 
 export const TrendChart = ({ stats, period }: TrendChartProps) => {
+    const isMobile = useIsMobile();
     const { currentCompany } = useCurrentCompany();
     const canViewAppointmentStats = usePermission('appointments.statistics:view');
     const canViewCustomerStats = usePermission('customers.statistics:view');
@@ -72,11 +89,11 @@ export const TrendChart = ({ stats, period }: TrendChartProps) => {
     );
 
     if (canViewAppointmentStats && !stats) {
-        return <Skeleton className='h-[340px]' />;
+        return <Skeleton className='h-[300px] sm:h-[340px]' />;
     }
 
     if (series === 'newCustomers' && canViewCustomerStats && !newCustomers) {
-        return <Skeleton className='h-[340px]' />;
+        return <Skeleton className='h-[300px] sm:h-[340px]' />;
     }
 
     const valueFor = (bucket: TrendBucketDto): number | null => {
@@ -98,6 +115,7 @@ export const TrendChart = ({ stats, period }: TrendChartProps) => {
         series === 'newCustomers'
             ? (newCustomers?.buckets ?? []).map((bucket, index) => ({
                   label: bucketLabel(bucket.bucketStart, period.bucket),
+                  shortLabel: shortBucketLabel(bucket.bucketStart, period.bucket),
                   current: bucket.count as number | null,
                   compare: period.compareEnabled ? (newCustomers?.compareBuckets[index]?.count ?? null) : null,
               }))
@@ -105,6 +123,7 @@ export const TrendChart = ({ stats, period }: TrendChartProps) => {
                   const compareBucket = stats?.compareTrendBuckets[index];
                   return {
                       label: bucketLabel(bucket.bucketStart, period.bucket),
+                      shortLabel: shortBucketLabel(bucket.bucketStart, period.bucket),
                       current: valueFor(bucket),
                       compare: compareBucket ? valueFor(compareBucket) : null,
                   };
@@ -119,10 +138,15 @@ export const TrendChart = ({ stats, period }: TrendChartProps) => {
         compare: { label: period.compareLabel.replace('vs. ', ''), color: 'var(--muted-foreground)' },
     };
 
+    const seriesOptions: SeriesKey[] = [
+        ...(canViewAppointmentStats ? (['appointments', 'revenue', 'cancellations'] as const) : []),
+        ...(canViewCustomerStats ? (['newCustomers'] as const) : []),
+    ];
+
     return (
-        <Card>
-            <CardHeader className='flex flex-wrap items-start justify-between gap-3'>
-                <div>
+        <Card className='min-w-0 gap-4 py-4 sm:gap-6 sm:py-6'>
+            <CardHeader className='flex flex-col items-stretch gap-3 px-4 sm:px-6 md:flex-row md:flex-wrap md:items-start md:justify-between'>
+                <div className='min-w-0'>
                     <CardTitle className='text-sm'>
                         {SERIES_LABELS[series]} · {PERIOD_LABELS[period.preset].toLowerCase()}
                     </CardTitle>
@@ -137,26 +161,39 @@ export const TrendChart = ({ stats, period }: TrendChartProps) => {
                         )}
                     </p>
                 </div>
-                <ToggleGroup
-                    type='single'
-                    variant='outline'
-                    size='sm'
-                    value={series}
-                    onValueChange={value => value && setSeries(value as SeriesKey)}
-                >
-                    {canViewAppointmentStats && (
-                        <>
-                            <ToggleGroupItem value='appointments'>Appointments</ToggleGroupItem>
-                            <ToggleGroupItem value='revenue'>Revenue</ToggleGroupItem>
-                            <ToggleGroupItem value='cancellations'>Cancellations</ToggleGroupItem>
-                        </>
-                    )}
-                    {canViewCustomerStats && <ToggleGroupItem value='newCustomers'>New customers</ToggleGroupItem>}
-                </ToggleGroup>
+                {/* The full toggle row does not fit a phone, so it collapses into a select. */}
+                {isMobile ? (
+                    <Select value={series} onValueChange={value => setSeries(value as SeriesKey)}>
+                        <SelectTrigger size='sm' className='w-full'>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {seriesOptions.map(option => (
+                                <SelectItem key={option} value={option}>
+                                    {SERIES_LABELS[option]}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                ) : (
+                    <ToggleGroup
+                        type='single'
+                        variant='outline'
+                        size='sm'
+                        value={series}
+                        onValueChange={value => value && setSeries(value as SeriesKey)}
+                    >
+                        {seriesOptions.map(option => (
+                            <ToggleGroupItem key={option} value={option}>
+                                {SERIES_LABELS[option]}
+                            </ToggleGroupItem>
+                        ))}
+                    </ToggleGroup>
+                )}
             </CardHeader>
-            <CardContent>
+            <CardContent className='px-2 sm:px-6'>
                 {data.every(entry => !entry.current && !entry.compare) ? (
-                    <Empty className='h-[240px]'>
+                    <Empty className='h-[200px] sm:h-[240px]'>
                         <EmptyHeader>
                             <EmptyTitle>Nothing to chart</EmptyTitle>
                             <EmptyDescription>
@@ -165,11 +202,25 @@ export const TrendChart = ({ stats, period }: TrendChartProps) => {
                         </EmptyHeader>
                     </Empty>
                 ) : (
-                    <ChartContainer config={chartConfig} className='aspect-auto h-[240px] w-full'>
+                    <ChartContainer config={chartConfig} className='aspect-auto h-[200px] w-full sm:h-[240px]'>
                         <BarChart data={data} barGap={2}>
                             <CartesianGrid vertical={false} strokeDasharray='3 3' />
-                            <XAxis dataKey='label' tickLine={false} axisLine={false} fontSize={11} />
-                            <YAxis width={40} tickLine={false} axisLine={false} fontSize={11} />
+                            <XAxis
+                                dataKey='label'
+                                tickLine={false}
+                                axisLine={false}
+                                fontSize={isMobile ? 10 : 11}
+                                interval='preserveStartEnd'
+                                tickFormatter={(value: string, index: number) =>
+                                    isMobile ? (data[index]?.shortLabel ?? value) : value
+                                }
+                            />
+                            <YAxis
+                                width={isMobile ? 28 : 40}
+                                tickLine={false}
+                                axisLine={false}
+                                fontSize={isMobile ? 10 : 11}
+                            />
                             <ChartTooltip content={<ChartTooltipContent />} />
                             {period.compareEnabled && (
                                 <Bar

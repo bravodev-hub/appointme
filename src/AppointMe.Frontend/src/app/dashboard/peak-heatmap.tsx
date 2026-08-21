@@ -45,7 +45,7 @@ export const PeakHeatmap = () => {
     );
 
     if (!data) {
-        return <Skeleton className='h-[300px]' />;
+        return <Skeleton className='h-[260px] sm:h-[300px]' />;
     }
 
     const hasData = data.days.some(day => DISPLAY_HOURS.some(hour => (day.hourlyAverages[hour] ?? 0) > 0));
@@ -57,9 +57,9 @@ export const PeakHeatmap = () => {
             : undefined;
 
     return (
-        <Card>
-            <CardHeader className='flex flex-wrap items-baseline justify-between gap-2'>
-                <div>
+        <Card className='min-w-0 gap-4 py-4 sm:gap-6 sm:py-6'>
+            <CardHeader className='flex flex-wrap items-baseline justify-between gap-2 px-4 sm:px-6'>
+                <div className='min-w-0'>
                     <CardTitle className='text-sm'>Peak hours</CardTitle>
                     <p className='text-muted-foreground mt-1 text-xs'>Average bookings per hour, last 4 weeks</p>
                 </div>
@@ -77,9 +77,9 @@ export const PeakHeatmap = () => {
                     <span>More</span>
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className='px-4 sm:px-6'>
                 {!hasData && (
-                    <Empty className='h-[240px]'>
+                    <Empty className='h-[200px] sm:h-[240px]'>
                         <EmptyHeader>
                             <EmptyTitle>No bookings yet</EmptyTitle>
                             <EmptyDescription>
@@ -89,13 +89,15 @@ export const PeakHeatmap = () => {
                     </Empty>
                 )}
                 {hasData && (
-                    <div className='flex justify-center overflow-x-auto'>
+                    <div className='min-w-0 overflow-x-auto'>
                         <div
-                            className='grid min-w-fit flex-1 gap-0.75'
+                            // Centred with auto margins rather than justify-center: a centred flex child
+                            // that outgrows its scroll container overflows to the left, out of reach.
+                            className='mx-auto grid w-fit gap-0.5 sm:gap-0.75'
                             // Cells grow to fill the card, capped so they stay recognisably square-ish;
                             // min-width keeps them legible and lets the container scroll on narrow screens.
                             style={{
-                                gridTemplateColumns: `2.5rem repeat(${DISPLAY_HOURS.length}, minmax(1.75rem, 2.5rem))`,
+                                gridTemplateColumns: `1.75rem repeat(${DISPLAY_HOURS.length}, minmax(1.375rem, 2.5rem))`,
                             }}
                         >
                             <div />
@@ -116,7 +118,7 @@ export const PeakHeatmap = () => {
                                             <div
                                                 key={hour}
                                                 title={`${DAY_LABELS[day.isoWeekday - 1]} ${hour}:00 — ${value} avg`}
-                                                className={`flex h-7 w-full items-center justify-center rounded-sm font-mono text-[10px] font-medium ${
+                                                className={`flex h-6 w-full items-center justify-center rounded-sm font-mono text-[10px] font-medium sm:h-7 ${
                                                     value === 0 ? 'bg-muted/50 border' : ''
                                                 } ${intensity > 0.55 ? 'text-background' : 'text-foreground'}`}
                                                 style={swatchStyle(intensity)}

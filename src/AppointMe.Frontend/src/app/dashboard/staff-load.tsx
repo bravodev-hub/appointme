@@ -43,18 +43,18 @@ const utilizationClass = (percent: number): string => {
 
 export const StaffLoad = ({ staffLoad, preset }: StaffLoadProps) => {
     if (!staffLoad) {
-        return <Skeleton className='h-[300px]' />;
+        return <Skeleton className='h-[260px] sm:h-[300px]' />;
     }
 
     const max = Math.max(...staffLoad.map(staff => staff.bookings), 1);
 
     return (
-        <Card>
-            <CardHeader className='flex items-baseline justify-between'>
-                <CardTitle className='text-sm'>Bookings by staff</CardTitle>
-                <span className='text-muted-foreground/70 text-xs'>{PERIOD_LABELS[preset]}</span>
+        <Card className='min-w-0 gap-4 py-4 sm:gap-6 sm:py-6'>
+            <CardHeader className='flex flex-wrap items-baseline justify-between gap-x-2 px-4 sm:px-6'>
+                <CardTitle className='truncate text-sm'>Bookings by staff</CardTitle>
+                <span className='text-muted-foreground/70 shrink-0 text-xs'>{PERIOD_LABELS[preset]}</span>
             </CardHeader>
-            <CardContent className='flex flex-col gap-3.5'>
+            <CardContent className='flex flex-col gap-3.5 px-4 sm:px-6'>
                 {staffLoad.length === 0 && (
                     <Empty>
                         <EmptyHeader>
@@ -69,14 +69,14 @@ export const StaffLoad = ({ staffLoad, preset }: StaffLoadProps) => {
                             ? Math.round((staff.bookedMinutes / staff.capacityMinutes) * 100)
                             : null;
                     return (
-                        <div key={staff.providerId} className='flex items-center gap-3'>
-                            <Avatar className='size-8'>
+                        <div key={staff.providerId} className='flex items-center gap-2.5 sm:gap-3'>
+                            <Avatar className='size-8 shrink-0'>
                                 <AvatarFallback className='text-xs'>{initialsFor(staff.name)}</AvatarFallback>
                             </Avatar>
                             <div className='min-w-0 flex-1'>
                                 <div className='mb-1 flex items-baseline justify-between gap-2'>
                                     <span className='truncate text-[13px] font-medium'>{staff.name}</span>
-                                    <span className='flex items-baseline gap-2'>
+                                    <span className='flex shrink-0 items-baseline gap-2'>
                                         <span className='font-mono text-[13px] font-medium'>{staff.bookings}</span>
                                         {utilization != null && (
                                             <span

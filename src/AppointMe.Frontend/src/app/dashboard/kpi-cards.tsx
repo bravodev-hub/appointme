@@ -45,7 +45,7 @@ const Delta = ({ current, compare, kind, label, enabled }: DeltaProps) => {
 
     const positive = difference > 0;
     return (
-        <span className='flex items-center gap-1.5 text-xs'>
+        <span className='flex flex-wrap items-center gap-x-1.5 text-xs'>
             <span
                 className={
                     positive
@@ -78,16 +78,16 @@ const KpiCard = ({ accentIndex, label, value, sub, progress, delta }: KpiCardPro
             className='bg-foreground absolute inset-x-0 top-0 h-0.5'
             style={{ opacity: KPI_ACCENT_OPACITY[accentIndex] }}
         />
-        <CardContent className='flex min-h-[7.5rem] flex-1 flex-col gap-1 p-4'>
+        <CardContent className='flex min-h-[6.5rem] flex-1 flex-col gap-1 p-3 sm:min-h-[7.5rem] sm:p-4'>
             <div className='flex items-center gap-1.5'>
                 <span
-                    className='bg-foreground size-1.5 rounded-full'
+                    className='bg-foreground size-1.5 shrink-0 rounded-full'
                     style={{ opacity: KPI_ACCENT_OPACITY[accentIndex] }}
                 />
-                <span className='text-muted-foreground text-xs font-medium'>{label}</span>
+                <span className='text-muted-foreground truncate text-xs font-medium'>{label}</span>
             </div>
-            <div className='text-2xl font-semibold tracking-tight'>{value}</div>
-            <div className='text-muted-foreground/70 text-xs'>{sub}</div>
+            <div className='text-xl font-semibold tracking-tight sm:text-2xl'>{value}</div>
+            <div className='text-muted-foreground/70 text-[11px] sm:text-xs'>{sub}</div>
             {progress != null && <Progress value={progress} className='mt-2 h-1' />}
             <div className='mt-auto pt-2'>
                 <Delta {...delta} />
@@ -99,9 +99,9 @@ const KpiCard = ({ accentIndex, label, value, sub, progress, delta }: KpiCardPro
 export const KpiCards = ({ stats, revenue, compareRevenue, period }: KpiCardsProps) => {
     if (!stats) {
         return (
-            <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-4'>
+            <div className='grid grid-cols-2 gap-3 xl:grid-cols-4'>
                 {[0, 1, 2, 3].map(index => (
-                    <Skeleton key={index} className='h-[7.5rem]' />
+                    <Skeleton key={index} className='h-[6.5rem] sm:h-[7.5rem]' />
                 ))}
             </div>
         );
@@ -112,7 +112,7 @@ export const KpiCards = ({ stats, revenue, compareRevenue, period }: KpiCardsPro
     const cancellations = stats.trendBuckets.reduce((sum, bucket) => sum + bucket.cancellations, 0);
 
     return (
-        <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-4'>
+        <div className='grid grid-cols-2 gap-3 xl:grid-cols-4'>
             <KpiCard
                 accentIndex={0}
                 label='Appointments'

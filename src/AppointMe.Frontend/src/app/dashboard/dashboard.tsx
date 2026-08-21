@@ -67,11 +67,11 @@ const DashboardContent = () => {
         stats && period.compareEnabled ? totalRevenue(currentCompany.companyId, stats.compareTrendBuckets) : undefined;
 
     return (
-        <div className='mx-auto flex w-full max-w-7xl flex-col gap-4'>
-            <div className='flex flex-wrap items-end justify-between gap-3'>
-                <div>
-                    <h1 className='text-xl font-semibold tracking-tight'>Dashboard</h1>
-                    <p className='text-muted-foreground text-sm'>
+        <div className='mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-3 sm:gap-4'>
+            <div className='flex flex-wrap items-end justify-between gap-2 sm:gap-3'>
+                <div className='min-w-0'>
+                    <h1 className='text-lg font-semibold tracking-tight sm:text-xl'>Dashboard</h1>
+                    <p className='text-muted-foreground text-xs sm:text-sm'>
                         <FormattedDate date={new Date()} />
                     </p>
                 </div>
@@ -83,7 +83,7 @@ const DashboardContent = () => {
             )}
             <TrendChart stats={stats} period={period} />
             {canViewAppointmentStats && (
-                <div className='grid gap-4 xl:grid-cols-2'>
+                <div className='grid min-w-0 gap-3 sm:gap-4 xl:grid-cols-2'>
                     <StaffLoad staffLoad={stats?.staffLoad} preset={period.preset} />
                     <PeakHeatmap />
                 </div>
