@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 cd src/AppointMe.Aspire && dotnet run
 ```
-This starts all services via .NET Aspire: SQL Server, Azure Service Bus Emulator, Keycloak, Mailpit, API, and Frontend.
+This starts all services via .NET Aspire: SQL Server, Keycloak, Mailpit, API, and Frontend.
 
 ### Backend Only
 ```bash
@@ -97,7 +97,12 @@ Slice rules:
 .AddCrmModule()
 ```
 
-**Domain Events**: Aggregate roots inherit from `AggregateRoot` and raise `IDomainEvent` events. Wolverine handles async messaging.
+**Domain Events**: Aggregate roots inherit from `AggregateRoot` and raise `IDomainEvent` events. Wolverine handles async messaging. The transport is chosen by `Wolverine:Transport` (`AppointMe.Api/Wolverine/WolverineHostBuilderExtensions.cs`):
+
+- **`SqlDurable`** — the default, and what local dev and devtest run (`appsettings.json`, `appsettings.Devtest.json`). Broker-less: durable local queues on top of the SQL outbox, so no Service Bus emulator or other broker is needed and in-flight messages survive a restart. Do not swap this for non-durable local queues — that loses messages on every restart/deploy.
+- **`AzureServiceBus`** — the recommended production transport. Requires an `AppointMeMessaging` connection string; Wolverine auto-provisions queues on startup. The SQL outbox stays active as the durability layer either way.
+
+`infra/README.md` (Messaging section) documents what to provision when switching production to Service Bus.
 
 **CQRS Pattern**:
 - Writes use Entity Framework Core
@@ -151,7 +156,7 @@ public class PermissionResolverTests
 ### Tech Stack
 - **Backend**: .NET 10, C# 14, EF Core 10, Wolverine 5.9, Dapper
 - **Frontend**: React 19, TypeScript 5.8, Vite 7, Tailwind CSS 4, TanStack Query
-- **Infrastructure**: SQL Server 2022, Keycloak, Azure Service Bus Emulator
+- **Infrastructure**: SQL Server 2025, Keycloak, Mailpit (local dev); Azure Service Bus for production messaging
 
 ## Local Development Services
 
