@@ -33,13 +33,27 @@
          and .gitkeep noise, so those are re-excluded/re-included explicitly below. -->
     <NoDefaultExcludes>true</NoDefaultExcludes>
 
-    <!-- NU5128: no lib/ or ref/ assets in a package that declares a TFM. Expected. -->
+    <!-- NU5128: no lib/ or ref/ assets in a package that declares a TFM. Expected -
+         this project declares no TargetFramework of its own; it inherits net10.0 from
+         the root Directory.Build.props, so a reader of this file alone would not
+         otherwise see where the TFM comes from. -->
     <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ..\**\.claude\**\*.local.json / *.lock (not just ..\.claude\**\...): .claude
+         directories exist below the repo root too (e.g. src/AppointMe.Frontend/.claude),
+         and are tracked. A root-only pattern misses local-state files someone creates by
+         running Claude Code with a subdirectory as cwd. -->
+    <!-- ..\**\.env / ..\**\.env.* : gitignored, untracked local secrets (API keys,
+         endpoints) realistically created by a dev under any project folder, not just the
+         repo root. NuGet's own default-exclude (disabled above) never covered ".env.*"
+         forms anyway - GetFileNameWithoutExtension(".env.local") is ".env", non-empty -
+         so this needs an explicit pattern regardless. The tracked, non-withheld
+         src/AppointMe.Frontend/.env.development is excluded by this pattern too and
+         re-included individually below. -->
     <None Include="..\**\*"
-          Exclude="..\**\bin\**;..\**\obj\**;..\**\node_modules\**;..\**\dist\**;..\.git\**;..\.vs\**;..\.idea\**;..\**\.DS_Store;..\artifacts\**;..\templates\**;..\.superpowers\**;..\CHANGELOG.md;..\docs\superpowers\**;..\docs\CODE_REVIEW_REPORT.md;..\docs\images\**;..\src\AppointMe.Api\appsettings.Devtest.json;..\infra\cloudflare-worker\.wrangler\**;..\.claude\settings.json;..\.claude\**\*.local.json;..\.claude\**\*.lock;..\docker\keycloak\certs\**;..\AppointMe.sln.DotSettings.user;..\.github\workflows\template.yml;..\LICENSE;..\src\AppointMe.Api\Dockerfile"
+          Exclude="..\**\bin\**;..\**\obj\**;..\**\node_modules\**;..\**\dist\**;..\.git\**;..\.vs\**;..\.idea\**;..\**\.DS_Store;..\**\.env;..\**\.env.*;..\artifacts\**;..\templates\**;..\.superpowers\**;..\CHANGELOG.md;..\docs\superpowers\**;..\docs\CODE_REVIEW_REPORT.md;..\docs\images\**;..\src\AppointMe.Api\appsettings.Devtest.json;..\infra\cloudflare-worker\.wrangler\**;..\.claude\settings.json;..\**\.claude\**\*.local.json;..\**\.claude\**\*.lock;..\docker\keycloak\certs\**;..\AppointMe.sln.DotSettings.user;..\.github\workflows\template.yml;..\LICENSE;..\src\AppointMe.Api\Dockerfile"
           Pack="true"
           PackagePath="content\appointme\%(RecursiveDir)%(Filename)%(Extension)" />
 
@@ -51,6 +65,13 @@
     <None Include="..\docker\keycloak\certs\.gitkeep"
           Pack="true"
           PackagePath="content\appointme\docker\keycloak\certs\.gitkeep" />
+
+    <!-- ..\**\.env.* above also matches the tracked, non-withheld dev-server default
+         below (its own name starts with ".env."); re-include it individually so it
+         still ships despite the blanket .env exclusion. -->
+    <None Include="..\src\AppointMe.Frontend\.env.development"
+          Pack="true"
+          PackagePath="content\appointme\src\AppointMe.Frontend\.env.development" />
 
     <!-- LICENSE and src/AppointMe.Api/Dockerfile are excluded from the wildcard above
          and re-included here individually: NuGet treats a PackagePath whose final

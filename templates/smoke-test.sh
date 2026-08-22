@@ -15,10 +15,20 @@ cleanup() {
   dotnet new uninstall "$PKG_ID" >/dev/null 2>&1 || true
   if [[ -z "${KEEP:-}" ]]; then rm -rf "$OUT_DIR"; fi
 }
-trap cleanup EXIT
+# INT/TERM too, not just EXIT: without this, Ctrl-C during the multi-minute pack step
+# leaves $PKG_ID installed globally on the machine instead of cleaning up.
+trap cleanup EXIT INT TERM
 
 fail() { echo "FAIL: $*" >&2; FAILURES=$((FAILURES + 1)); }
 pass() { echo "ok: $*"; }
+
+# unzip is required by every nupkg assertion below; fail fast with a clear message
+# rather than have `unzip -Z1`/`unzip -l` produce an empty listing that every
+# assert_nupkg_absent call would then pass against vacuously.
+if ! command -v unzip >/dev/null 2>&1; then
+  fail "unzip is required by this script but was not found on PATH"
+  exit 1
+fi
 
 # --- pack -------------------------------------------------------------------
 echo "== packing =="
@@ -26,8 +36,12 @@ rm -rf "$REPO_ROOT/artifacts"
 dotnet pack "$REPO_ROOT/templates/AppointMe.Templates.csproj" \
   -c Release -o "$REPO_ROOT/artifacts"
 
-NUPKG="$(ls "$REPO_ROOT"/artifacts/$PKG_ID.*.nupkg 2>/dev/null | head -1)"
-if [[ -z "$NUPKG" ]]; then echo "FAIL: no nupkg produced" >&2; exit 1; fi
+# `|| true` matters under `set -eo pipefail`: without it, a failing `ls` (no match)
+# makes this whole assignment's exit status non-zero, and `set -e` aborts the script
+# right here - before the `[[ -z "$NUPKG" ]]` guard below ever runs, so the intended
+# "FAIL: no nupkg produced" line would never print.
+NUPKG="$(ls "$REPO_ROOT"/artifacts/$PKG_ID.*.nupkg 2>/dev/null | head -1 || true)"
+if [[ -z "$NUPKG" ]]; then fail "no nupkg produced"; exit 1; fi
 pass "packed $(basename "$NUPKG")"
 
 # --- assertions: nupkg contents ---------------------------------------------
@@ -63,6 +77,14 @@ assert_nupkg_absent '\.claude/settings\.local\.json'
 assert_nupkg_absent '\.claude/scheduled_tasks\.lock'
 assert_nupkg_present 'docker/keycloak/certs/\.gitkeep'
 
+# the two most sensitive withheld paths (live Entra tenant/client id + demo password;
+# Cloudflare account id + email) - asserted against the nupkg itself, not just
+# generated output below, because template.json's generation-time exclude list is a
+# second, independent layer that later tasks edit; today it happens to agree with the
+# pack-time Exclude list, but that is not guaranteed to stay true.
+assert_nupkg_absent 'src/AppointMe\.Api/appsettings\.Devtest\.json'
+assert_nupkg_absent 'infra/cloudflare-worker/\.wrangler/.*'
+
 # tracked repo dotfiles that NuGet's own default-exclude would otherwise silently drop
 assert_nupkg_present '\.editorconfig'
 assert_nupkg_present '\.gitignore'
@@ -71,11 +93,79 @@ assert_nupkg_present 'src/AppointMe\.Frontend/\.prettierrc'
 
 # extensionless files: NuGet nests the source path under any PackagePath whose final
 # segment has no extension (e.g. LICENSE, Dockerfile), unless the packaging project
-# repairs it post-pack - assert both the flat path and the absence of the doubled one
+# special-cases them with a PackagePath ending in a directory separator - assert both
+# the flat path and the absence of the doubled one
 assert_nupkg_present 'LICENSE'
 assert_nupkg_absent 'LICENSE/LICENSE'
 assert_nupkg_present 'src/AppointMe\.Api/Dockerfile'
 assert_nupkg_absent 'src/AppointMe\.Api/Dockerfile/src/AppointMe\.Api/Dockerfile'
+
+# --- assertion: full nupkg manifest parity ----------------------------------
+# The named checks above are easier to read when they fail, but they are necessarily
+# a hand-picked sample - as of this writing they'd miss 6 of the ~10 dotfiles NuGet's
+# default-exclude drops, any *new* untracked local file, and a third extensionless
+# file added later. This is the structural check that closes that gap for good: derive
+# the expected file set from git (source of truth for "the repo"), remove exactly the
+# paths this package deliberately withholds, and diff that against what the nupkg
+# actually contains. Deliberately bash-only (no Python dependency in the harness).
+echo "== asserting full nupkg manifest parity =="
+
+# True (exit 0) if $1 is a path this package deliberately withholds from the nupkg -
+# mirrors the Exclude list and the two explicit re-includes in
+# AppointMe.Templates.csproj. Keep the two lists in sync; this is what makes 1:1 nupkg
+# parity with git-tracked content a guarantee instead of a spot check.
+is_withheld() {
+  local path="$1"
+  # explicit exceptions first: tracked files that live under an otherwise-withheld
+  # prefix/pattern below but DO ship, matching the individual re-include None items
+  case "$path" in
+    docker/keycloak/certs/.gitkeep|src/AppointMe.Frontend/.env.development)
+      return 1 ;;
+  esac
+  case "$path" in
+    artifacts/*|templates/*|.superpowers/*|docs/superpowers/*|docs/images/*|\
+infra/cloudflare-worker/.wrangler/*|docker/keycloak/certs/*|\
+CHANGELOG.md|docs/CODE_REVIEW_REPORT.md|src/AppointMe.Api/appsettings.Devtest.json|\
+.claude/settings.json|AppointMe.sln.DotSettings.user|.github/workflows/template.yml|\
+.claude/*.local.json|*/.claude/*.local.json|.claude/*.lock|*/.claude/*.lock|\
+.env|*/.env|.env.*|*/.env.*)
+      return 0 ;;
+  esac
+  return 1
+}
+
+# Built with a plain while-read loop rather than `mapfile`/`readarray`: this needs to
+# run under whatever `bash` a contributor's machine resolves to, and macOS still ships
+# bash 3.2 by default (no mapfile) unless a newer one is installed and put on PATH.
+EXPECTED_FILES=()
+while IFS= read -r f; do
+  EXPECTED_FILES+=("$f")
+done < <(
+  git -C "$REPO_ROOT" ls-files | while IFS= read -r f; do
+    is_withheld "$f" || printf '%s\n' "$f"
+  done | LC_ALL=C sort
+)
+
+NUPKG_FILES=()
+while IFS= read -r f; do
+  NUPKG_FILES+=("$f")
+done < <(
+  unzip -Z1 "$NUPKG" | grep '^content/appointme/' | sed 's#^content/appointme/##' | LC_ALL=C sort
+)
+
+MISSING="$(comm -23 <(printf '%s\n' "${EXPECTED_FILES[@]}") <(printf '%s\n' "${NUPKG_FILES[@]}"))"
+EXTRA="$(comm -13 <(printf '%s\n' "${EXPECTED_FILES[@]}") <(printf '%s\n' "${NUPKG_FILES[@]}"))"
+
+if [[ -z "$MISSING" && -z "$EXTRA" ]]; then
+  pass "nupkg manifest matches git-tracked content minus withheld paths exactly (${#EXPECTED_FILES[@]} files)"
+else
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && fail "missing from nupkg (tracked, not withheld, not shipped): $line"
+  done <<< "$MISSING"
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && fail "unexpected extra in nupkg (not tracked, or should be withheld): $line"
+  done <<< "$EXTRA"
+fi
 
 # --- install + generate -----------------------------------------------------
 echo "== installing =="
