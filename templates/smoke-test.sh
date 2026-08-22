@@ -457,28 +457,39 @@ assert_absent  "src/AppointMe.Api"
 fi
 
 # --- build and test the generated solution ---------------------------------
-# Restore is split from build (`dotnet restore` then `dotnet build --no-restore`)
-# rather than left as one combined `dotnet build`. Root cause, established from
-# the exact failure across Tasks 2-4 (~1 run in 3): "error : The file
-# '.../obj/<Project>.csproj.nuget.g.props' already exists." -- this solution has
-# several projects sharing a common *.Contracts reference; a combined
-# `dotnet build` triggers MSBuild's own implicit, per-entry-point restore, and
-# when multiple entry-point projects that share that reference build in
-# parallel, each independently restores its own transitive closure, so the
-# shared project's generated .g.props/.g.targets get written more than once,
-# concurrently, by unrelated build nodes. A single `dotnet restore` over the
-# whole solution computes one combined project graph up front and restores
-# each project exactly once before any build node starts, so there is nothing
-# left to race by the time `--no-restore` build begins. This removes the
-# race's trigger rather than tolerating it with a retry.
+# Restore is split from build (`dotnet restore` then `dotnet build --no-restore`),
+# the same split devtest.yml already uses for the main solution (its own
+# Restore/Build steps) -- following that existing convention here rather than
+# inventing a second one. This targets a transient NuGet restore race reported
+# across Tasks 2-4 (~1 run in 3): "error : The file
+# '.../obj/<Project>.csproj.nuget.g.props' already exists.", always on what was
+# then a single combined `dotnet build $SLN -c Release` step (implicit restore
+# + build together).
+#
+# This is the standard remedy for that failure signature, NOT a confirmed fix
+# -- no mechanism claim is being made here, deliberately. 26 local
+# reproduction attempts (18 on the old combined form, 8 on this split form,
+# obj/bin wiped between runs) produced zero recurrences in either form: the
+# race was never actually forced to reproduce on this machine, only reported
+# by earlier tasks running this same harness elsewhere. If it recurs on a real
+# CI runner even with this split, the next step is either pinning
+# `-maxcpucount:1` on the build below, or a narrow, bounded retry around this
+# specific step only (never around the whole harness) -- treat both of those
+# as still open, not as a fallback already ruled out by this comment.
 echo "== restoring generated solution =="
-if ! dotnet restore "$GEN_DIR/$NAME.sln"; then
+if dotnet restore "$GEN_DIR/$NAME.sln"; then
+  pass "generated solution restores"
+  RESTORE_OK=1
+else
   fail "generated solution failed to restore"
+  RESTORE_OK=0
 fi
 
 echo "== building generated solution =="
-if dotnet build "$GEN_DIR/$NAME.sln" -c Release --no-restore; then
+if [[ "$RESTORE_OK" -eq 1 ]] && dotnet build "$GEN_DIR/$NAME.sln" -c Release --no-restore; then
   pass "generated solution builds"
+elif [[ "$RESTORE_OK" -eq 0 ]]; then
+  fail "generated solution build skipped -- restore already failed"
 else
   fail "generated solution does not build"
 fi
