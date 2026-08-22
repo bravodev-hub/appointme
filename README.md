@@ -10,12 +10,14 @@ Try the **[live demo](https://app.appointme.dev/api/v1/login/demo)** — seeded 
 
 It's a shared public demo seeded with sample data — other visitors' activity may be visible, and the environment may be reset periodically.
 
-![AppointMe live demo](./docs/images/live-demo.png)
+![A tour of the AppointMe demo: the appointments calendar, the business dashboard with KPI cards, trend chart, bookings by staff and a peak-hours heatmap, the customer list, and dark mode](./docs/images/live-demo.gif)
 
 ## Dashboard
 
 *New in [v1.1.0](./CHANGELOG.md).* Every tenant gets a business dashboard built on the booking
 data the app already owns — no separate analytics service, no extra wiring.
+
+![The AppointMe dashboard: four KPI cards with period-over-period deltas, a trend chart overlaid with the previous period, bookings by staff, and a peak-hours heatmap](./docs/images/dashboard.png)
 
 - **KPI cards** — appointments, revenue booked, chair utilization, and returning-client rate,
   each with a delta against the comparison period.
