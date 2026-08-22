@@ -326,9 +326,15 @@ done
 #                                                  both roles for the identical
 #                                                  search text.
 #
-# This is a CLOSED enumeration over these 18 followers, independently verified
-# against every file that reaches $GEN_DIR (git-tracked, minus withheld paths,
-# minus template.json's own excludes) -- not a sample. Adding a new
+# This is a CLOSED enumeration over these 19 followers (9 + 1 + 9 above),
+# independently verified against every file that reaches $GEN_DIR (git-tracked,
+# minus withheld paths, minus template.json's own excludes) -- not a sample,
+# except `\r`: on the LF checkout this repo and CI both use, `\r` has zero
+# actual occurrences: it is a defensive hedge for a `core.autocrlf=true`
+# checkout, where the one occurrence that currently sits right before a bare
+# `\n` (README.md's "# AppointMe" heading) would have its follower become `\r`
+# instead of `\n`, falling out of every bucket. Every other follower listed
+# above was independently measured, not guessed. Adding a new
 # AppointMe-prefixed C# identifier with a follower character outside this list
 # (e.g. AddAppointMeBilling, follower "B") falls out of every bucket: the
 # "no residual AppointMe" check below still catches it (loudly, in CI), but
@@ -336,6 +342,87 @@ done
 # safeBucketCompact (or identityBucket, if it's a non-identifier position) in
 # template.json themselves. There is no way to make this self-updating; this
 # comment is the only record of the rule.
+#
+# --- lowercase brand token: the second, independent token family -----------
+# "appointme" (lowercase) is a PREFIX of "appointment" -- unlike "AppointMe"
+# above, it cannot be matched bare at all: any bare-"appointme" symbol would
+# also rewrite the Appointment aggregate, the /appointments route and
+# appointments.statistics:view. So the guard character is baked directly into
+# each symbol's own search text ("appointme-", "appointme.", ...) instead of
+# being enforced via `onlyIf` the way the PascalCase family does it above --
+# there is no bare "appointme" catch-all anywhere, gated or not.
+#
+# Three base value symbols, then one `generated`/`join` symbol per follower
+# character that joins the base value with that literal follower (consuming
+# and immediately re-emitting it, so the character itself is unchanged):
+#
+#   lowerDotted  (lowerCaseInvariant) -> case-folded, separators preserved
+#                exactly as typed. Followers: . ' " / ` ; (tokDot, tokApos,
+#                tokQuot, tokSlash, tokTick, tokSemi). tokDot is also the only
+#                symbol with fileRename (the same fileRename-ignores-onlyIf
+#                reason as identityBucket above -- see the fileRename note in
+#                the assertions below). This bucket is NOT a free stylistic
+#                choice: SuperAdminRegistryTests.should_match_email_case_
+#                insensitively compares this rename's allowlist literal
+#                ("demo@appointme.dev") against the PascalCase family's
+#                identity-preserving rename of "Demo@AppointMe.DEV" -- both
+#                must fold to the same string, which only holds if this bucket
+#                preserves the user's own separators (e.g. the dot in
+#                "Contoso.Booking") exactly as identityBucket does, rather
+#                than normalizing them to hyphens. The same value is also what
+#                keeps `'@/api/appointme'` import specifiers (tokApos) resolving
+#                to the file tokDot renames, and what keeps main.bicep's
+#                apostrophe-quoted values in sync with main.json's
+#                double-quoted compiled equivalents (tokQuot) and with
+#                appointme-realm.json's own realm name and URL-path segments
+#                (tokQuot, tokSlash).
+#   lowerKebab   (kebabCase) -> hyphen-normalized (dots/underscores become
+#                hyphens). Followers: - \n (tokDash, tokNewline). Required,
+#                not stylistic: tokDash covers the three Aspire/Keycloak
+#                resource-name strings ("appointme-sql", "appointme-api",
+#                "appointme-frontend") that ASPIRE006 restricts to ASCII
+#                letters, digits and hyphens (no dots) -- the same constraint
+#                that drove safeBucketCompact's "delete" transform above, just
+#                hyphen-safe instead of hyphen-free since these are strings,
+#                not C# identifiers. tokNewline covers compose.yaml's
+#                `name: appointme` Docker Compose project name, which Compose
+#                validates as lowercase alphanumeric plus hyphen/underscore --
+#                no dots allowed -- alongside two harmless README.md shell
+#                examples that share the same "followed by end-of-line" shape.
+#                tokDash is also the only lowercase symbol with fileRename
+#                (renames appointme-realm.json).
+#   lowerCompact (compactSafeNameLower: lowerCaseInvariant then delete every
+#                non-alphanumeric character) -> Followers: A : $ { d _ (tokA,
+#                tokColon, tokDollar, tokBrace, tokD, tokUnder). Each follower
+#                here sits in a context stricter than either bucket above
+#                allows: tokA is Program.cs's `var appointmeApi = ...` C# local
+#                (a literal hyphen or dot mid-identifier would not compile);
+#                tokColon is orval.config.ts's unquoted object key
+#                `appointme: { ... }` (a hyphen there is a JS syntax error --
+#                caught for real by this task's own `npm run lint`); tokDollar
+#                and tokBrace are main.bicep's/main.json's ACR and storage-
+#                account name construction ("acrappointme${...}" /
+#                "acrappointme{0}{1}"), which Azure restricts to lowercase
+#                alphanumeric only (no hyphens, no dots); tokD is the
+#                illustrative "acrappointmedevtest.azurecr.io" description
+#                string for that same ACR name, kept consistent with it rather
+#                than given its own style; tokUnder is main.bicepparam's
+#                `appointme_admin` SQL admin login example.
+#
+# This is a CLOSED enumeration over these 14 followers, independently measured
+# with a byte-level scan (not `grep`, which -- see the residual-check note
+# below -- silently strips line-terminating newlines before matching and would
+# have missed the `\n` follower entirely) over the reachable file set (every
+# git-tracked file minus is_withheld()'s paths minus template.json's own
+# `modifiers.exclude` globs minus `.template.config/`), not a sample: 208
+# non-domain occurrences total, zero left over once all 14 followers are
+# routed. Adding a new lowercase "appointme"-prefixed string with a follower
+# character outside this list falls out of every bucket: the residual check
+# below still catches it (loudly, in CI), but whoever adds it then has to add
+# a new `tok*` symbol to template.json themselves, choosing whichever of the
+# three base values above (or a new one) is valid for that occurrence's own
+# context -- there is no way to make this self-updating; this comment is the
+# only record of the rule.
 if grep -rIl "AppointMe" "$GEN_DIR" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist >/dev/null 2>&1; then
   echo "--- files still containing AppointMe ---" >&2
   grep -rIl "AppointMe" "$GEN_DIR" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist >&2
@@ -362,63 +449,109 @@ fi
 
 echo "== testing generated solution =="
 
-# ============================================================================
-# TEMPORARY, NAMED, SELF-REMOVING ALLOWANCE -- Task 2 / Task 3 boundary.
-# REMOVE THIS ENTIRE BLOCK, INCLUDING THE TEST_OUTPUT CAPTURE BELOW, and
-# restore a plain `if dotnet test "$GEN_DIR/$NAME.sln" -c Release --no-build;
-# then pass ...; else fail ...; fi` once Task 3 lands. The capture exists only
-# to let this block inspect *which* test failed before deciding pass/fail; a
-# plain `if dotnet test ...` doesn't need it, and leaving it behind while
-# deleting the parsing/allowance logic below it would make dotnet test run
-# twice (once here, once in the replacement `if`).
-#
-# SuperAdminRegistryTests.should_match_email_case_insensitively asserts
-# IsSuperAdmin("Demo@AppointMe.DEV") against an allowlist configured with the
-# still-lowercase "demo@appointme.dev" (Task 3's job, not this task's). A
-# correct, vocabulary-safe, case-sensitive PascalCase-only rename (which is
-# what this task must do -- see the "no residual AppointMe" and "Appointment
-# survived intact" assertions above) renames only the PascalCase half of that
-# one literal, so the two no longer match and this one test fails until Task 3
-# also renames the lowercase form. Making the rename case-insensitive to dodge
-# this would reintroduce exactly the appointments-eating corruption this task
-# exists to prevent -- confirmed by testing the vanilla, unrestricted
-# sourceName mechanism, which "passes" this test only because it corrupts the
-# lowercase allowlist string too.
-#
-# So: allow at most one failure, and only if it is this exact, named test.
-# Any other failing test, or any total below 217, still fails the run.
-# ============================================================================
 # `|| true` matters under `set -e`: dotnet test's own exit code is nonzero
 # whenever any test fails, which would otherwise abort the script before the
-# allowance logic below gets to inspect *which* test failed.
+# assertions below get to inspect the output.
 TEST_OUTPUT="$(dotnet test "$GEN_DIR/$NAME.sln" -c Release --no-build 2>&1)" || true
 echo "$TEST_OUTPUT"
 
-# Each `|| true` matters for the same reason, and for a second one: under
-# `set -eo pipefail`, a `grep` that matches nothing (the *expected* case for
-# FAILING_NAMES on a fully green run, and a real possibility for the other two
-# if dotnet test's summary format ever changes) exits 1, pipefail propagates
-# that through the rest of the pipe even though `awk`/`sed` themselves succeed
-# on the resulting empty input, and `set -e` would abort the script right here
-# -- before the zero-failure success branch below ever runs. Without this,
-# the harness would be structurally unable to report success on a fully clean
-# 217/217 run, only ever passing today because the one known failure means
-# FAILING_NAMES is never empty in practice.
+# Each `|| true` matters for the same reason: under `set -eo pipefail`, a
+# `grep` that matches nothing (the expected case for a fully clean run) exits
+# 1, pipefail propagates that through the rest of the pipe even though `awk`
+# succeeds trivially on the resulting empty input, and `set -e` would abort
+# the script right here -- before the zero-failure success branch below ever
+# runs.
 TOTAL_TESTS="$(grep -oE 'Total:[[:space:]]*[0-9]+' <<< "$TEST_OUTPUT" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)"
 FAILED_TESTS="$(grep -oE 'Failed:[[:space:]]*[0-9]+' <<< "$TEST_OUTPUT" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)"
-FAILING_NAMES="$(grep -E '^  Failed ' <<< "$TEST_OUTPUT" | sed -E 's/^  Failed ([^ ]+).*/\1/' || true)"
-ALLOWED_FAILURE='\.SuperAdminRegistryTests\.should_match_email_case_insensitively$'
 
 if [[ "$TOTAL_TESTS" != "217" ]]; then
   fail "generated solution ran $TOTAL_TESTS tests, expected 217 -- tests were lost, not just failed"
 elif [[ "$FAILED_TESTS" -eq 0 ]]; then
   pass "generated solution tests pass (217/217)"
-elif [[ "$FAILED_TESTS" -eq 1 ]] && grep -q "$ALLOWED_FAILURE" <<< "$FAILING_NAMES"; then
-  pass "generated solution tests pass (216/217; SuperAdminRegistryTests.should_match_email_case_insensitively is the known, expected Task 2/Task 3 boundary failure -- see comment above)"
 else
-  fail "generated solution tests failed: $FAILED_TESTS failing (expected at most 1, and only SuperAdminRegistryTests.should_match_email_case_insensitively): $FAILING_NAMES"
+  FAILING_NAMES="$(grep -E '^  Failed ' <<< "$TEST_OUTPUT" | sed -E 's/^  Failed ([^ ]+).*/\1/' || true)"
+  fail "generated solution tests failed: $FAILED_TESTS failing (expected 0): $FAILING_NAMES"
 fi
-# ============================================================== END ALLOWANCE
+
+# --- assertions: lowercase brand tokens -------------------------------------
+# See the "lowercase brand token" comment above the PascalCase residual check
+# for the full design (three base value symbols, one guarded tok* symbol per
+# follower character, why each bucket is required rather than stylistic).
+echo "== asserting lowercase brand tokens are gone =="
+
+if [[ ! -d "$GEN_DIR/src" ]]; then
+  fail "$GEN_DIR/src does not exist -- generation must have failed; skipping lowercase-rename checks"
+else
+
+# Every legitimate lowercase brand token is followed by something other than
+# "n" -- "appointmen..." is always the domain word and must be left alone. So
+# any lowercase "appointme" NOT followed by "n" is a leak. The `|$` alternative
+# matters and is not decorative: plain `grep` strips each line's terminating
+# newline before matching, so a bare `[^n]` class alone silently misses
+# "appointme" sitting at the very end of a line -- exactly the `\n`-follower
+# case documented above (two occurrences in README.md, one in compose.yaml
+# before this rename). `$` (end of line) catches that case the same way
+# `[^n]` catches a same-line follower; verified directly against both grep
+# flavors on this machine (macOS's own /usr/bin/grep and this shell's `grep`)
+# with a synthetic fixture before relying on it here.
+LEAKS="$(grep -rIoE 'appointme([^n]|$)' "$GEN_DIR" \
+  --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist \
+  2>/dev/null | sort | uniq -c | sort -rn || true)"
+if [[ -n "$LEAKS" ]]; then
+  echo "--- residual lowercase brand tokens ---" >&2
+  echo "$LEAKS" >&2
+  echo "--- files ---" >&2
+  grep -rIlE 'appointme([^n]|$)' "$GEN_DIR" \
+    --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist >&2 || true
+  fail "generated output still contains lowercase brand tokens"
+else
+  pass "no residual lowercase brand tokens"
+fi
+
+# Lowercase-named files were renamed too (tokDash and tokDot are the only
+# lowercase symbols carrying fileRename, one per file above).
+assert_absent "src/$NAME.Aspire/appointme-realm.json"
+assert_absent "src/$NAME.Frontend/src/api/appointme.ts"
+assert_absent "src/$NAME.Frontend/src/api/appointme.schemas.ts"
+
+# ...but the appointment-named paths must survive untouched. Counted
+# case-insensitively (matching both the PascalCase "Appointment" aggregate/
+# module paths under src/Booking and the lowercase "appointment" frontend
+# route paths under src/AppointMe.Frontend) since an unguarded rename by
+# EITHER token family could corrupt this vocabulary, and this is the
+# regression check for both at once. Scoped to src/ (where all 65 of them
+# live) and pruned of bin/obj/node_modules/dist identically on both sides:
+# by this point in the script the generated solution has already been built
+# and the frontend not yet, so an unpruned `find` on the generated side would
+# additionally count hundreds of bin/obj paths that were never part of the
+# template's own content and have nothing to do with this rename, while the
+# source side (never built) has none of those -- an apples-to-oranges
+# comparison that the brief's own version of this check does not avoid.
+# Pinned against a literal baseline rather than "source == generated" alone,
+# so a broken `grep`/`find` returning 0 on both sides can't pass vacuously.
+count_appointment_paths() {
+  find "$1/src" -type d \( -name bin -o -name obj -o -name node_modules -o -name dist \) -prune -o -type f -print \
+    | grep -ic "appointment" || true
+}
+EXPECTED_APPOINTMENT_PATHS=65
+SRC_PATHS="$(count_appointment_paths "$REPO_ROOT")"
+GEN_PATHS="$(count_appointment_paths "$GEN_DIR")"
+if [[ "$SRC_PATHS" != "$EXPECTED_APPOINTMENT_PATHS" ]]; then
+  fail "source appointment-named path count is $SRC_PATHS, expected $EXPECTED_APPOINTMENT_PATHS -- update EXPECTED_APPOINTMENT_PATHS if the source legitimately changed"
+elif [[ "$GEN_PATHS" != "$EXPECTED_APPOINTMENT_PATHS" ]]; then
+  fail "appointment-named path count changed: generated $GEN_PATHS, expected $EXPECTED_APPOINTMENT_PATHS -- the rename corrupted a domain path"
+else
+  pass "appointment-named paths preserved ($GEN_PATHS)"
+fi
+
+# --- frontend ----------------------------------------------------------------
+echo "== building generated frontend =="
+(
+  cd "$GEN_DIR/src/$NAME.Frontend"
+  npm ci && npm run lint && npm run build
+) && pass "generated frontend lints and builds" || fail "generated frontend failed"
+
+fi
 
 echo
 if [[ $FAILURES -gt 0 ]]; then echo "$FAILURES assertion(s) failed" >&2; exit 1; fi
