@@ -13,9 +13,19 @@ cd src/AppointMe.Aspire && dotnet run
 database migrations, and seeds demo data. The frontend comes up on
 https://localhost:5173.
 
-Prefer to run the backing services yourself? `compose.yaml` brings up SQL Server,
-Keycloak and Mailpit on the same ports; then run `dotnet run --project src/AppointMe.Api`
-and `npm run dev` in `src/AppointMe.Frontend`.
+Prefer to run the backing services yourself? First, one-time setup so Keycloak's
+HTTPS works outside Aspire — trust the ASP.NET Core dev certificate and export it
+for Keycloak to read (`docker/keycloak/export-dev-cert.sh` does both steps, or run
+them yourself):
+
+```bash
+dotnet dev-certs https --trust
+dotnet dev-certs https --format PEM --no-password -ep docker/keycloak/certs/keycloak.crt
+```
+
+Then `docker compose up` brings up SQL Server, Keycloak and Mailpit on the same
+ports Aspire uses; run `dotnet run --project src/AppointMe.Api`, and in
+`src/AppointMe.Frontend`, `npm ci` followed by `npm run dev`.
 
 ## What's inside
 

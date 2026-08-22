@@ -598,15 +598,38 @@ fi
 # checks above): the README lives at the generated root regardless of whether
 # src/ generated correctly, so it can and should be asserted unconditionally.
 echo "== asserting overlay README =="
-assert_present "README.md"
-assert_absent  "templates/overlay"
+# assert_present_file (-f), not assert_present (-e): a directory literally named
+# "README.md" would satisfy -e and pass vacuously. This is the same -e-vs--f hole
+# that hid the LICENSE/Dockerfile directory-nesting defect back in Task 1.
+assert_present_file "README.md"
+assert_absent        "templates/overlay"
 
-if grep -q "app.appointme.dev" "$GEN_DIR/README.md" 2>/dev/null; then
-  fail "generated README still points at the AppointMe live demo"
+# NOT `grep -q "app.appointme.dev"`: "appointme." is exactly tokDot's `replaces`
+# search text, so template.json's already-shipped (Task 3) rename machinery
+# rewrites that substring on EVERY generation, regardless of which README ships.
+# The marketing README's own live-demo link (README.md:9, "app.appointme.dev")
+# would be mangled into e.g. "app.contoso.booking.dev" whether or not this task's
+# fix is in place -- so a literal-domain check can never fail for the reason its
+# message would claim; it is vacuous. Verified empirically: reverting the overlay
+# mapping and re-running left this exact check passing while the marketing
+# README was still shipping (see the Task 4 fix-round report).
+#
+# "## Live demo" is rename-immune instead: it is the marketing README's own
+# section heading (README.md:7), and it contains neither "AppointMe" nor
+# "appointme" as a substring in any case, so no symbol in EITHER token family
+# (the PascalCase family's `identityBucket`/`safeBucket*`, or the lowercase
+# family's `tok*`) has any search text that could match inside it. Checked
+# against both families, not just tokDot.
+if grep -q "## Live demo" "$GEN_DIR/README.md" 2>/dev/null; then
+  fail "generated README still contains the AppointMe marketing README's Live demo section"
 else
-  pass "generated README has no live-demo link"
+  pass "generated README has no live-demo section"
 fi
 
+# "docs/images" is rename-immune by the same standard: it contains neither
+# "AppointMe" nor "appointme" as a substring, so it cannot be touched by either
+# token family's replace rules and this check is not vulnerable to the same
+# vacuity as the literal-domain check above.
 if grep -q "docs/images" "$GEN_DIR/README.md" 2>/dev/null; then
   fail "generated README references docs/images, which is not shipped"
 else
