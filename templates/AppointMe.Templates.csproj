@@ -52,8 +52,13 @@
          so this needs an explicit pattern regardless. The tracked, non-withheld
          src/AppointMe.Frontend/.env.development is excluded by this pattern too and
          re-included individually below. -->
+    <!-- ..\README.md: this repo's own README is release marketing (live-demo link,
+         tour GIF, docs/images references the template does not ship). A generated
+         project gets a purpose-written README instead - see the overlay None item
+         below and the second `sources` entry in .template.config/template.json that
+         maps its contents onto the generated project's root. -->
     <None Include="..\**\*"
-          Exclude="..\**\bin\**;..\**\obj\**;..\**\node_modules\**;..\**\dist\**;..\.git\**;..\.vs\**;..\.idea\**;..\**\.DS_Store;..\**\.env;..\**\.env.*;..\artifacts\**;..\templates\**;..\.superpowers\**;..\CHANGELOG.md;..\docs\superpowers\**;..\docs\CODE_REVIEW_REPORT.md;..\docs\images\**;..\src\AppointMe.Api\appsettings.Devtest.json;..\infra\cloudflare-worker\.wrangler\**;..\.claude\settings.json;..\**\.claude\**\*.local.json;..\**\.claude\**\*.lock;..\docker\keycloak\certs\**;..\AppointMe.sln.DotSettings.user;..\.github\workflows\template.yml;..\LICENSE;..\src\AppointMe.Api\Dockerfile"
+          Exclude="..\**\bin\**;..\**\obj\**;..\**\node_modules\**;..\**\dist\**;..\.git\**;..\.vs\**;..\.idea\**;..\**\.DS_Store;..\**\.env;..\**\.env.*;..\artifacts\**;..\templates\**;..\.superpowers\**;..\CHANGELOG.md;..\README.md;..\docs\superpowers\**;..\docs\CODE_REVIEW_REPORT.md;..\docs\images\**;..\src\AppointMe.Api\appsettings.Devtest.json;..\infra\cloudflare-worker\.wrangler\**;..\.claude\settings.json;..\**\.claude\**\*.local.json;..\**\.claude\**\*.lock;..\docker\keycloak\certs\**;..\AppointMe.sln.DotSettings.user;..\.github\workflows\template.yml;..\LICENSE;..\src\AppointMe.Api\Dockerfile"
           Pack="true"
           PackagePath="content\appointme\%(RecursiveDir)%(Filename)%(Extension)" />
 
@@ -72,6 +77,20 @@
     <None Include="..\src\AppointMe.Frontend\.env.development"
           Pack="true"
           PackagePath="content\appointme\src\AppointMe.Frontend\.env.development" />
+
+    <!-- ..\templates\** above excludes this packaging project's own templates/ folder
+         wholesale - it is packaging infrastructure (this .csproj, smoke-test.sh),
+         not content a generated project should receive. templates/overlay/ is the one
+         exception: its files are the replacement README a generated project gets
+         INSTEAD OF this repo's own (release-marketing) README.md, excluded above. Pack
+         it under its own content/appointme/templates/overlay/ path; at generation
+         time, template.json's primary `sources` entry excludes templates/** (so the
+         overlay folder itself never surfaces in generated output) while a second
+         `sources` entry maps this directory's *contents* onto the generated project's
+         root. -->
+    <None Include="..\templates\overlay\**\*"
+          Pack="true"
+          PackagePath="content\appointme\templates\overlay\%(RecursiveDir)%(Filename)%(Extension)" />
 
     <!-- LICENSE and src/AppointMe.Api/Dockerfile are excluded from the wildcard above
          and re-included here individually: NuGet treats a PackagePath whose final

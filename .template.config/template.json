@@ -60,6 +60,7 @@
 
     "tokDash":    { "type": "generated", "generator": "join", "replaces": "appointme-",  "fileRename": "appointme-", "parameters": { "symbols": [ { "type": "ref", "value": "lowerKebab" }, { "type": "const", "value": "-" } ] } },
     "tokNewline": { "type": "generated", "generator": "join", "replaces": "appointme\n", "parameters": { "symbols": [ { "type": "ref", "value": "lowerKebab" }, { "type": "const", "value": "\n" } ] } },
+    "tokCR":      { "type": "generated", "generator": "join", "replaces": "appointme\r", "parameters": { "symbols": [ { "type": "ref", "value": "lowerKebab" }, { "type": "const", "value": "\r" } ] } },
 
     "tokA":       { "type": "generated", "generator": "join", "replaces": "appointmeA",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerCompact" }, { "type": "const", "value": "A" } ] } },
     "tokColon":   { "type": "generated", "generator": "join", "replaces": "appointme:",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerCompact" }, { "type": "const", "value": ":" } ] } },
@@ -84,6 +85,10 @@
           ]
         }
       ]
+    },
+    {
+      "source": "./templates/overlay/",
+      "target": "./"
     }
   ]
 }

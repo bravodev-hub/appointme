@@ -137,15 +137,20 @@ echo "== asserting full nupkg manifest parity =="
 is_withheld() {
   local path="$1"
   # explicit exceptions first: tracked files that live under an otherwise-withheld
-  # prefix/pattern below but DO ship, matching the individual re-include None items
+  # prefix/pattern below but DO ship, matching the individual re-include None items.
+  # templates/overlay/* is here, not an oversight: templates/* below withholds this
+  # packaging project's own templates/ folder (csproj, smoke-test.sh) wholesale, but
+  # templates/overlay/** is packed by its own None item in AppointMe.Templates.csproj
+  # (content/appointme/templates/overlay/...) precisely so it CAN be remapped onto the
+  # generated project's root at generation time -- it must not be withheld here.
   case "$path" in
-    docker/keycloak/certs/.gitkeep|src/AppointMe.Frontend/.env.development)
+    docker/keycloak/certs/.gitkeep|src/AppointMe.Frontend/.env.development|templates/overlay/*)
       return 1 ;;
   esac
   case "$path" in
     artifacts/*|templates/*|.superpowers/*|docs/superpowers/*|docs/images/*|\
 infra/cloudflare-worker/.wrangler/*|docker/keycloak/certs/*|\
-CHANGELOG.md|docs/CODE_REVIEW_REPORT.md|src/AppointMe.Api/appsettings.Devtest.json|\
+CHANGELOG.md|README.md|docs/CODE_REVIEW_REPORT.md|src/AppointMe.Api/appsettings.Devtest.json|\
 .claude/settings.json|AppointMe.sln.DotSettings.user|.github/workflows/template.yml|\
 .claude/*.local.json|*/.claude/*.local.json|.claude/*.lock|*/.claude/*.lock|\
 .env|*/.env|.env.*|*/.env.*)
@@ -377,20 +382,30 @@ done
 #                appointme-realm.json's own realm name and URL-path segments
 #                (tokQuot, tokSlash).
 #   lowerKebab   (kebabCase) -> hyphen-normalized (dots/underscores become
-#                hyphens). Followers: - \n (tokDash, tokNewline). Required,
-#                not stylistic: tokDash covers the three Aspire/Keycloak
-#                resource-name strings ("appointme-sql", "appointme-api",
-#                "appointme-frontend") that ASPIRE006 restricts to ASCII
-#                letters, digits and hyphens (no dots) -- the same constraint
-#                that drove safeBucketCompact's "delete" transform above, just
-#                hyphen-safe instead of hyphen-free since these are strings,
-#                not C# identifiers. tokNewline covers compose.yaml's
-#                `name: appointme` Docker Compose project name, which Compose
-#                validates as lowercase alphanumeric plus hyphen/underscore --
-#                no dots allowed -- alongside two harmless README.md shell
-#                examples that share the same "followed by end-of-line" shape.
-#                tokDash is also the only lowercase symbol with fileRename
-#                (renames appointme-realm.json).
+#                hyphens). Followers: - \n \r (tokDash, tokNewline, tokCR).
+#                Required, not stylistic: tokDash covers the three Aspire/
+#                Keycloak resource-name strings ("appointme-sql",
+#                "appointme-api", "appointme-frontend") that ASPIRE006
+#                restricts to ASCII letters, digits and hyphens (no dots) --
+#                the same constraint that drove safeBucketCompact's "delete"
+#                transform above, just hyphen-safe instead of hyphen-free
+#                since these are strings, not C# identifiers. tokNewline
+#                covers compose.yaml's `name: appointme` Docker Compose
+#                project name, which Compose validates as lowercase
+#                alphanumeric plus hyphen/underscore -- no dots allowed --
+#                alongside two harmless README.md shell examples that share
+#                the same "followed by end-of-line" shape. tokCR is the same
+#                `core.autocrlf=true` defensive hedge as identityBucket's own
+#                `\r` follower above, extended to this family for symmetry:
+#                on such a checkout, an `\n` follower becomes `\r`, and
+#                without tokCR every one of tokNewline's occurrences --
+#                compose.yaml's Compose project name and the two README.md
+#                examples -- would fall out of every lowercase bucket instead
+#                of just changing which one catches them. Like identityBucket's
+#                `\r`, it has zero actual occurrences on the LF checkout this
+#                repo and CI both use; it exists for the checkout that isn't
+#                this one. tokDash is also the only lowercase symbol with
+#                fileRename (renames appointme-realm.json).
 #   lowerCompact (compactSafeNameLower: lowerCaseInvariant then delete every
 #                non-alphanumeric character) -> Followers: A : $ { d _ (tokA,
 #                tokColon, tokDollar, tokBrace, tokD, tokUnder). Each follower
@@ -409,14 +424,16 @@ done
 #                than given its own style; tokUnder is main.bicepparam's
 #                `appointme_admin` SQL admin login example.
 #
-# This is a CLOSED enumeration over these 14 followers, independently measured
-# with a byte-level scan (not `grep`, which -- see the residual-check note
-# below -- silently strips line-terminating newlines before matching and would
-# have missed the `\n` follower entirely) over the reachable file set (every
-# git-tracked file minus is_withheld()'s paths minus template.json's own
-# `modifiers.exclude` globs minus `.template.config/`), not a sample: 208
-# non-domain occurrences total, zero left over once all 14 followers are
-# routed. Adding a new lowercase "appointme"-prefixed string with a follower
+# This is a CLOSED enumeration over these 15 followers (6 + 3 + 6 above),
+# independently measured with a byte-level scan (not `grep`, which -- see the
+# residual-check note below -- silently strips line-terminating newlines
+# before matching and would have missed the `\n` follower entirely) over the
+# reachable file set (every git-tracked file minus is_withheld()'s paths minus
+# template.json's own `modifiers.exclude` globs minus `.template.config/`),
+# not a sample: 208 non-domain occurrences total on the LF checkout this repo
+# and CI both use (`\r` contributes zero of them here -- see tokCR above),
+# zero left over once all 15 followers are routed. Adding a new lowercase
+# "appointme"-prefixed string with a follower
 # character outside this list falls out of every bucket: the residual check
 # below still catches it (loudly, in CI), but whoever adds it then has to add
 # a new `tok*` symbol to template.json themselves, choosing whichever of the
@@ -510,6 +527,18 @@ fi
 
 # Lowercase-named files were renamed too (tokDash and tokDot are the only
 # lowercase symbols carrying fileRename, one per file above).
+#
+# The two src/api files are only covered indirectly above (the frontend's `tsc -b`
+# has to resolve their import path, or the build fails) -- but nothing else asserts
+# the realm file's *new* name positively, only the old name's absence. If tokDash's
+# fileRename ever produced a name diverging from what src/AppointMe.Aspire/Program.cs
+# passes to WithRealmImport(...), this harness would stay green and Keycloak would
+# only fail at container-startup, at runtime. NAME_KEBAB mirrors the `kebabCase`
+# value-transform (lowercased, separators normalized to hyphens) well enough for the
+# harness's own fixed default name ("Contoso.Booking" -> "contoso-booking"); it is
+# not a general-purpose kebab-case implementation.
+NAME_KEBAB="$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr '._' '-')"
+assert_present_file "src/$NAME.Aspire/$NAME_KEBAB-realm.json"
 assert_absent "src/$NAME.Aspire/appointme-realm.json"
 assert_absent "src/$NAME.Frontend/src/api/appointme.ts"
 assert_absent "src/$NAME.Frontend/src/api/appointme.schemas.ts"
@@ -529,8 +558,15 @@ assert_absent "src/$NAME.Frontend/src/api/appointme.schemas.ts"
 # comparison that the brief's own version of this check does not avoid.
 # Pinned against a literal baseline rather than "source == generated" alone,
 # so a broken `grep`/`find` returning 0 on both sides can't pass vacuously.
+# Counts relative to "$1/src" (via a subshell `cd`, not an absolute `find "$1/src"`):
+# every line `find` prints otherwise carries the `$1` prefix verbatim, and both
+# callers below pass a prefix that itself contains "appointment"-adjacent text
+# ($REPO_ROOT / $GEN_DIR under a checkout or temp dir) — an absolute-path count
+# would match on the PREFIX, not the file names under src/, and could pass
+# vacuously (or overcount) regardless of what the rename actually did to the
+# tree it's supposed to be checking.
 count_appointment_paths() {
-  find "$1/src" -type d \( -name bin -o -name obj -o -name node_modules -o -name dist \) -prune -o -type f -print \
+  ( cd "$1/src" && find . -type d \( -name bin -o -name obj -o -name node_modules -o -name dist \) -prune -o -type f -print ) \
     | grep -ic "appointment" || true
 }
 EXPECTED_APPOINTMENT_PATHS=65
@@ -551,6 +587,36 @@ echo "== building generated frontend =="
   npm ci && npm run lint && npm run build
 ) && pass "generated frontend lints and builds" || fail "generated frontend failed"
 
+fi
+
+# --- assertions: overlay README --------------------------------------------
+# This repo's own README.md is release marketing (live-demo link, tour GIF,
+# docs/images references the template does not ship) -- it is withheld at pack
+# time (AppointMe.Templates.csproj) and replaced by templates/overlay/README.md,
+# which template.json's second `sources` entry maps onto the generated project's
+# root. Checked against $GEN_DIR directly (not gated behind the `src/` existence
+# checks above): the README lives at the generated root regardless of whether
+# src/ generated correctly, so it can and should be asserted unconditionally.
+echo "== asserting overlay README =="
+assert_present "README.md"
+assert_absent  "templates/overlay"
+
+if grep -q "app.appointme.dev" "$GEN_DIR/README.md" 2>/dev/null; then
+  fail "generated README still points at the AppointMe live demo"
+else
+  pass "generated README has no live-demo link"
+fi
+
+if grep -q "docs/images" "$GEN_DIR/README.md" 2>/dev/null; then
+  fail "generated README references docs/images, which is not shipped"
+else
+  pass "generated README has no broken image links"
+fi
+
+if grep -q "$NAME" "$GEN_DIR/README.md" 2>/dev/null; then
+  pass "generated README is renamed"
+else
+  fail "generated README does not mention $NAME"
 fi
 
 echo
