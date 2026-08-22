@@ -20,15 +20,121 @@
     <EnableDefaultItems>false</EnableDefaultItems>
     <GenerateDependencyFile>false</GenerateDependencyFile>
 
+    <!-- Without this, NuGet's pack task silently drops any file whose name has nothing
+         before its (only) dot once split via Path.GetFileNameWithoutExtension - i.e.
+         classic hidden dotfiles such as .editorconfig, .gitignore, .dockerignore,
+         .nvmrc, .prettierrc, .prettierignore, .gitkeep (warning NU5119: "Files and
+         folders starting with '.' ... are excluded by default"). Those are tracked,
+         non-withheld repo content per the spec's exclusion table, so the default must
+         be disabled. Verified empirically: Path.GetFileNameWithoutExtension(".editorconfig")
+         == "" (excluded without this flag) vs. Path.GetFileNameWithoutExtension(".gitleaks.toml")
+         == ".gitleaks" (never excluded either way) - the filter is keyed on that emptiness,
+         not on a leading dot alone. Disabling it also stops filtering local macOS/.DS_Store
+         and .gitkeep noise, so those are re-excluded/re-included explicitly below. -->
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+
     <!-- NU5128: no lib/ or ref/ assets in a package that declares a TFM. Expected. -->
     <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="..\**\*"
-          Exclude="..\**\bin\**;..\**\obj\**;..\**\node_modules\**;..\**\dist\**;..\.git\**;..\.vs\**;..\.idea\**;..\artifacts\**;..\templates\**;..\.superpowers\**;..\CHANGELOG.md;..\docs\superpowers\**;..\docs\CODE_REVIEW_REPORT.md;..\docs\images\**;..\src\AppointMe.Api\appsettings.Devtest.json;..\infra\cloudflare-worker\.wrangler\**;..\.claude\settings.json;..\AppointMe.sln.DotSettings.user;..\.github\workflows\template.yml"
+          Exclude="..\**\bin\**;..\**\obj\**;..\**\node_modules\**;..\**\dist\**;..\.git\**;..\.vs\**;..\.idea\**;..\**\.DS_Store;..\artifacts\**;..\templates\**;..\.superpowers\**;..\CHANGELOG.md;..\docs\superpowers\**;..\docs\CODE_REVIEW_REPORT.md;..\docs\images\**;..\src\AppointMe.Api\appsettings.Devtest.json;..\infra\cloudflare-worker\.wrangler\**;..\.claude\settings.json;..\.claude\**\*.local.json;..\.claude\**\*.lock;..\docker\keycloak\certs\**;..\AppointMe.sln.DotSettings.user;..\.github\workflows\template.yml"
           Pack="true"
           PackagePath="content\appointme\%(RecursiveDir)%(Filename)%(Extension)" />
+
+    <!-- docker/keycloak/certs/** above excludes the locally-generated dev TLS pair
+         (keycloak.crt / keycloak.key, written by export-dev-cert.sh - never repo
+         content) wholesale, including the placeholder below; re-include just the
+         placeholder so the (git-tracked, empty) directory still exists in a generated
+         project before that script has been run. -->
+    <None Include="..\docker\keycloak\certs\.gitkeep"
+          Pack="true"
+          PackagePath="content\appointme\docker\keycloak\certs\.gitkeep" />
   </ItemGroup>
+
+  <!-- NuGet's None-item packing has a separate quirk from the two above: whenever the
+       DESTINATION PackagePath's final segment has no extension (e.g. "LICENSE",
+       "Dockerfile" - files with no dot in their name at all), NuGet decides the
+       PackagePath denotes a target *folder* rather than a file, and nests the original
+       %(RecursiveDir)%(Filename)%(Extension) underneath it - e.g. LICENSE ends up at
+       content/appointme/LICENSE/LICENSE, and src/AppointMe.Api/Dockerfile ends up at
+       content/appointme/src/AppointMe.Api/Dockerfile/src/AppointMe.Api/Dockerfile.
+       Verified empirically (isolated repro project) that this triggers purely off the
+       destination's missing extension, independent of the source file's own extension,
+       and that no PackagePath/Extension value avoids it for an extensionless target
+       name - so it is fixed here as a post-pack repair of the .nupkg zip, generically
+       (by shape, not by hardcoding "LICENSE"/"Dockerfile"), so any future extensionless
+       file added to the repo doesn't silently regress the same way. -->
+  <UsingTask
+      TaskName="FixDoubledPackagePaths"
+      TaskFactory="RoslynCodeTaskFactory"
+      AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <NupkgPath ParameterType="System.String" Required="true" />
+      <ContentRoot ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO.Compression" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Collections.Generic" />
+      <Code Type="Fragment" Language="cs">
+      <![CDATA[
+        // A doubled entry has the shape "<ContentRoot><X>/<X>" - the intended relative
+        // path X appears twice, separated by a slash, immediately after ContentRoot.
+        var root = ContentRoot.TrimEnd('/') + "/";
+        var toRename = new List<(string oldName, string newName)>();
+        using (var archive = ZipFile.Open(NupkgPath, ZipArchiveMode.Update))
+        {
+            foreach (var entry in archive.Entries.ToList())
+            {
+                var name = entry.FullName.Replace('\\', '/');
+                if (!name.StartsWith(root)) continue;
+                var remainder = name.Substring(root.Length);
+                var parts = remainder.Split('/');
+                for (int i = 1; i < parts.Length; i++)
+                {
+                    var first = string.Join("/", parts.Take(i));
+                    var rest = string.Join("/", parts.Skip(i));
+                    if (first == rest && first.Length > 0)
+                    {
+                        toRename.Add((name, root + first));
+                        break;
+                    }
+                }
+            }
+
+            foreach (var (oldName, newName) in toRename)
+            {
+                Log.LogMessage(MessageImportance.High, "Fixing doubled package entry: " + oldName + " -> " + newName);
+                var oldEntry = archive.GetEntry(oldName);
+                byte[] data;
+                using (var s = oldEntry.Open())
+                using (var ms = new MemoryStream())
+                {
+                    s.CopyTo(ms);
+                    data = ms.ToArray();
+                }
+                oldEntry.Delete();
+                if (archive.GetEntry(newName) == null)
+                {
+                    var newEntry = archive.CreateEntry(newName, CompressionLevel.Optimal);
+                    using (var s = newEntry.Open())
+                    {
+                        s.Write(data, 0, data.Length);
+                    }
+                }
+            }
+        }
+      ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="FixDoubledPackagePathsTarget" AfterTargets="Pack">
+    <FixDoubledPackagePaths
+        NupkgPath="$([System.IO.Path]::Combine('$(PackageOutputAbsolutePath)', '$(PackageId).$(PackageVersion).nupkg'))"
+        ContentRoot="content/appointme/" />
+  </Target>
 
 </Project>
