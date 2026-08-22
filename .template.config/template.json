@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "BravoDev",
+  "classifications": [ "Web", "WebAPI", "React", "Aspire", "DDD", "Multi-tenant", "SaaS", "Solution" ],
+  "identity": "BravoDev.AppointMe.ModularMonolith.CSharp",
+  "name": "AppointMe modular-monolith SaaS foundation",
+  "shortName": "appointme",
+  "description": "A modular-monolith .NET 10 + React 19 multi-tenant SaaS foundation with Identity, Organizations, CRM and Booking bounded contexts, CQRS, domain events, a permission system, and a .NET Aspire local stack.",
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "preferNameDirectory": true,
+  "sources": [
+    {
+      "source": "./",
+      "target": "./",
+      "modifiers": [
+        {
+          "exclude": [
+            "templates/**",
+            "artifacts/**",
+            "**/bin/**",
+            "**/obj/**",
+            "**/node_modules/**",
+            "**/dist/**"
+          ]
+        }
+      ]
+    }
+  ]
+}

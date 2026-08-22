@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>BravoDev.AppointMe.Templates</PackageId>
+    <Version>1.1.0</Version>
+    <Title>AppointMe — modular-monolith .NET 10 SaaS foundation</Title>
+    <Description>A production-grade modular-monolith .NET 10 + React 19 SaaS foundation: multi-tenancy, OIDC auth, CQRS, domain events, durable messaging, an auto-discovered permission system, a business dashboard, and a one-command .NET Aspire local stack. Run: dotnet new appointme -n Your.Project</Description>
+    <PackageTags>dotnet-new;template;templates;aspire;ddd;modular-monolith;multi-tenant;cqrs;react;saas</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+    <!-- A template package carries content only: no assembly, no dependencies. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- NOT set to false: NuGet.Build.Tasks.Pack's _GetPackageFiles target (which gathers
+         None/Content items with Pack=true, including ours below) is itself gated on
+         $(IncludeContentInPack) == 'true'. Setting it false disables that target entirely,
+         so no None items pack and dotnet pack fails with NU5017 "no dependencies nor
+         content." Verified against /usr/local/share/dotnet/sdk/10.0.100/NuGet.Build.Tasks.Pack.targets. -->
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+
+    <!-- NU5128: no lib/ or ref/ assets in a package that declares a TFM. Expected. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\**\*"
+          Exclude="..\**\bin\**;..\**\obj\**;..\**\node_modules\**;..\**\dist\**;..\.git\**;..\.vs\**;..\.idea\**;..\artifacts\**;..\templates\**;..\.superpowers\**;..\CHANGELOG.md;..\docs\superpowers\**;..\docs\CODE_REVIEW_REPORT.md;..\docs\images\**;..\src\AppointMe.Api\appsettings.Devtest.json;..\infra\cloudflare-worker\.wrangler\**;..\.claude\settings.json;..\AppointMe.sln.DotSettings.user;..\.github\workflows\template.yml"
+          Pack="true"
+          PackagePath="content\appointme\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>
