@@ -39,7 +39,7 @@
 
   <ItemGroup>
     <None Include="..\**\*"
-          Exclude="..\**\bin\**;..\**\obj\**;..\**\node_modules\**;..\**\dist\**;..\.git\**;..\.vs\**;..\.idea\**;..\**\.DS_Store;..\artifacts\**;..\templates\**;..\.superpowers\**;..\CHANGELOG.md;..\docs\superpowers\**;..\docs\CODE_REVIEW_REPORT.md;..\docs\images\**;..\src\AppointMe.Api\appsettings.Devtest.json;..\infra\cloudflare-worker\.wrangler\**;..\.claude\settings.json;..\.claude\**\*.local.json;..\.claude\**\*.lock;..\docker\keycloak\certs\**;..\AppointMe.sln.DotSettings.user;..\.github\workflows\template.yml"
+          Exclude="..\**\bin\**;..\**\obj\**;..\**\node_modules\**;..\**\dist\**;..\.git\**;..\.vs\**;..\.idea\**;..\**\.DS_Store;..\artifacts\**;..\templates\**;..\.superpowers\**;..\CHANGELOG.md;..\docs\superpowers\**;..\docs\CODE_REVIEW_REPORT.md;..\docs\images\**;..\src\AppointMe.Api\appsettings.Devtest.json;..\infra\cloudflare-worker\.wrangler\**;..\.claude\settings.json;..\.claude\**\*.local.json;..\.claude\**\*.lock;..\docker\keycloak\certs\**;..\AppointMe.sln.DotSettings.user;..\.github\workflows\template.yml;..\LICENSE;..\src\AppointMe.Api\Dockerfile"
           Pack="true"
           PackagePath="content\appointme\%(RecursiveDir)%(Filename)%(Extension)" />
 
@@ -51,90 +51,30 @@
     <None Include="..\docker\keycloak\certs\.gitkeep"
           Pack="true"
           PackagePath="content\appointme\docker\keycloak\certs\.gitkeep" />
+
+    <!-- LICENSE and src/AppointMe.Api/Dockerfile are excluded from the wildcard above
+         and re-included here individually: NuGet treats a PackagePath whose final
+         segment has no extension (as "LICENSE" and "Dockerfile" both are - no dot in
+         the name at all) as a target *directory* rather than a file, and nests the
+         original source path underneath it - e.g. LICENSE would otherwise land at
+         content/appointme/LICENSE/LICENSE instead of content/appointme/LICENSE.
+         Ending PackagePath in a directory separator is NuGet's documented idiom for
+         "place this file in this folder under its own name" and sidesteps the
+         extension inference entirely. These are the only two tracked, non-withheld
+         extensionless files in the repo - do not delete these as "redundant" with the
+         wildcard above without keeping this workaround, or the nesting bug returns.
+         The trailing separator MUST be a forward slash, not a backslash, unlike every
+         other PackagePath in this file: a trailing backslash produces a doubled
+         separator (content/appointme//LICENSE), which the template engine resolves as
+         a rooted path and fails to generate with "Read-only file system : '/LICENSE'".
+         Verified empirically (isolated repro, then confirmed end-to-end via
+         smoke-test.sh) - a forward slash produces the correct single-separator path. -->
+    <None Include="..\LICENSE"
+          Pack="true"
+          PackagePath="content/appointme/" />
+    <None Include="..\src\AppointMe.Api\Dockerfile"
+          Pack="true"
+          PackagePath="content/appointme/src/AppointMe.Api/" />
   </ItemGroup>
-
-  <!-- NuGet's None-item packing has a separate quirk from the two above: whenever the
-       DESTINATION PackagePath's final segment has no extension (e.g. "LICENSE",
-       "Dockerfile" - files with no dot in their name at all), NuGet decides the
-       PackagePath denotes a target *folder* rather than a file, and nests the original
-       %(RecursiveDir)%(Filename)%(Extension) underneath it - e.g. LICENSE ends up at
-       content/appointme/LICENSE/LICENSE, and src/AppointMe.Api/Dockerfile ends up at
-       content/appointme/src/AppointMe.Api/Dockerfile/src/AppointMe.Api/Dockerfile.
-       Verified empirically (isolated repro project) that this triggers purely off the
-       destination's missing extension, independent of the source file's own extension,
-       and that no PackagePath/Extension value avoids it for an extensionless target
-       name - so it is fixed here as a post-pack repair of the .nupkg zip, generically
-       (by shape, not by hardcoding "LICENSE"/"Dockerfile"), so any future extensionless
-       file added to the repo doesn't silently regress the same way. -->
-  <UsingTask
-      TaskName="FixDoubledPackagePaths"
-      TaskFactory="RoslynCodeTaskFactory"
-      AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
-    <ParameterGroup>
-      <NupkgPath ParameterType="System.String" Required="true" />
-      <ContentRoot ParameterType="System.String" Required="true" />
-    </ParameterGroup>
-    <Task>
-      <Using Namespace="System.IO.Compression" />
-      <Using Namespace="System.Linq" />
-      <Using Namespace="System.Collections.Generic" />
-      <Code Type="Fragment" Language="cs">
-      <![CDATA[
-        // A doubled entry has the shape "<ContentRoot><X>/<X>" - the intended relative
-        // path X appears twice, separated by a slash, immediately after ContentRoot.
-        var root = ContentRoot.TrimEnd('/') + "/";
-        var toRename = new List<(string oldName, string newName)>();
-        using (var archive = ZipFile.Open(NupkgPath, ZipArchiveMode.Update))
-        {
-            foreach (var entry in archive.Entries.ToList())
-            {
-                var name = entry.FullName.Replace('\\', '/');
-                if (!name.StartsWith(root)) continue;
-                var remainder = name.Substring(root.Length);
-                var parts = remainder.Split('/');
-                for (int i = 1; i < parts.Length; i++)
-                {
-                    var first = string.Join("/", parts.Take(i));
-                    var rest = string.Join("/", parts.Skip(i));
-                    if (first == rest && first.Length > 0)
-                    {
-                        toRename.Add((name, root + first));
-                        break;
-                    }
-                }
-            }
-
-            foreach (var (oldName, newName) in toRename)
-            {
-                Log.LogMessage(MessageImportance.High, "Fixing doubled package entry: " + oldName + " -> " + newName);
-                var oldEntry = archive.GetEntry(oldName);
-                byte[] data;
-                using (var s = oldEntry.Open())
-                using (var ms = new MemoryStream())
-                {
-                    s.CopyTo(ms);
-                    data = ms.ToArray();
-                }
-                oldEntry.Delete();
-                if (archive.GetEntry(newName) == null)
-                {
-                    var newEntry = archive.CreateEntry(newName, CompressionLevel.Optimal);
-                    using (var s = newEntry.Open())
-                    {
-                        s.Write(data, 0, data.Length);
-                    }
-                }
-            }
-        }
-      ]]>
-      </Code>
-    </Task>
-  </UsingTask>
-
-  <Target Name="FixDoubledPackagePathsTarget" AfterTargets="Pack">
-    <FixDoubledPackagePaths
-        NupkgPath="$([System.IO.Path]::Combine('$(PackageOutputAbsolutePath)', '$(PackageId).$(PackageVersion).nupkg'))"
-        ContentRoot="content/appointme/" />
-  </Target>
 
 </Project>
