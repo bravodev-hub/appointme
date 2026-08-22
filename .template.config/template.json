@@ -11,6 +11,41 @@
     "type": "solution"
   },
   "preferNameDirectory": true,
+  "sourceName": "AppointMeSourceNamePlaceholder",
+  "forms": {
+    "compactSafeName": { "identifier": "replace", "pattern": "\\W", "replacement": "" }
+  },
+  "symbols": {
+    "identityBucket": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "identity",
+      "replaces": "AppointMe",
+      "fileRename": "AppointMe",
+      "onlyIf": [
+        { "before": "." }, { "before": " " }, { "before": "\"" }, { "before": "'" },
+        { "before": "\n" }, { "before": ";" }, { "before": "-" }, { "before": "<" }
+      ]
+    },
+    "safeBucketUnderscore": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "safe_name",
+      "replaces": "AppointMe",
+      "onlyIf": [ { "before": "_" } ]
+    },
+    "safeBucketCompact": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "compactSafeName",
+      "replaces": "AppointMe",
+      "onlyIf": [
+        { "before": "S" }, { "before": "M" }, { "before": "A" }, { "before": "H" },
+        { "before": "O" }, { "before": "D" }, { "before": "E" }, { "before": "J" },
+        { "before": "1" }
+      ]
+    }
+  },
   "sources": [
     {
       "source": "./",
