@@ -4,6 +4,18 @@
 # CI runs and what a human runs locally.
 set -euo pipefail
 
+# Pinned once, here, rather than prefixing individual sort/comm/grep calls: the
+# manifest-parity check below sorts two streams and then diffs them with `comm`, and
+# `comm` collates using its OWN locale, independent of whatever collated its inputs.
+# If only the two `sort` calls were pinned to C and `comm` ran under the ambient
+# locale (e.g. en_US.UTF-8), the two collations can disagree on ordering - observed
+# concretely on this machine: docker/keycloak/certs/.gitkeep moves relative to
+# LICENSE/README.md between the two collations, so `comm` reports the same file as
+# simultaneously missing and extra. Pinning LC_ALL for the whole script means every
+# sort/comm/grep in this file (present or future) collates identically, so the two
+# halves of that comparison can't drift apart again.
+export LC_ALL=C
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAME="${NAME:-Contoso.Booking}"
 PKG_ID="BravoDev.AppointMe.Templates"
@@ -16,8 +28,16 @@ cleanup() {
   if [[ -z "${KEEP:-}" ]]; then rm -rf "$OUT_DIR"; fi
 }
 # INT/TERM too, not just EXIT: without this, Ctrl-C during the multi-minute pack step
-# leaves $PKG_ID installed globally on the machine instead of cleaning up.
-trap cleanup EXIT INT TERM
+# leaves $PKG_ID installed globally on the machine instead of cleaning up. `cleanup`
+# itself never calls exit, so `trap cleanup INT TERM` alone would just resume the
+# script after the signal instead of terminating it - fine if the interrupt lands
+# during the pack step (the next lines fail on an empty $NUPKG and exit anyway), but
+# not if it lands during `dotnet new install`, which would then carry on against a
+# deleted $OUT_DIR. Explicit `exit` on INT/TERM triggers the EXIT trap in turn, so
+# `cleanup` still runs exactly once, and the exit code reflects the signal.
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 fail() { echo "FAIL: $*" >&2; FAILURES=$((FAILURES + 1)); }
 pass() { echo "ok: $*"; }
@@ -143,14 +163,14 @@ while IFS= read -r f; do
 done < <(
   git -C "$REPO_ROOT" ls-files | while IFS= read -r f; do
     is_withheld "$f" || printf '%s\n' "$f"
-  done | LC_ALL=C sort
+  done | sort
 )
 
 NUPKG_FILES=()
 while IFS= read -r f; do
   NUPKG_FILES+=("$f")
 done < <(
-  unzip -Z1 "$NUPKG" | grep '^content/appointme/' | sed 's#^content/appointme/##' | LC_ALL=C sort
+  unzip -Z1 "$NUPKG" | grep '^content/appointme/' | sed 's#^content/appointme/##' | sort
 )
 
 MISSING="$(comm -23 <(printf '%s\n' "${EXPECTED_FILES[@]}") <(printf '%s\n' "${NUPKG_FILES[@]}"))"
