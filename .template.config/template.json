@@ -11,9 +11,9 @@
     "type": "solution"
   },
   "preferNameDirectory": true,
-  "sourceName": "AppointMeSourceNamePlaceholder",
+  "sourceName": "__TemplateSourceNamePlaceholder__",
   "forms": {
-    "compactSafeName": { "identifier": "replace", "pattern": "\\W", "replacement": "" }
+    "compactSafeName": { "identifier": "replace", "pattern": "[^A-Za-z0-9]", "replacement": "" }
   },
   "symbols": {
     "identityBucket": {
@@ -24,7 +24,7 @@
       "fileRename": "AppointMe",
       "onlyIf": [
         { "before": "." }, { "before": " " }, { "before": "\"" }, { "before": "'" },
-        { "before": "\n" }, { "before": ";" }, { "before": "-" }, { "before": "<" }
+        { "before": "\n" }, { "before": "\r" }, { "before": ";" }, { "before": "-" }, { "before": "<" }
       ]
     },
     "safeBucketUnderscore": {

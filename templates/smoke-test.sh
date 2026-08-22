@@ -252,14 +252,29 @@ done
 # --- assertions: rename correctness ----------------------------------------
 echo "== asserting rename correctness =="
 
-# Domain vocabulary must survive byte-for-byte. These counts come from the
-# source repo; a rename that eats "appointments" will drop them.
+# If generation silently produced an empty/wrong tree, every check below would
+# either compare 0 == 0 (vacuous pass) or have grep hit a missing directory and
+# swallow its I/O-error exit code the same way a "no matches" exit code gets
+# swallowed - a real failure disguised as "no residual AppointMe". Fail loudly
+# and skip straight to the build/test section instead of letting that happen.
+if [[ ! -d "$GEN_DIR/src" ]]; then
+  fail "$GEN_DIR/src does not exist -- generation must have failed; skipping rename-correctness checks"
+else
+
+# Domain vocabulary must survive byte-for-byte. Pinned to the literal baseline
+# (not just "source count == generated count") so a broken grep that silently
+# counts 0 on both sides can't pass vacuously; source is also asserted against
+# the same literal so a legitimate future change to the domain code surfaces
+# here as a deliberate "update this baseline" edit rather than silent drift.
+EXPECTED_APPOINTMENT=792
 SRC_APPOINTMENT="$(grep -rIoh "Appointment" "$REPO_ROOT/src" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist | wc -l | tr -d ' ')"
 GEN_APPOINTMENT="$(grep -rIoh "Appointment" "$GEN_DIR/src" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist | wc -l | tr -d ' ')"
-if [[ "$SRC_APPOINTMENT" == "$GEN_APPOINTMENT" ]]; then
-  pass "Appointment survived intact ($GEN_APPOINTMENT occurrences)"
+if [[ "$SRC_APPOINTMENT" != "$EXPECTED_APPOINTMENT" ]]; then
+  fail "source Appointment count is $SRC_APPOINTMENT, expected $EXPECTED_APPOINTMENT -- update EXPECTED_APPOINTMENT if the source legitimately changed"
+elif [[ "$GEN_APPOINTMENT" != "$EXPECTED_APPOINTMENT" ]]; then
+  fail "generated Appointment count is $GEN_APPOINTMENT, expected $EXPECTED_APPOINTMENT -- the rename corrupted the domain vocabulary"
 else
-  fail "Appointment count changed: source $SRC_APPOINTMENT, generated $GEN_APPOINTMENT"
+  pass "Appointment survived intact ($GEN_APPOINTMENT occurrences)"
 fi
 
 for token in "appointments.statistics:view" "/appointments"; do
@@ -270,7 +285,57 @@ for token in "appointments.statistics:view" "/appointments"; do
   fi
 done
 
-# No PascalCase brand token may survive anywhere.
+# --- PascalCase brand token: where each generated form comes from ----------
+# template.json drives the rename with three symbols, all matching the same
+# literal search text "AppointMe" (case-sensitive), disambiguated purely by the
+# single character that immediately follows the match (`onlyIf: [{"before":
+# X}]`) -- never by a bare, ungated "AppointMe" catch-all, since two symbols
+# both matching that shorter text would leave replacement order unspecified
+# (the same trap sourceName's own derived lowercase form sits in for
+# "appointments").
+#
+#   .  " ' \n \r ; - <  (identityBucket)       -> dotted, as typed: namespaces,
+#                                                  paths, prose, connection
+#                                                  strings. Also the only
+#                                                  symbol with fileRename --
+#                                                  every path in this repo is
+#                                                  "AppointMe.Xyz" (dot-
+#                                                  followed), and fileRename
+#                                                  does not honor onlyIf the way
+#                                                  replaces does, so a second
+#                                                  symbol declaring fileRename
+#                                                  would silently race it.
+#   _                    (safeBucketUnderscore) -> dot_to_underscore. Exactly
+#                                                  one case: Program.cs's
+#                                                  AddProject<AppointMe_Api>
+#                                                  must match the type name
+#                                                  .NET Aspire's own SDK
+#                                                  source-generates from the
+#                                                  renamed .csproj file name
+#                                                  (dots -> underscores).
+#   S M A H O D E J 1    (safeBucketCompact)    -> invalid characters deleted,
+#                                                  not substituted. AppointMeSql
+#                                                  is simultaneously a real C#
+#                                                  identifier (ConnectionStrings.cs,
+#                                                  needs underscore-or-delete)
+#                                                  and an Aspire resource-name
+#                                                  string validated by
+#                                                  ASPIRE006, which explicitly
+#                                                  rejects underscores -- delete
+#                                                  is the only form valid in
+#                                                  both roles for the identical
+#                                                  search text.
+#
+# This is a CLOSED enumeration over these 18 followers, independently verified
+# against every file that reaches $GEN_DIR (git-tracked, minus withheld paths,
+# minus template.json's own excludes) -- not a sample. Adding a new
+# AppointMe-prefixed C# identifier with a follower character outside this list
+# (e.g. AddAppointMeBilling, follower "B") falls out of every bucket: the
+# "no residual AppointMe" check below still catches it (loudly, in CI), but
+# whoever adds it then has to add a `{ "before": "B" }` entry to
+# safeBucketCompact (or identityBucket, if it's a non-identifier position) in
+# template.json themselves. There is no way to make this self-updating; this
+# comment is the only record of the rule.
 if grep -rIl "AppointMe" "$GEN_DIR" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist >/dev/null 2>&1; then
   echo "--- files still containing AppointMe ---" >&2
   grep -rIl "AppointMe" "$GEN_DIR" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist >&2
@@ -285,6 +350,8 @@ assert_present "src/CRM/$NAME.Crm/$NAME.Crm.csproj"
 assert_present "$NAME.slnx"
 assert_absent  "src/AppointMe.Api"
 
+fi
+
 # --- build and test the generated solution ---------------------------------
 echo "== building generated solution =="
 if dotnet build "$GEN_DIR/$NAME.sln" -c Release; then
@@ -294,16 +361,16 @@ else
 fi
 
 echo "== testing generated solution =="
-# `|| true` matters under `set -e`: dotnet test's own exit code is nonzero
-# whenever any test fails, which would otherwise abort the script before the
-# allowance logic below gets to inspect *which* test failed.
-TEST_OUTPUT="$(dotnet test "$GEN_DIR/$NAME.sln" -c Release --no-build 2>&1)" || true
-echo "$TEST_OUTPUT"
 
 # ============================================================================
 # TEMPORARY, NAMED, SELF-REMOVING ALLOWANCE -- Task 2 / Task 3 boundary.
-# REMOVE THIS ENTIRE BLOCK (and restore a plain
-# `if dotnet test ...; then pass ...; else fail ...; fi`) once Task 3 lands.
+# REMOVE THIS ENTIRE BLOCK, INCLUDING THE TEST_OUTPUT CAPTURE BELOW, and
+# restore a plain `if dotnet test "$GEN_DIR/$NAME.sln" -c Release --no-build;
+# then pass ...; else fail ...; fi` once Task 3 lands. The capture exists only
+# to let this block inspect *which* test failed before deciding pass/fail; a
+# plain `if dotnet test ...` doesn't need it, and leaving it behind while
+# deleting the parsing/allowance logic below it would make dotnet test run
+# twice (once here, once in the replacement `if`).
 #
 # SuperAdminRegistryTests.should_match_email_case_insensitively asserts
 # IsSuperAdmin("Demo@AppointMe.DEV") against an allowlist configured with the
@@ -321,9 +388,25 @@ echo "$TEST_OUTPUT"
 # So: allow at most one failure, and only if it is this exact, named test.
 # Any other failing test, or any total below 217, still fails the run.
 # ============================================================================
-TOTAL_TESTS="$(grep -oE 'Total:[[:space:]]*[0-9]+' <<< "$TEST_OUTPUT" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')"
-FAILED_TESTS="$(grep -oE 'Failed:[[:space:]]*[0-9]+' <<< "$TEST_OUTPUT" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')"
-FAILING_NAMES="$(grep -E '^  Failed ' <<< "$TEST_OUTPUT" | sed -E 's/^  Failed ([^ ]+).*/\1/')"
+# `|| true` matters under `set -e`: dotnet test's own exit code is nonzero
+# whenever any test fails, which would otherwise abort the script before the
+# allowance logic below gets to inspect *which* test failed.
+TEST_OUTPUT="$(dotnet test "$GEN_DIR/$NAME.sln" -c Release --no-build 2>&1)" || true
+echo "$TEST_OUTPUT"
+
+# Each `|| true` matters for the same reason, and for a second one: under
+# `set -eo pipefail`, a `grep` that matches nothing (the *expected* case for
+# FAILING_NAMES on a fully green run, and a real possibility for the other two
+# if dotnet test's summary format ever changes) exits 1, pipefail propagates
+# that through the rest of the pipe even though `awk`/`sed` themselves succeed
+# on the resulting empty input, and `set -e` would abort the script right here
+# -- before the zero-failure success branch below ever runs. Without this,
+# the harness would be structurally unable to report success on a fully clean
+# 217/217 run, only ever passing today because the one known failure means
+# FAILING_NAMES is never empty in practice.
+TOTAL_TESTS="$(grep -oE 'Total:[[:space:]]*[0-9]+' <<< "$TEST_OUTPUT" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)"
+FAILED_TESTS="$(grep -oE 'Failed:[[:space:]]*[0-9]+' <<< "$TEST_OUTPUT" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)"
+FAILING_NAMES="$(grep -E '^  Failed ' <<< "$TEST_OUTPUT" | sed -E 's/^  Failed ([^ ]+).*/\1/' || true)"
 ALLOWED_FAILURE='\.SuperAdminRegistryTests\.should_match_email_case_insensitively$'
 
 if [[ "$TOTAL_TESTS" != "217" ]]; then
