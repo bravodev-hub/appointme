@@ -457,8 +457,27 @@ assert_absent  "src/AppointMe.Api"
 fi
 
 # --- build and test the generated solution ---------------------------------
+# Restore is split from build (`dotnet restore` then `dotnet build --no-restore`)
+# rather than left as one combined `dotnet build`. Root cause, established from
+# the exact failure across Tasks 2-4 (~1 run in 3): "error : The file
+# '.../obj/<Project>.csproj.nuget.g.props' already exists." -- this solution has
+# several projects sharing a common *.Contracts reference; a combined
+# `dotnet build` triggers MSBuild's own implicit, per-entry-point restore, and
+# when multiple entry-point projects that share that reference build in
+# parallel, each independently restores its own transitive closure, so the
+# shared project's generated .g.props/.g.targets get written more than once,
+# concurrently, by unrelated build nodes. A single `dotnet restore` over the
+# whole solution computes one combined project graph up front and restores
+# each project exactly once before any build node starts, so there is nothing
+# left to race by the time `--no-restore` build begins. This removes the
+# race's trigger rather than tolerating it with a retry.
+echo "== restoring generated solution =="
+if ! dotnet restore "$GEN_DIR/$NAME.sln"; then
+  fail "generated solution failed to restore"
+fi
+
 echo "== building generated solution =="
-if dotnet build "$GEN_DIR/$NAME.sln" -c Release; then
+if dotnet build "$GEN_DIR/$NAME.sln" -c Release --no-restore; then
   pass "generated solution builds"
 else
   fail "generated solution does not build"
