@@ -27,7 +27,7 @@ for `"appointments"`).
 | Followers | Symbol | Produces |
 |---|---|---|
 | `.` `" "` `"` `'` `\n` `\r` `;` `-` `<` | `identityBucket` | dotted, as typed: namespaces, paths, prose, connection strings. Also the only symbol with `fileRename` — every path in this repo is `AppointMe.Xyz` (dot-followed), and `fileRename` does not honor `onlyIf` the way `replaces` does, so a second symbol declaring `fileRename` would silently race it. |
-| `_` | `safeBucketUnderscore` | `dot_to_underscore`. Exactly one case: `Program.cs`'s `AddProject<AppointMe_Api>` must match the type name .NET Aspire's own SDK source-generates from the renamed `.csproj` file name (dots → underscores). |
+| `_` | `safeBucketUnderscore` | the built-in `safe_name` form (dots → underscores). Exactly one case: `Program.cs`'s `AddProject<AppointMe_Api>` must match the type name .NET Aspire's own SDK source-generates from the renamed `.csproj` file name (dots → underscores). |
 | `S` `M` `A` `H` `O` `D` `E` `J` `1` | `safeBucketCompact` | invalid characters deleted, not substituted. `AppointMeSql` is simultaneously a real C# identifier (`ConnectionStrings.cs`, needs underscore-or-delete) and an Aspire resource-name string validated by ASPIRE006, which explicitly rejects underscores — delete is the only form valid in both roles for the identical search text. |
 
 This is a **closed enumeration** over these 19 followers (9 + 1 + 9 above),
@@ -112,8 +112,8 @@ occurrence — `compose.yaml`'s Compose project name — would have its follower
 become `\r` and fall out of every lowercase bucket without `tokCR`. Like
 `identityBucket`'s `\r`, it has zero actual occurrences on the LF checkout this
 repo and CI both use; it exists for the checkout that isn't this one. `tokDash`
-is also the only lowercase symbol with `fileRename` (renames
-`appointme-realm.json`).
+is also the only symbol in this bucket with `fileRename` (renames
+`appointme-realm.json`; `tokDot` carries the other one).
 
 **`lowerCompact`** (`compactSafeNameLower`: `lowerCaseInvariant` then delete
 every non-alphanumeric character) → Followers: `A` `:` `$` `{` `d` `_` (`tokA`,

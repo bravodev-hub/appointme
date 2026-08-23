@@ -25,18 +25,31 @@ captures is part of the record.
    ["identity"]}` does not suppress the engine's derived lowercase form, the
    fallback's `isName` is not a real schema property, and any `symbols.name` of
    `type: parameter` is diverted to `-na`/`--param:name`, severing `-n`. What
-   shipped instead is three `derived` symbols per token family with
-   `onlyIf`-gated `replaces`, dispatching on the character *following* the
-   token, plus a dot-stripped form for the ~20 bare C# identifiers
+   shipped instead dispatches on the character *following* the token, but not
+   identically in both families: the PascalCase family uses three `derived`
+   symbols with `onlyIf`-gated `replaces`, while the lowercase family's three
+   `derived` symbols carry neither, and fifteen `generated` symbols do its
+   replacing with the guard character baked into the search text — because
+   `fileRename` ignores `onlyIf`, so the two symbols that rename files cannot
+   rely on it. Plus a dot-stripped form for the ~20 bare C# identifiers
    (`AppointMeSql`, `AddAppointMeAuthentication`) that a dotted `-n` value would
    otherwise corrupt — which this spec did not anticipate at all. The
    follower-distribution table in this document is also a partial measurement;
    the authoritative enumerations are documented in `templates/README.md` and
    enforced by `templates/smoke-test.sh`.
 
-3. **The wrangler placeholder differs.** *Known cosmetic artifacts* predicts
-   `app.contoso-booking.dev`. The shipped dotted bucket produces
-   `app.contoso.booking.dev`.
+3. **The wrangler placeholders differ.** *Known cosmetic artifacts* predicts
+   `app.contoso-booking.dev` and zone `contoso-booking.dev`. Both route through
+   the dotted bucket, so the shipped values are `app.contoso.booking.dev` and
+   zone `contoso.booking.dev`.
+
+Two further staleness notes, for anyone reading these documents as a guide
+rather than as a record: the *Smoke test* section's `dotnet new install
+./artifacts/…` path is obsolete — the harness now packs into its own temp
+directory rather than a repo-root `artifacts/` — and the plan
+(`docs/superpowers/plans/2026-08-22-dotnet-new-template-package.md`) carries the
+same `artifacts/` and `1.1.0` assumptions with no equivalent annotation. The
+shipped harness and `templates/README.md` are authoritative over both.
 
 Also note the version: this spec and the plan both assume `1.1.0`, but that tag
 was already released, so the template's first publishable version is `1.2.0`.
