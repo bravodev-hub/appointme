@@ -79,12 +79,18 @@ jobs:
         run: ./templates/smoke-test.sh
         env:
           ContinuousIntegrationBuild: "true"
+          # smoke-test.sh packs into its own mktemp directory (not
+          # artifacts/ -- see the script) and normally deletes it on exit.
+          # KEEP tells its cleanup trap to leave that directory in place so
+          # the nupkg is still there for the Upload step below, which reads
+          # its path from $NUPKG_PATH (set into GITHUB_ENV by the script).
+          KEEP: "1"
 
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
           name: template-package
-          path: artifacts/*.nupkg
+          path: ${{ env.NUPKG_PATH }}
           if-no-files-found: error
 
   publish:

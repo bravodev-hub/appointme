@@ -21,6 +21,7 @@ NAME="${NAME:-Contoso.Booking}"
 PKG_ID="BravoDev.AppointMe.Templates"
 OUT_DIR="$(mktemp -d)"
 GEN_DIR="$OUT_DIR/gen"
+PACK_DIR="$OUT_DIR/pack"
 FAILURES=0
 
 cleanup() {
@@ -51,18 +52,36 @@ if ! command -v unzip >/dev/null 2>&1; then
 fi
 
 # --- pack -------------------------------------------------------------------
+# Packs into this script's own temp directory ($OUT_DIR, already unique per run
+# via mktemp), NOT into $REPO_ROOT/artifacts: this used to `rm -rf
+# "$REPO_ROOT/artifacts"` unconditionally before packing, which is a
+# destructive repo-root write in a script CLAUDE.md tells humans to run
+# locally -- and "artifacts/" is also the .NET SDK's default ArtifactsPath, one
+# `<UseArtifactsOutput>` away from deleting someone's real build output. Packing
+# into $OUT_DIR sidesteps the problem instead of guarding it.
 echo "== packing =="
-rm -rf "$REPO_ROOT/artifacts"
 dotnet pack "$REPO_ROOT/templates/AppointMe.Templates.csproj" \
-  -c Release -o "$REPO_ROOT/artifacts"
+  -c Release -o "$PACK_DIR"
 
 # `|| true` matters under `set -eo pipefail`: without it, a failing `ls` (no match)
 # makes this whole assignment's exit status non-zero, and `set -e` aborts the script
 # right here - before the `[[ -z "$NUPKG" ]]` guard below ever runs, so the intended
 # "FAIL: no nupkg produced" line would never print.
-NUPKG="$(ls "$REPO_ROOT"/artifacts/$PKG_ID.*.nupkg 2>/dev/null | head -1 || true)"
+NUPKG="$(ls "$PACK_DIR"/$PKG_ID.*.nupkg 2>/dev/null | head -1 || true)"
 if [[ -z "$NUPKG" ]]; then fail "no nupkg produced"; exit 1; fi
 pass "packed $(basename "$NUPKG")"
+
+# CI uploads this nupkg as a build artifact in a step that runs AFTER this
+# script's process (and its `cleanup` EXIT trap) has already exited -- so the
+# nupkg has to still be on disk when that step runs, and the workflow has to be
+# told where. `GITHUB_ENV` is how a step passes a value to a later step; set
+# only when running under Actions (`$GITHUB_ENV` is unset for a local run, and
+# writing to an empty path would fail). The workflow separately sets `KEEP=1`
+# on this step so `cleanup` leaves $OUT_DIR (and this nupkg) in place for that
+# later step to read; a local run has no such step and cleans up as before.
+if [[ -n "${GITHUB_ENV:-}" ]]; then
+  echo "NUPKG_PATH=$NUPKG" >> "$GITHUB_ENV"
+fi
 
 # --- assertions: nupkg contents ---------------------------------------------
 # These check the .nupkg itself, not the generated project: some packaging defects
@@ -290,160 +309,20 @@ for token in "appointments.statistics:view" "/appointments"; do
   fi
 done
 
-# --- PascalCase brand token: where each generated form comes from ----------
-# template.json drives the rename with three symbols, all matching the same
-# literal search text "AppointMe" (case-sensitive), disambiguated purely by the
-# single character that immediately follows the match (`onlyIf: [{"before":
-# X}]`) -- never by a bare, ungated "AppointMe" catch-all, since two symbols
-# both matching that shorter text would leave replacement order unspecified
-# (the same trap sourceName's own derived lowercase form sits in for
-# "appointments").
-#
-#   .  " ' \n \r ; - <  (identityBucket)       -> dotted, as typed: namespaces,
-#                                                  paths, prose, connection
-#                                                  strings. Also the only
-#                                                  symbol with fileRename --
-#                                                  every path in this repo is
-#                                                  "AppointMe.Xyz" (dot-
-#                                                  followed), and fileRename
-#                                                  does not honor onlyIf the way
-#                                                  replaces does, so a second
-#                                                  symbol declaring fileRename
-#                                                  would silently race it.
-#   _                    (safeBucketUnderscore) -> dot_to_underscore. Exactly
-#                                                  one case: Program.cs's
-#                                                  AddProject<AppointMe_Api>
-#                                                  must match the type name
-#                                                  .NET Aspire's own SDK
-#                                                  source-generates from the
-#                                                  renamed .csproj file name
-#                                                  (dots -> underscores).
-#   S M A H O D E J 1    (safeBucketCompact)    -> invalid characters deleted,
-#                                                  not substituted. AppointMeSql
-#                                                  is simultaneously a real C#
-#                                                  identifier (ConnectionStrings.cs,
-#                                                  needs underscore-or-delete)
-#                                                  and an Aspire resource-name
-#                                                  string validated by
-#                                                  ASPIRE006, which explicitly
-#                                                  rejects underscores -- delete
-#                                                  is the only form valid in
-#                                                  both roles for the identical
-#                                                  search text.
-#
-# This is a CLOSED enumeration over these 19 followers (9 + 1 + 9 above),
-# independently verified against every file that reaches $GEN_DIR (git-tracked,
-# minus withheld paths, minus template.json's own excludes) -- not a sample,
-# except `\r`: on the LF checkout this repo and CI both use, `\r` has zero
-# actual occurrences: it is a defensive hedge for a `core.autocrlf=true`
-# checkout, where the one occurrence that currently sits right before a bare
-# `\n` (README.md's "# AppointMe" heading) would have its follower become `\r`
-# instead of `\n`, falling out of every bucket. Every other follower listed
-# above was independently measured, not guessed. Adding a new
-# AppointMe-prefixed C# identifier with a follower character outside this list
-# (e.g. AddAppointMeBilling, follower "B") falls out of every bucket: the
-# "no residual AppointMe" check below still catches it (loudly, in CI), but
-# whoever adds it then has to add a `{ "before": "B" }` entry to
-# safeBucketCompact (or identityBucket, if it's a non-identifier position) in
-# template.json themselves. There is no way to make this self-updating; this
-# comment is the only record of the rule.
-#
-# --- lowercase brand token: the second, independent token family -----------
-# "appointme" (lowercase) is a PREFIX of "appointment" -- unlike "AppointMe"
-# above, it cannot be matched bare at all: any bare-"appointme" symbol would
-# also rewrite the Appointment aggregate, the /appointments route and
-# appointments.statistics:view. So the guard character is baked directly into
-# each symbol's own search text ("appointme-", "appointme.", ...) instead of
-# being enforced via `onlyIf` the way the PascalCase family does it above --
-# there is no bare "appointme" catch-all anywhere, gated or not.
-#
-# Three base value symbols, then one `generated`/`join` symbol per follower
-# character that joins the base value with that literal follower (consuming
-# and immediately re-emitting it, so the character itself is unchanged):
-#
-#   lowerDotted  (lowerCaseInvariant) -> case-folded, separators preserved
-#                exactly as typed. Followers: . ' " / ` ; (tokDot, tokApos,
-#                tokQuot, tokSlash, tokTick, tokSemi). tokDot is also the only
-#                symbol with fileRename (the same fileRename-ignores-onlyIf
-#                reason as identityBucket above -- see the fileRename note in
-#                the assertions below). This bucket is NOT a free stylistic
-#                choice: SuperAdminRegistryTests.should_match_email_case_
-#                insensitively compares this rename's allowlist literal
-#                ("demo@appointme.dev") against the PascalCase family's
-#                identity-preserving rename of "Demo@AppointMe.DEV" -- both
-#                must fold to the same string, which only holds if this bucket
-#                preserves the user's own separators (e.g. the dot in
-#                "Contoso.Booking") exactly as identityBucket does, rather
-#                than normalizing them to hyphens. The same value is also what
-#                keeps `'@/api/appointme'` import specifiers (tokApos) resolving
-#                to the file tokDot renames, and what keeps main.bicep's
-#                apostrophe-quoted values in sync with main.json's
-#                double-quoted compiled equivalents (tokQuot) and with
-#                appointme-realm.json's own realm name and URL-path segments
-#                (tokQuot, tokSlash).
-#   lowerKebab   (kebabCase) -> hyphen-normalized (dots/underscores become
-#                hyphens). Followers: - \n \r (tokDash, tokNewline, tokCR).
-#                Required, not stylistic: tokDash covers the three Aspire/
-#                Keycloak resource-name strings ("appointme-sql",
-#                "appointme-api", "appointme-frontend") that ASPIRE006
-#                restricts to ASCII letters, digits and hyphens (no dots) --
-#                the same constraint that drove safeBucketCompact's "delete"
-#                transform above, just hyphen-safe instead of hyphen-free
-#                since these are strings, not C# identifiers. tokNewline
-#                covers compose.yaml's `name: appointme` Docker Compose
-#                project name, which Compose validates as lowercase
-#                alphanumeric plus hyphen/underscore -- no dots allowed --
-#                alongside two harmless README.md shell examples that share
-#                the same "followed by end-of-line" shape. tokCR is the same
-#                `core.autocrlf=true` defensive hedge as identityBucket's own
-#                `\r` follower above, extended to this family for symmetry:
-#                on such a checkout, an `\n` follower becomes `\r`, and
-#                without tokCR every one of tokNewline's occurrences --
-#                compose.yaml's Compose project name and the two README.md
-#                examples -- would fall out of every lowercase bucket instead
-#                of just changing which one catches them. Like identityBucket's
-#                `\r`, it has zero actual occurrences on the LF checkout this
-#                repo and CI both use; it exists for the checkout that isn't
-#                this one. tokDash is also the only lowercase symbol with
-#                fileRename (renames appointme-realm.json).
-#   lowerCompact (compactSafeNameLower: lowerCaseInvariant then delete every
-#                non-alphanumeric character) -> Followers: A : $ { d _ (tokA,
-#                tokColon, tokDollar, tokBrace, tokD, tokUnder). Each follower
-#                here sits in a context stricter than either bucket above
-#                allows: tokA is Program.cs's `var appointmeApi = ...` C# local
-#                (a literal hyphen or dot mid-identifier would not compile);
-#                tokColon is orval.config.ts's unquoted object key
-#                `appointme: { ... }` (a hyphen there is a JS syntax error --
-#                caught for real by this task's own `npm run lint`); tokDollar
-#                and tokBrace are main.bicep's/main.json's ACR and storage-
-#                account name construction ("acrappointme${...}" /
-#                "acrappointme{0}{1}"), which Azure restricts to lowercase
-#                alphanumeric only (no hyphens, no dots); tokD is the
-#                illustrative "acrappointmedevtest.azurecr.io" description
-#                string for that same ACR name, kept consistent with it rather
-#                than given its own style; tokUnder is main.bicepparam's
-#                `appointme_admin` SQL admin login example.
-#
-# This is a CLOSED enumeration over these 15 followers (6 + 3 + 6 above),
-# independently measured with a byte-level scan (not `grep`, which -- see the
-# residual-check note below -- silently strips line-terminating newlines
-# before matching and would have missed the `\n` follower entirely) over the
-# reachable file set (every git-tracked file minus is_withheld()'s paths minus
-# template.json's own `modifiers.exclude` globs minus `.template.config/`),
-# not a sample: 208 non-domain occurrences total on the LF checkout this repo
-# and CI both use (`\r` contributes zero of them here -- see tokCR above),
-# zero left over once all 15 followers are routed. Adding a new lowercase
-# "appointme"-prefixed string with a follower
-# character outside this list falls out of every bucket: the residual check
-# below still catches it (loudly, in CI), but whoever adds it then has to add
-# a new `tok*` symbol to template.json themselves, choosing whichever of the
-# three base values above (or a new one) is valid for that occurrence's own
-# context -- there is no way to make this self-updating; this comment is the
-# only record of the rule.
-if grep -rIl "AppointMe" "$GEN_DIR" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist >/dev/null 2>&1; then
-  echo "--- files still containing AppointMe ---" >&2
-  grep -rIl "AppointMe" "$GEN_DIR" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist >&2
-  fail "generated output still contains the PascalCase token AppointMe"
+# --- brand-token rename design ----------------------------------------------
+# The routing rule, the closed per-follower enumeration for each token family
+# (PascalCase "AppointMe" and lowercase "appointme"), and the per-bucket
+# rationale live in templates/README.md, not here -- template.json itself
+# can't carry comments, so that file is the design doc; read it before
+# touching template.json's symbols.
+FOUND_FILES="$(grep -rIl "AppointMe" "$GEN_DIR" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist 2>/dev/null || true)"
+if [[ -n "$FOUND_FILES" ]]; then
+  echo "--- residual PascalCase brand tokens (match + follower character) ---" >&2
+  grep -rIohE "AppointMe." "$GEN_DIR" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist 2>/dev/null \
+    | sort | uniq -c | sort -rn >&2 || true
+  echo "--- files ---" >&2
+  echo "$FOUND_FILES" >&2
+  fail "generated output still contains the PascalCase token AppointMe -- if the follower character above is legitimate, add a matching { \"before\": \"<char>\" } entry to identityBucket or safeBucketCompact in .template.config/template.json (see templates/README.md), then re-run this script"
 else
   pass "no residual AppointMe"
 fi
@@ -453,6 +332,94 @@ assert_present "src/$NAME.Api/$NAME.Api.csproj"
 assert_present "src/CRM/$NAME.Crm/$NAME.Crm.csproj"
 assert_present "$NAME.slnx"
 assert_absent  "src/AppointMe.Api"
+
+# --- lowercase brand tokens: residual check ---------------------------------
+# See templates/README.md for the full design (three base value symbols, one
+# guarded tok* symbol per follower character, why each bucket is required
+# rather than stylistic). Deliberately run here, alongside the PascalCase
+# residual check above and ahead of the ~10-minute restore/build/test below --
+# this and the other assertions moved into this guard are cheap and fragile
+# (a single unguarded rename slipping into the app breaks them immediately),
+# so they get their turn to fail before the expensive build does.
+#
+# Every legitimate lowercase brand token is followed by something other than
+# "n" -- "appointmen..." is always the domain word and must be left alone. So
+# any lowercase "appointme" NOT followed by "n" is a leak. The `|$` alternative
+# matters and is not decorative: plain `grep` strips each line's terminating
+# newline before matching, so a bare `[^n]` class alone silently misses
+# "appointme" sitting at the very end of a line -- exactly the `\n`-follower
+# case documented in templates/README.md (compose.yaml's Compose project
+# name). `$` (end of line) catches that case the same way `[^n]` catches a
+# same-line follower; verified directly against both grep flavors on this
+# machine (macOS's own /usr/bin/grep and this shell's `grep`) with a synthetic
+# fixture before relying on it here.
+LEAKS="$(grep -rIoE 'appointme([^n]|$)' "$GEN_DIR" \
+  --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist \
+  2>/dev/null | sort | uniq -c | sort -rn || true)"
+if [[ -n "$LEAKS" ]]; then
+  echo "--- residual lowercase brand tokens ---" >&2
+  echo "$LEAKS" >&2
+  echo "--- files ---" >&2
+  grep -rIlE 'appointme([^n]|$)' "$GEN_DIR" \
+    --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist >&2 || true
+  fail "generated output still contains lowercase brand tokens -- if the follower character above is legitimate, add a new guarded tok* symbol for it to .template.config/template.json (see templates/README.md), then re-run this script"
+else
+  pass "no residual lowercase brand tokens"
+fi
+
+# Lowercase-named files were renamed too (tokDash and tokDot are the only
+# lowercase symbols carrying fileRename, one per file -- see templates/README.md).
+#
+# The two src/api files are only covered indirectly, by the frontend build
+# below (its `tsc -b` has to resolve their import path, or the build fails) --
+# but nothing else asserts the realm file's *new* name positively, only the
+# old name's absence. If tokDash's fileRename ever produced a name diverging
+# from what src/AppointMe.Aspire/Program.cs passes to WithRealmImport(...),
+# this harness would stay green and Keycloak would only fail at
+# container-startup, at runtime. NAME_KEBAB mirrors the `kebabCase`
+# value-transform (lowercased, separators normalized to hyphens) well enough
+# for the harness's own fixed default name ("Contoso.Booking" ->
+# "contoso-booking"); it is not a general-purpose kebab-case implementation.
+NAME_KEBAB="$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr '._' '-')"
+assert_present_file "src/$NAME.Aspire/$NAME_KEBAB-realm.json"
+assert_absent "src/$NAME.Aspire/appointme-realm.json"
+assert_absent "src/$NAME.Frontend/src/api/appointme.ts"
+assert_absent "src/$NAME.Frontend/src/api/appointme.schemas.ts"
+
+# ...but the appointment-named paths must survive untouched. Counted
+# case-insensitively (matching both the PascalCase "Appointment" aggregate/
+# module paths under src/Booking and the lowercase "appointment" frontend
+# route paths under src/AppointMe.Frontend) since an unguarded rename by
+# EITHER token family could corrupt this vocabulary, and this is the
+# regression check for both at once. Scoped to src/ (where all 65 of them
+# live) and pruned of bin/obj/node_modules/dist identically on both sides:
+# this check now runs before either the generated solution or its frontend
+# has been built, so neither side should have any of those directories yet --
+# the prune is belt-and-suspenders rather than load-bearing here, kept anyway
+# so this check's correctness never depends on where it sits in the script.
+# Pinned against a literal baseline rather than "source == generated" alone,
+# so a broken `grep`/`find` returning 0 on both sides can't pass vacuously.
+# Counts relative to "$1/src" (via a subshell `cd`, not an absolute `find "$1/src"`):
+# every line `find` prints otherwise carries the `$1` prefix verbatim, and both
+# callers below pass a prefix that itself contains "appointment"-adjacent text
+# ($REPO_ROOT / $GEN_DIR under a checkout or temp dir) — an absolute-path count
+# would match on the PREFIX, not the file names under src/, and could pass
+# vacuously (or overcount) regardless of what the rename actually did to the
+# tree it's supposed to be checking.
+count_appointment_paths() {
+  ( cd "$1/src" && find . -type d \( -name bin -o -name obj -o -name node_modules -o -name dist \) -prune -o -type f -print ) \
+    | grep -ic "appointment" || true
+}
+EXPECTED_APPOINTMENT_PATHS=65
+SRC_PATHS="$(count_appointment_paths "$REPO_ROOT")"
+GEN_PATHS="$(count_appointment_paths "$GEN_DIR")"
+if [[ "$SRC_PATHS" != "$EXPECTED_APPOINTMENT_PATHS" ]]; then
+  fail "source appointment-named path count is $SRC_PATHS, expected $EXPECTED_APPOINTMENT_PATHS -- update EXPECTED_APPOINTMENT_PATHS if the source legitimately changed"
+elif [[ "$GEN_PATHS" != "$EXPECTED_APPOINTMENT_PATHS" ]]; then
+  fail "appointment-named path count changed: generated $GEN_PATHS, expected $EXPECTED_APPOINTMENT_PATHS -- the rename corrupted a domain path"
+else
+  pass "appointment-named paths preserved ($GEN_PATHS)"
+fi
 
 fi
 
@@ -511,112 +478,34 @@ echo "$TEST_OUTPUT"
 TOTAL_TESTS="$(grep -oE 'Total:[[:space:]]*[0-9]+' <<< "$TEST_OUTPUT" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)"
 FAILED_TESTS="$(grep -oE 'Failed:[[:space:]]*[0-9]+' <<< "$TEST_OUTPUT" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)"
 
-if [[ "$TOTAL_TESTS" != "217" ]]; then
-  fail "generated solution ran $TOTAL_TESTS tests, expected 217 -- tests were lost, not just failed"
+EXPECTED_TOTAL_TESTS=217
+if [[ "$TOTAL_TESTS" != "$EXPECTED_TOTAL_TESTS" ]]; then
+  fail "generated solution ran $TOTAL_TESTS tests, expected $EXPECTED_TOTAL_TESTS -- update EXPECTED_TOTAL_TESTS if tests were legitimately added to or removed from the app"
 elif [[ "$FAILED_TESTS" -eq 0 ]]; then
-  pass "generated solution tests pass (217/217)"
+  pass "generated solution tests pass ($TOTAL_TESTS/$EXPECTED_TOTAL_TESTS)"
 else
   FAILING_NAMES="$(grep -E '^  Failed ' <<< "$TEST_OUTPUT" | sed -E 's/^  Failed ([^ ]+).*/\1/' || true)"
   fail "generated solution tests failed: $FAILED_TESTS failing (expected 0): $FAILING_NAMES"
 fi
 
-# --- assertions: lowercase brand tokens -------------------------------------
-# See the "lowercase brand token" comment above the PascalCase residual check
-# for the full design (three base value symbols, one guarded tok* symbol per
-# follower character, why each bucket is required rather than stylistic).
-echo "== asserting lowercase brand tokens are gone =="
-
-if [[ ! -d "$GEN_DIR/src" ]]; then
-  fail "$GEN_DIR/src does not exist -- generation must have failed; skipping lowercase-rename checks"
-else
-
-# Every legitimate lowercase brand token is followed by something other than
-# "n" -- "appointmen..." is always the domain word and must be left alone. So
-# any lowercase "appointme" NOT followed by "n" is a leak. The `|$` alternative
-# matters and is not decorative: plain `grep` strips each line's terminating
-# newline before matching, so a bare `[^n]` class alone silently misses
-# "appointme" sitting at the very end of a line -- exactly the `\n`-follower
-# case documented above (two occurrences in README.md, one in compose.yaml
-# before this rename). `$` (end of line) catches that case the same way
-# `[^n]` catches a same-line follower; verified directly against both grep
-# flavors on this machine (macOS's own /usr/bin/grep and this shell's `grep`)
-# with a synthetic fixture before relying on it here.
-LEAKS="$(grep -rIoE 'appointme([^n]|$)' "$GEN_DIR" \
-  --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist \
-  2>/dev/null | sort | uniq -c | sort -rn || true)"
-if [[ -n "$LEAKS" ]]; then
-  echo "--- residual lowercase brand tokens ---" >&2
-  echo "$LEAKS" >&2
-  echo "--- files ---" >&2
-  grep -rIlE 'appointme([^n]|$)' "$GEN_DIR" \
-    --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist >&2 || true
-  fail "generated output still contains lowercase brand tokens"
-else
-  pass "no residual lowercase brand tokens"
-fi
-
-# Lowercase-named files were renamed too (tokDash and tokDot are the only
-# lowercase symbols carrying fileRename, one per file above).
-#
-# The two src/api files are only covered indirectly above (the frontend's `tsc -b`
-# has to resolve their import path, or the build fails) -- but nothing else asserts
-# the realm file's *new* name positively, only the old name's absence. If tokDash's
-# fileRename ever produced a name diverging from what src/AppointMe.Aspire/Program.cs
-# passes to WithRealmImport(...), this harness would stay green and Keycloak would
-# only fail at container-startup, at runtime. NAME_KEBAB mirrors the `kebabCase`
-# value-transform (lowercased, separators normalized to hyphens) well enough for the
-# harness's own fixed default name ("Contoso.Booking" -> "contoso-booking"); it is
-# not a general-purpose kebab-case implementation.
-NAME_KEBAB="$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr '._' '-')"
-assert_present_file "src/$NAME.Aspire/$NAME_KEBAB-realm.json"
-assert_absent "src/$NAME.Aspire/appointme-realm.json"
-assert_absent "src/$NAME.Frontend/src/api/appointme.ts"
-assert_absent "src/$NAME.Frontend/src/api/appointme.schemas.ts"
-
-# ...but the appointment-named paths must survive untouched. Counted
-# case-insensitively (matching both the PascalCase "Appointment" aggregate/
-# module paths under src/Booking and the lowercase "appointment" frontend
-# route paths under src/AppointMe.Frontend) since an unguarded rename by
-# EITHER token family could corrupt this vocabulary, and this is the
-# regression check for both at once. Scoped to src/ (where all 65 of them
-# live) and pruned of bin/obj/node_modules/dist identically on both sides:
-# by this point in the script the generated solution has already been built
-# and the frontend not yet, so an unpruned `find` on the generated side would
-# additionally count hundreds of bin/obj paths that were never part of the
-# template's own content and have nothing to do with this rename, while the
-# source side (never built) has none of those -- an apples-to-oranges
-# comparison that the brief's own version of this check does not avoid.
-# Pinned against a literal baseline rather than "source == generated" alone,
-# so a broken `grep`/`find` returning 0 on both sides can't pass vacuously.
-# Counts relative to "$1/src" (via a subshell `cd`, not an absolute `find "$1/src"`):
-# every line `find` prints otherwise carries the `$1` prefix verbatim, and both
-# callers below pass a prefix that itself contains "appointment"-adjacent text
-# ($REPO_ROOT / $GEN_DIR under a checkout or temp dir) — an absolute-path count
-# would match on the PREFIX, not the file names under src/, and could pass
-# vacuously (or overcount) regardless of what the rename actually did to the
-# tree it's supposed to be checking.
-count_appointment_paths() {
-  ( cd "$1/src" && find . -type d \( -name bin -o -name obj -o -name node_modules -o -name dist \) -prune -o -type f -print ) \
-    | grep -ic "appointment" || true
-}
-EXPECTED_APPOINTMENT_PATHS=65
-SRC_PATHS="$(count_appointment_paths "$REPO_ROOT")"
-GEN_PATHS="$(count_appointment_paths "$GEN_DIR")"
-if [[ "$SRC_PATHS" != "$EXPECTED_APPOINTMENT_PATHS" ]]; then
-  fail "source appointment-named path count is $SRC_PATHS, expected $EXPECTED_APPOINTMENT_PATHS -- update EXPECTED_APPOINTMENT_PATHS if the source legitimately changed"
-elif [[ "$GEN_PATHS" != "$EXPECTED_APPOINTMENT_PATHS" ]]; then
-  fail "appointment-named path count changed: generated $GEN_PATHS, expected $EXPECTED_APPOINTMENT_PATHS -- the rename corrupted a domain path"
-else
-  pass "appointment-named paths preserved ($GEN_PATHS)"
-fi
-
 # --- frontend ----------------------------------------------------------------
+# The lowercase-brand-token residual check, the fileRename assertions, and the
+# appointment-named-path count all used to be re-run here too, a second time,
+# after the build/test step above. That was leftover from before those checks
+# were moved up into "asserting rename correctness" (ahead of the ~10-minute
+# build, so cheap/fragile checks fail fast) -- the move copied them to their
+# new position but never deleted the old copy, so they ran twice: harmless
+# (nothing was lost) but confusing. Removed here; see that earlier section for
+# the checks themselves. Only the frontend build's own `-d src` guard survives,
+# since the frontend build still needs generation to have produced a src/ tree.
 echo "== building generated frontend =="
-(
-  cd "$GEN_DIR/src/$NAME.Frontend"
-  npm ci && npm run lint && npm run build
-) && pass "generated frontend lints and builds" || fail "generated frontend failed"
-
+if [[ ! -d "$GEN_DIR/src" ]]; then
+  fail "$GEN_DIR/src does not exist -- generation must have failed; skipping frontend build"
+else
+  (
+    cd "$GEN_DIR/src/$NAME.Frontend"
+    npm ci && npm run lint && npm run build
+  ) && pass "generated frontend lints and builds" || fail "generated frontend failed"
 fi
 
 # --- assertions: overlay README --------------------------------------------

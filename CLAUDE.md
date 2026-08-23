@@ -71,6 +71,15 @@ and structurally compares `git ls-files` against the packed nupkg in both
 directions. CI runs it on every PR (`.github/workflows/template.yml`) and
 publishes on a `v*` tag.
 
+Three literal baselines inside that script move with the app, not with the
+template — an otherwise unrelated PR can legitimately push any of them out of
+date: the `appointment` occurrence count (`EXPECTED_APPOINTMENT`), the
+generated solution's test count (`EXPECTED_TOTAL_TESTS`), and the
+`appointment`-named path count (`EXPECTED_APPOINTMENT_PATHS`). Adding a test,
+touching booking code, or adding a file under that domain word will fail the
+smoke test against one of these three; the failure message names which
+constant to bump. That is the fix — it is not evidence the rename broke.
+
 **Never replace a bare occurrence of the lowercase brand token.** It is chosen to
 be a strict prefix of the domain word `appointment` — the aggregate, the
 `/appointments` route, and the `appointments.statistics:view` permission all
@@ -82,6 +91,11 @@ or a new PascalCase `AppointMe-prefixed` identifier, needs a matching guarded
 symbol added to `template.json`, followed by another run of
 `templates/smoke-test.sh`. The same applies to the PascalCase family: a new
 follower character falls out of every bucket.
+
+`templates/README.md` is where that rename design actually lives — the
+routing rule, the closed per-follower enumeration for each token family, and
+the per-bucket rationale. `template.json` has no comment syntax, so read that
+file, not just this section, before adding or changing a symbol there.
 
 `is_withheld()` in `templates/smoke-test.sh` hand-maintains a mirror of the
 `Exclude` list in `templates/AppointMe.Templates.csproj` — changing one without

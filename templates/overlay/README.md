@@ -3,6 +3,13 @@
 A modular-monolith .NET 10 + React 19 multi-tenant SaaS foundation, generated
 from a production-grade template.
 
+> Generated from a `dotnet new` template. The `-n <Name>` you passed must be a valid
+> dotted .NET identifier — e.g. `Contoso.Booking` — because it becomes C#
+> namespaces, project names, and folder paths. A non-dotted name such as
+> `my-booking-app` (a common choice for kebab-case slugs) produces a solution
+> that does not compile — regenerate with a dotted name if that's what happened
+> here.
+
 ## Run it
 
 ```bash
@@ -49,19 +56,44 @@ ports Aspire uses; run `dotnet run --project src/AppointMe.Api`, and in
 
 ## Change these before deploying
 
-The template renamed identifiers for you, but these carry placeholder values:
+The template renamed identifiers for you, but these carry placeholder values —
+or, in one case, values that are actively wrong rather than merely unset:
 
+- **`Directory.Build.props`** — `Company`, `Authors`, and `RepositoryUrl` are
+  still BravoDev's. The rename only touches the upstream project's own brand
+  tokens, and none of these three properties is made only of those
+  (`RepositoryUrl` is the closest — its project-name segment did get renamed —
+  but the host and org, `github.com/bravodev-hub`, did not). Left alone, every assembly you
+  build embeds `Company=BravoDev`, `Authors=BravoDev`, and a `RepositoryUrl`
+  pointing at BravoDev's GitHub org under your project's name. Unlike the
+  other items in this list, this one is not a placeholder waiting to be
+  filled in — it is incorrect metadata about who owns this code, and it ships
+  in every build until you fix it.
 - `src/AppointMe.Api/appsettings.Devtest.example.json` — copy to
   `appsettings.Devtest.json` and fill in your Entra tenant, client id, base URL,
   super-admin email and demo account. It is the deployment config; nothing works
   without it. (`appsettings.Devtest.json` itself is never shipped — it would leak
   real secrets — so the `.example.json` file is what you actually get.)
+- `src/AppointMe.Api/appsettings.Development.json` — ships with fixed local
+  Keycloak client secrets (`FrontendClientSecret`, `KeycloakAdmin.ClientSecret`)
+  and the `Password1` / `AppointMe1` credential pair. These are already public
+  in the upstream repo and only ever protect containers on your own machine —
+  not new exposure — but every project generated from this template starts out
+  sharing the exact same values. Rotate them before you rely on this
+  environment for anything beyond local development.
 - `infra/cloudflare-worker/wrangler.jsonc` — the `routes` pattern and `zone_name`
   point at a domain derived from your project name, which almost certainly is not
   yours.
 - `.github/workflows/devtest.yml` — expects the Azure OIDC secrets listed in
   `infra/README.md` section 5. It fails until you set them, and does nothing
   harmful in the meantime.
+
+`LICENSE` is *not* on this list on purpose: it still reads `Copyright (c) 2026
+BravoDev`, and that is correct, not a leftover to delete. This project is a
+derivative of BravoDev's MIT-licensed template, and the MIT license requires
+every copy to retain the original copyright notice — removing it would violate
+the license you're using. Add your own copyright line alongside it if you want
+one; don't replace it.
 
 ## License
 

@@ -1,7 +1,48 @@
 # `dotnet new appointme` template package — design
 
 **Date:** 2026-08-22
-**Status:** draft — awaiting review
+**Status:** implemented — see the resolution note below for where the shipped design diverges
+
+## Resolution note (added after implementation)
+
+This spec records what was believed at design time. Three things below were
+proven wrong or superseded during implementation and are **not** what shipped.
+The document is annotated rather than rewritten, because the reasoning it
+captures is part of the record.
+
+1. **`.github/` does ship.** Decision 4 says it does not. The *Open question*
+   at the end of this document recommended the opposite, and that recommendation
+   is what was implemented: `devtest.yml`, `codeql.yml` and `secret-scan.yml`
+   ship (they read secrets by name and are inert until populated), while
+   `template.yml` is excluded — a generated project must never inherit a
+   workflow that publishes to BravoDev's package id. The deciding factor was
+   that `infra/README.md` documents `devtest.yml` by name, so shipping the IaC
+   without its pipeline would have left those instructions dangling.
+
+2. **The rename mechanism is different.** The *Lowercase — enumerated guarded
+   symbols* and *PascalCase — `sourceName` with restricted forms* sections
+   describe a design that does not work on SDK 10.0.100: `forms: {global:
+   ["identity"]}` does not suppress the engine's derived lowercase form, the
+   fallback's `isName` is not a real schema property, and any `symbols.name` of
+   `type: parameter` is diverted to `-na`/`--param:name`, severing `-n`. What
+   shipped instead is three `derived` symbols per token family with
+   `onlyIf`-gated `replaces`, dispatching on the character *following* the
+   token, plus a dot-stripped form for the ~20 bare C# identifiers
+   (`AppointMeSql`, `AddAppointMeAuthentication`) that a dotted `-n` value would
+   otherwise corrupt — which this spec did not anticipate at all. The
+   follower-distribution table in this document is also a partial measurement;
+   the authoritative enumerations are documented in `templates/README.md` and
+   enforced by `templates/smoke-test.sh`.
+
+3. **The wrangler placeholder differs.** *Known cosmetic artifacts* predicts
+   `app.contoso-booking.dev`. The shipped dotted bucket produces
+   `app.contoso.booking.dev`.
+
+Also note the version: this spec and the plan both assume `1.1.0`, but that tag
+was already released, so the template's first publishable version is `1.2.0`.
+
+For the design as actually built, read `templates/README.md` (rename routing and
+the closed enumerations) and the *Template package* subsection of `CLAUDE.md`.
 
 ## Goal
 
