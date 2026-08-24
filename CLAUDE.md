@@ -154,8 +154,8 @@ public class PermissionResolverTests
 ```
 
 ### Tech Stack
-- **Backend**: .NET 10, C# 14, EF Core 10, Wolverine 5.9, Dapper
-- **Frontend**: React 19, TypeScript 5.8, Vite 7, Tailwind CSS 4, TanStack Query
+- **Backend**: .NET 10, C# 14, EF Core 10, Wolverine 6.24, Dapper
+- **Frontend**: React 19, TypeScript 6, Vite 8, Tailwind CSS 4, TanStack Query
 - **Infrastructure**: SQL Server 2025, Keycloak, Mailpit (local dev); Azure Service Bus for production messaging
 
 ## Local Development Services

@@ -19,6 +19,7 @@ internal static class OpenTelemetryExtensions
                         .AddAspNetCoreInstrumentation()
                         .AddHttpClientInstrumentation()
                         .AddSqlClientInstrumentation(options => { options.RecordException = true; })
+                        .AddSource("Wolverine")
                         .AddOtlpExporter();
                 })
                 .WithMetrics(metrics =>
@@ -26,6 +27,7 @@ internal static class OpenTelemetryExtensions
                     metrics
                         .AddAspNetCoreInstrumentation()
                         .AddHttpClientInstrumentation()
+                        .AddMeter("Wolverine*")
                         .AddOtlpExporter();
                 });
 
