@@ -39,6 +39,69 @@ dotnet test src/CRM/AppointMe.Crm.Tests        # Single test project
 dotnet test --filter "FullyQualifiedName~TestName"  # Single test
 ```
 
+### Template package (`dotnet new appointme`)
+
+This subsection documents how **this repository** — the upstream source of the
+`dotnet new appointme` template — packages itself. It is not about a project
+generated from the template: generation strips `.template.config/` and never
+emits `templates/**`, so skip this subsection if you're reading this file inside
+a generated project.
+
+The repo root **is** the template source — `templates/AppointMe.Templates.csproj`
+packs it directly into the nupkg, so there is no separate copied tree to keep in
+sync. That project is deliberately excluded from `AppointMe.sln`/`AppointMe.slnx`;
+`dotnet build`/`dotnet test` are unaffected by it.
+
+Two independent exclusion layers decide what ships, and they are not
+interchangeable:
+
+- **Pack-time** — the `None` item's `Exclude` glob in
+  `templates/AppointMe.Templates.csproj` decides what enters the nupkg.
+- **Generation-time** — `sources[].modifiers[].exclude` in
+  `.template.config/template.json` decides what lands in a generated project's
+  output.
+
+```bash
+./templates/smoke-test.sh   # pack, install locally, generate, build + test the output
+```
+
+That script is the gate: it packs, installs the package locally, generates a
+project, builds and tests the generated solution, lints and builds its frontend,
+and structurally compares `git ls-files` against the packed nupkg in both
+directions. CI runs it on every PR (`.github/workflows/template.yml`) and
+publishes on a `v*` tag.
+
+Three literal baselines inside that script move with the app, not with the
+template — an otherwise unrelated PR can legitimately push any of them out of
+date: the `appointment` occurrence count (`EXPECTED_APPOINTMENT`), the
+generated solution's test count (`EXPECTED_TOTAL_TESTS`), and the
+`appointment`-named path count (`EXPECTED_APPOINTMENT_PATHS`). Adding a test,
+touching booking code, or adding a file under that domain word will fail the
+smoke test against one of these three; the failure message names which
+constant to bump. That is the fix — it is not evidence the rename broke.
+
+**Never replace a bare occurrence of the lowercase brand token.** It is chosen to
+be a strict prefix of the domain word `appointment` — the aggregate, the
+`/appointments` route, and the `appointments.statistics:view` permission all
+share its first nine letters. `.template.config/template.json` matches it only
+when immediately followed by a punctuation guard, such as `appointme-` or
+`appointme.` (see the `tok*` symbols there) — never bare — precisely so
+`appointment` itself is never touched. Adding a new bare use of the brand token,
+or a new PascalCase `AppointMe-prefixed` identifier, needs a matching guarded
+symbol added to `template.json`, followed by another run of
+`templates/smoke-test.sh`. The same applies to the PascalCase family: a new
+follower character falls out of every bucket.
+
+`templates/README.md` is where that rename design actually lives — the
+routing rule, the closed per-follower enumeration for each token family, and
+the per-bucket rationale. `template.json` has no comment syntax, so read that
+file, not just this section, before adding or changing a symbol there.
+
+`is_withheld()` in `templates/smoke-test.sh` hand-maintains a mirror of the
+`Exclude` list in `templates/AppointMe.Templates.csproj` — changing one without
+the other breaks the manifest-parity check. This has already caused a failure
+once during development; it remains the single easiest way to break the harness.
+
 ## Architecture
 
 This is a **modular monolithic** .NET 10 application following Domain-Driven Design principles.

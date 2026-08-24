@@ -1,0 +1,120 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>BravoDev.AppointMe.Templates</PackageId>
+    <Version>1.2.0</Version>
+    <Title>AppointMe — modular-monolith .NET 10 SaaS foundation</Title>
+    <Description>A production-grade modular-monolith .NET 10 + React 19 SaaS foundation: multi-tenancy, OIDC auth, CQRS, domain events, durable messaging, an auto-discovered permission system, a business dashboard, and a one-command .NET Aspire local stack. Run: dotnet new appointme -n Your.Project</Description>
+    <PackageTags>dotnet-new;template;templates;aspire;ddd;modular-monolith;multi-tenant;cqrs;react;saas</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+    <!-- A template package carries content only: no assembly, no dependencies. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- NOT set to false: NuGet.Build.Tasks.Pack's _GetPackageFiles target (which gathers
+         None/Content items with Pack=true, including ours below) is itself gated on
+         $(IncludeContentInPack) == 'true'. Setting it false disables that target entirely,
+         so no None items pack and dotnet pack fails with NU5017 "no dependencies nor
+         content." Verified against /usr/local/share/dotnet/sdk/10.0.100/NuGet.Build.Tasks.Pack.targets. -->
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+
+    <!-- Without this, NuGet's pack task silently drops any file whose name has nothing
+         before its (only) dot once split via Path.GetFileNameWithoutExtension - i.e.
+         classic hidden dotfiles such as .editorconfig, .gitignore, .dockerignore,
+         .nvmrc, .prettierrc, .prettierignore, .gitkeep (warning NU5119: "Files and
+         folders starting with '.' ... are excluded by default"). Those are tracked,
+         non-withheld repo content per the spec's exclusion table, so the default must
+         be disabled. Verified empirically: Path.GetFileNameWithoutExtension(".editorconfig")
+         == "" (excluded without this flag) vs. Path.GetFileNameWithoutExtension(".gitleaks.toml")
+         == ".gitleaks" (never excluded either way) - the filter is keyed on that emptiness,
+         not on a leading dot alone. Disabling it also stops filtering local macOS/.DS_Store
+         and .gitkeep noise, so those are re-excluded/re-included explicitly below. -->
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+
+    <!-- NU5128: no lib/ or ref/ assets in a package that declares a TFM. Expected -
+         this project declares no TargetFramework of its own; it inherits net10.0 from
+         the root Directory.Build.props, so a reader of this file alone would not
+         otherwise see where the TFM comes from. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ..\**\.claude\**\*.local.json / *.lock (not just ..\.claude\**\...): .claude
+         directories exist below the repo root too (e.g. src/AppointMe.Frontend/.claude),
+         and are tracked. A root-only pattern misses local-state files someone creates by
+         running Claude Code with a subdirectory as cwd. -->
+    <!-- ..\**\.env / ..\**\.env.* : gitignored, untracked local secrets (API keys,
+         endpoints) realistically created by a dev under any project folder, not just the
+         repo root. NuGet's own default-exclude (disabled above) never covered ".env.*"
+         forms anyway - GetFileNameWithoutExtension(".env.local") is ".env", non-empty -
+         so this needs an explicit pattern regardless. The tracked, non-withheld
+         src/AppointMe.Frontend/.env.development is excluded by this pattern too and
+         re-included individually below. -->
+    <!-- ..\README.md: this repo's own README is release marketing (live-demo link,
+         tour GIF, docs/images references the template does not ship). A generated
+         project gets a purpose-written README instead - see the overlay None item
+         below and the second `sources` entry in .template.config/template.json that
+         maps its contents onto the generated project's root. -->
+    <None Include="..\**\*"
+          Exclude="..\**\bin\**;..\**\obj\**;..\**\node_modules\**;..\**\dist\**;..\.git\**;..\.vs\**;..\.idea\**;..\**\.DS_Store;..\**\.env;..\**\.env.*;..\artifacts\**;..\templates\**;..\.superpowers\**;..\CHANGELOG.md;..\README.md;..\docs\superpowers\**;..\docs\CODE_REVIEW_REPORT.md;..\docs\images\**;..\src\AppointMe.Api\appsettings.Devtest.json;..\infra\cloudflare-worker\.wrangler\**;..\.claude\settings.json;..\**\.claude\**\*.local.json;..\**\.claude\**\*.lock;..\docker\keycloak\certs\**;..\AppointMe.sln.DotSettings.user;..\.github\workflows\template.yml;..\LICENSE;..\src\AppointMe.Api\Dockerfile"
+          Pack="true"
+          PackagePath="content\appointme\%(RecursiveDir)%(Filename)%(Extension)" />
+
+    <!-- docker/keycloak/certs/** above excludes the locally-generated dev TLS pair
+         (keycloak.crt / keycloak.key, written by export-dev-cert.sh - never repo
+         content) wholesale, including the placeholder below; re-include just the
+         placeholder so the (git-tracked, empty) directory still exists in a generated
+         project before that script has been run. -->
+    <None Include="..\docker\keycloak\certs\.gitkeep"
+          Pack="true"
+          PackagePath="content\appointme\docker\keycloak\certs\.gitkeep" />
+
+    <!-- ..\**\.env.* above also matches the tracked, non-withheld dev-server default
+         below (its own name starts with ".env."); re-include it individually so it
+         still ships despite the blanket .env exclusion. -->
+    <None Include="..\src\AppointMe.Frontend\.env.development"
+          Pack="true"
+          PackagePath="content\appointme\src\AppointMe.Frontend\.env.development" />
+
+    <!-- ..\templates\** above excludes this packaging project's own templates/ folder
+         wholesale - it is packaging infrastructure (this .csproj, smoke-test.sh),
+         not content a generated project should receive. templates/overlay/ is the one
+         exception: its files are the replacement README a generated project gets
+         INSTEAD OF this repo's own (release-marketing) README.md, excluded above. Pack
+         it under its own content/appointme/templates/overlay/ path; at generation
+         time, template.json's primary `sources` entry excludes templates/** (so the
+         overlay folder itself never surfaces in generated output) while a second
+         `sources` entry maps this directory's *contents* onto the generated project's
+         root. -->
+    <None Include="..\templates\overlay\**\*"
+          Pack="true"
+          PackagePath="content\appointme\templates\overlay\%(RecursiveDir)%(Filename)%(Extension)" />
+
+    <!-- LICENSE and src/AppointMe.Api/Dockerfile are excluded from the wildcard above
+         and re-included here individually: NuGet treats a PackagePath whose final
+         segment has no extension (as "LICENSE" and "Dockerfile" both are - no dot in
+         the name at all) as a target *directory* rather than a file, and nests the
+         original source path underneath it - e.g. LICENSE would otherwise land at
+         content/appointme/LICENSE/LICENSE instead of content/appointme/LICENSE.
+         Ending PackagePath in a directory separator is NuGet's documented idiom for
+         "place this file in this folder under its own name" and sidesteps the
+         extension inference entirely. These are the only two tracked, non-withheld
+         extensionless files in the repo - do not delete these as "redundant" with the
+         wildcard above without keeping this workaround, or the nesting bug returns.
+         The trailing separator MUST be a forward slash, not a backslash, unlike every
+         other PackagePath in this file: a trailing backslash produces a doubled
+         separator (content/appointme//LICENSE), which the template engine resolves as
+         a rooted path and fails to generate with "Read-only file system : '/LICENSE'".
+         Verified empirically (isolated repro, then confirmed end-to-end via
+         smoke-test.sh) - a forward slash produces the correct single-separator path. -->
+    <None Include="..\LICENSE"
+          Pack="true"
+          PackagePath="content/appointme/" />
+    <None Include="..\src\AppointMe.Api\Dockerfile"
+          Pack="true"
+          PackagePath="content/appointme/src/AppointMe.Api/" />
+  </ItemGroup>
+
+</Project>

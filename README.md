@@ -12,6 +12,31 @@ It's a shared public demo seeded with sample data — other visitors' activity m
 
 ![A tour of the AppointMe demo: the appointments calendar, the business dashboard with KPI cards, trend chart, bookings by staff and a peak-hours heatmap, the customer list, and dark mode](./docs/images/live-demo.gif)
 
+## Start from the template
+
+Two ways in. Either clone this repo (see [Quick start](#quick-start)), or install the
+template package and generate a renamed copy:
+
+```bash
+dotnet new install BravoDev.AppointMe.Templates::1.2.0
+dotnet new appointme -n Contoso.Booking
+cd Contoso.Booking/src/Contoso.Booking.Aspire && dotnet run
+```
+
+`dotnet new appointme` renames namespaces, projects, the solution file, the database,
+the Keycloak realm and the container names to your project name, and leaves the domain
+vocabulary alone. It ships the Bicep infrastructure and CI workflows; it does not ship
+this project's changelog, release media, or deployment config.
+
+Pin the version — `::1.2.0` — so a generation is reproducible. The template version
+tracks the app release it contains.
+
+`-n` must be a valid dotted .NET identifier — e.g. `Contoso.Booking` — since it becomes
+C# namespaces, project names, and folder paths. A non-dotted name such as
+`my-booking-app` (a common choice for kebab-case project slugs) generates a solution
+that does not compile; `dotnet new` reports success either way, so there is no
+in-the-moment warning if you pick one.
+
 ## Dashboard
 
 *New in [v1.1.0](./CHANGELOG.md).* Every tenant gets a business dashboard built on the booking

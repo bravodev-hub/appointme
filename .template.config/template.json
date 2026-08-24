@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "BravoDev",
+  "classifications": [ "Web", "WebAPI", "React", "Aspire", "DDD", "Multi-tenant", "SaaS", "Solution" ],
+  "identity": "BravoDev.AppointMe.ModularMonolith.CSharp",
+  "name": "AppointMe modular-monolith SaaS foundation",
+  "shortName": "appointme",
+  "description": "A modular-monolith .NET 10 + React 19 multi-tenant SaaS foundation with Identity, Organizations, CRM and Booking bounded contexts, CQRS, domain events, a permission system, and a .NET Aspire local stack.",
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "preferNameDirectory": true,
+  "sourceName": "__TemplateSourceNamePlaceholder__",
+  "forms": {
+    "compactSafeName": { "identifier": "replace", "pattern": "[^A-Za-z0-9]", "replacement": "" },
+    "compactSafeNameLower": { "identifier": "chain", "steps": [ "lowerCaseInvariant", "compactSafeName" ] }
+  },
+  "symbols": {
+    "identityBucket": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "identity",
+      "replaces": "AppointMe",
+      "fileRename": "AppointMe",
+      "onlyIf": [
+        { "before": "." }, { "before": " " }, { "before": "\"" }, { "before": "'" },
+        { "before": "\n" }, { "before": "\r" }, { "before": ";" }, { "before": "-" }, { "before": "<" }
+      ]
+    },
+    "safeBucketUnderscore": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "safe_name",
+      "replaces": "AppointMe",
+      "onlyIf": [ { "before": "_" } ]
+    },
+    "safeBucketCompact": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "compactSafeName",
+      "replaces": "AppointMe",
+      "onlyIf": [
+        { "before": "S" }, { "before": "M" }, { "before": "A" }, { "before": "H" },
+        { "before": "O" }, { "before": "D" }, { "before": "E" }, { "before": "J" },
+        { "before": "1" }
+      ]
+    },
+
+    "lowerDotted": { "type": "derived", "valueSource": "name", "valueTransform": "lowerCaseInvariant" },
+    "lowerKebab": { "type": "derived", "valueSource": "name", "valueTransform": "kebabCase" },
+    "lowerCompact": { "type": "derived", "valueSource": "name", "valueTransform": "compactSafeNameLower" },
+
+    "tokDot":     { "type": "generated", "generator": "join", "replaces": "appointme.",  "fileRename": "appointme.", "parameters": { "symbols": [ { "type": "ref", "value": "lowerDotted" }, { "type": "const", "value": "." } ] } },
+    "tokApos":    { "type": "generated", "generator": "join", "replaces": "appointme'",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerDotted" }, { "type": "const", "value": "'" } ] } },
+    "tokQuot":    { "type": "generated", "generator": "join", "replaces": "appointme\"", "parameters": { "symbols": [ { "type": "ref", "value": "lowerDotted" }, { "type": "const", "value": "\"" } ] } },
+    "tokSlash":   { "type": "generated", "generator": "join", "replaces": "appointme/",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerDotted" }, { "type": "const", "value": "/" } ] } },
+    "tokTick":    { "type": "generated", "generator": "join", "replaces": "appointme`",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerDotted" }, { "type": "const", "value": "`" } ] } },
+    "tokSemi":    { "type": "generated", "generator": "join", "replaces": "appointme;",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerDotted" }, { "type": "const", "value": ";" } ] } },
+
+    "tokDash":    { "type": "generated", "generator": "join", "replaces": "appointme-",  "fileRename": "appointme-", "parameters": { "symbols": [ { "type": "ref", "value": "lowerKebab" }, { "type": "const", "value": "-" } ] } },
+    "tokNewline": { "type": "generated", "generator": "join", "replaces": "appointme\n", "parameters": { "symbols": [ { "type": "ref", "value": "lowerKebab" }, { "type": "const", "value": "\n" } ] } },
+    "tokCR":      { "type": "generated", "generator": "join", "replaces": "appointme\r", "parameters": { "symbols": [ { "type": "ref", "value": "lowerKebab" }, { "type": "const", "value": "\r" } ] } },
+
+    "tokA":       { "type": "generated", "generator": "join", "replaces": "appointmeA",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerCompact" }, { "type": "const", "value": "A" } ] } },
+    "tokColon":   { "type": "generated", "generator": "join", "replaces": "appointme:",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerCompact" }, { "type": "const", "value": ":" } ] } },
+    "tokDollar":  { "type": "generated", "generator": "join", "replaces": "appointme$",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerCompact" }, { "type": "const", "value": "$" } ] } },
+    "tokBrace":   { "type": "generated", "generator": "join", "replaces": "appointme{",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerCompact" }, { "type": "const", "value": "{" } ] } },
+    "tokD":       { "type": "generated", "generator": "join", "replaces": "appointmed",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerCompact" }, { "type": "const", "value": "d" } ] } },
+    "tokUnder":   { "type": "generated", "generator": "join", "replaces": "appointme_",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerCompact" }, { "type": "const", "value": "_" } ] } }
+  },
+  "sources": [
+    {
+      "source": "./",
+      "target": "./",
+      "modifiers": [
+        {
+          "exclude": [
+            "templates/**",
+            "artifacts/**",
+            "**/bin/**",
+            "**/obj/**",
+            "**/node_modules/**",
+            "**/dist/**"
+          ]
+        }
+      ]
+    },
+    {
+      "source": "./templates/overlay/",
+      "target": "./"
+    }
+  ]
+}

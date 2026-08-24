@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Company>BravoDev</Company>
     <Authors>BravoDev</Authors>
-    <RepositoryUrl>https://github.com/bravodev/appointme.git</RepositoryUrl>
+    <RepositoryUrl>https://github.com/bravodev-hub/appointme.git</RepositoryUrl>
     <RepositoryType>Git</RepositoryType>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>14</LangVersion>
