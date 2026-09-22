@@ -1,0 +1,165 @@
+# Template package CI/CD.
+#
+#   verify   — pack the template, generate a project from the packed nupkg, then
+#              build, test and lint the GENERATED output. Runs on every PR and
+#              push to main. This is what stops the template rotting as the app
+#              changes underneath it.
+#   publish  — on a v* tag pushed via `git push` (NOT workflow_dispatch, which
+#              also accepts a tag as its ref -- gated below by event_name, not
+#              just by ref): assert the tag matches the version of the artifact
+#              `verify` already built and tested in this same run, then push
+#              that same artifact to nuget.org. publish does not re-run
+#              verify's checks itself; it reuses verify's artifact rather than
+#              repacking, so what gets pushed is exactly what was tested.
+#
+# Required repo Actions secret:
+#   NUGET_API_KEY   nuget.org push key scoped to BravoDev.AppointMe.Templates
+#
+# Required one-time repo setup, BEFORE that secret is even added: the `nuget`
+# environment below (Settings -> Environments -> nuget -> Deployment branches
+# and tags) must be restricted to `v*` tags. `environment: nuget` is the only
+# thing keeping NUGET_API_KEY out of pull_request-triggered jobs -- but only
+# because that deployment rule exists. Without it, a same-repo PR that edits
+# this very workflow to reference the `nuget` environment from any job could
+# read the secret, since a pull_request run executes the PR's own copy of this
+# file.
+#
+# NOTE: this workflow is deliberately excluded from the template package itself
+# (see templates/AppointMe.Templates.csproj) — a generated project must not
+# inherit a job that publishes to BravoDev's package id.
+
+name: template
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  PKG_ID: BravoDev.AppointMe.Templates
+
+jobs:
+  verify:
+    name: Pack and verify generated output
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/AppointMe.Frontend/package-lock.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Pack, generate, build and test the generated solution
+        run: ./templates/smoke-test.sh
+        env:
+          ContinuousIntegrationBuild: "true"
+          # smoke-test.sh packs into its own mktemp directory (not
+          # artifacts/ -- see the script) and normally deletes it on exit.
+          # KEEP tells its cleanup trap to leave that directory in place so
+          # the nupkg is still there for the Upload step below, which reads
+          # its path from $NUPKG_PATH (set into GITHUB_ENV by the script).
+          KEEP: "1"
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: template-package
+          path: ${{ env.NUPKG_PATH }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish to nuget.org
+    runs-on: ubuntu-latest
+    needs: verify
+    # event_name check matters, not just the ref: workflow_dispatch accepts a
+    # tag as its ref too (Actions UI ref picker and the dispatches API both
+    # take "a branch or tag name"), so `startsWith(github.ref, ...)` alone
+    # would let a manual dispatch against an existing v* tag publish. Requirement
+    # is dispatch-is-verify-only; a real `git push` of the tag is what should publish.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    environment: nuget
+    steps:
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Download package
+        uses: actions/download-artifact@v8
+        with:
+          name: template-package
+          path: artifacts
+
+      - name: Assert the tag matches the packaged version
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          # Glob into an array, not a plain `ls | head -1`: this fails loudly
+          # (instead of silently taking the first of several) if more than one
+          # nupkg matches, and the resulting path is what the Push step below
+          # pushes -- the same file validated here, not a re-glob of its own.
+          MATCHES=("artifacts/$PKG_ID".*.nupkg)
+          if [[ ${#MATCHES[@]} -ne 1 || ! -f "${MATCHES[0]}" ]]; then
+            echo "::error::Expected exactly one artifacts/$PKG_ID.*.nupkg, found ${#MATCHES[@]}."
+            exit 1
+          fi
+          NUPKG="${MATCHES[0]}"
+          PKG_VERSION="$(basename "$NUPKG" .nupkg)"
+          PKG_VERSION="${PKG_VERSION#$PKG_ID.}"
+          echo "tag=$TAG packaged=$PKG_VERSION"
+          if [[ "$TAG" != "$PKG_VERSION" ]]; then
+            echo "::error::Tag v$TAG does not match the packaged version $PKG_VERSION."
+            echo "::error::Bump <Version> in templates/AppointMe.Templates.csproj to $TAG, or tag v$PKG_VERSION instead."
+            exit 1
+          fi
+          echo "NUPKG=$NUPKG" >> "$GITHUB_ENV"
+          echo "PKG_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
+
+      - name: Push
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${NUGET_API_KEY:-}" ]]; then
+            echo "::error::NUGET_API_KEY is not set (or not visible to the 'nuget' environment)."
+            exit 1
+          fi
+          PUSH_OUTPUT="$(dotnet nuget push "$NUPKG" \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate 2>&1)"
+          echo "$PUSH_OUTPUT"
+          # --skip-duplicate makes a re-tag of an already-published version a
+          # silent no-op push (exit 0) rather than a hard failure. That is the
+          # right behaviour for a retried/re-run publish, but a green run here
+          # does not always mean new content reached nuget.org -- flag it so
+          # nobody reads "success" as "published".
+          if grep -qi "already exists" <<< "$PUSH_OUTPUT"; then
+            echo "::warning::$PKG_ID $PKG_VERSION already exists on nuget.org -- --skip-duplicate skipped the push. No new content was published by this run."
+          fi
