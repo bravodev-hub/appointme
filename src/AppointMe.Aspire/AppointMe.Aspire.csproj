@@ -1,9 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <Sdk Name="Aspire.AppHost.Sdk" Version="13.4.6" />
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.5.4" />
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <IsAspireHost>true</IsAspireHost>
     <UserSecretsId>edaf3021-5220-4b07-baff-a801291f250e</UserSecretsId>
+    <!-- ASPIRE010: the dashboard and DCP come from NuGet packages (the SDK's AspireUseCliBundle=false
+         default), so building and running need no Aspire CLI install - for IDE F5, dotnet run, CI and
+         generated projects alike. Opting into the CLI bundle would make every build depend on a
+         version-matched `aspire` on PATH (or a DNX download). -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
