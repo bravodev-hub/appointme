@@ -20,6 +20,10 @@ template package and generate a renamed copy:
 ```bash
 dotnet new install BravoDev.AppointMe.Templates::1.2.1
 dotnet new appointme -n Contoso.Booking
+
+# One-time, per machine: trust the local HTTPS dev cert (the AppHost won't start without it)
+dotnet dev-certs https --trust
+
 cd Contoso.Booking/src/Contoso.Booking.Aspire && dotnet run
 ```
 
@@ -37,32 +41,6 @@ C# namespaces, project names, and folder paths. A non-dotted name such as
 that does not compile; `dotnet new` reports success either way, so there is no
 in-the-moment warning if you pick one.
 
-## Dashboard
-
-*New in [v1.1.0](./CHANGELOG.md).* Every tenant gets a business dashboard built on the booking
-data the app already owns — no separate analytics service, no extra wiring.
-
-![The AppointMe dashboard: four KPI cards with period-over-period deltas, a trend chart overlaid with the previous period, bookings by staff, and a peak-hours heatmap](./docs/images/dashboard.png)
-
-- **KPI cards** — appointments, revenue booked, chair utilization, and returning-client rate,
-  each with a delta against the comparison period.
-- **Trend chart** — appointments, revenue, cancellations, or new customers, bucketed by day,
-  week, or month and overlaid with the previous period.
-- **Bookings by staff** — per-provider load and utilization, so an overloaded or idle provider
-  is obvious at a glance.
-- **Peak hours** — a weekday × hour heatmap of average bookings over the last four weeks.
-- **Period picker** — today through this year, with an optional comparison period. The
-  selection lives in the URL, so a view is shareable and survives a reload.
-
-It doubles as the reference implementation for a read-heavy vertical slice: Dapper reads
-carrying the tenant predicate, bucketing and delta maths pulled into calculators that are
-unit-tested in isolation, its own auto-discovered `*.statistics:view` permissions, and TanStack
-Query hooks generated from the OpenAPI spec. It degrades per permission — a teammate granted
-only customer statistics sees only the widgets that permission covers.
-
-Try it in the [live demo](https://app.appointme.dev/api/v1/login/demo), or locally at
-**https://localhost:5173/dashboard**.
-
 ## What's inside
 
 - **Modular monolith** — Identity, Organizations, CRM, and Booking, each a bounded context with its own `DbContext` and schema, organized by vertical slice.
@@ -70,7 +48,7 @@ Try it in the [live demo](https://app.appointme.dev/api/v1/login/demo), or local
 - **Multi-tenancy** — company resolution via header/claim with EF Core query filters on a command path, raw Dapper reads carry the tenant predicate by convention.
 - **CQRS + DDD** — writes through EF Core aggregates and domain events; reads through Dapper. Async messaging via Wolverine with a durable SQL transport.
 - **Permission system** — auto-discovered, role-based permissions with default grant policies and conflic resolutions strategies.
-- **Business dashboard** — KPIs, trends, staff load, and a peak-hours heatmap over any period, permission-gated and built as a read-only vertical slice. See [Dashboard](#dashboard).
+- **Business dashboard** — KPIs, trends, staff load, and a peak-hours heatmap over any period, permission-gated and built as a read-only vertical slice.
 - **Typed frontend** — React 19 + Vite 7 + Tailwind 4, TanStack Query hooks and TypeScript types generated directly from the backend OpenAPI spec (orval).
 - **One-command local stack** — .NET Aspire orchestrates SQL Server, Keycloak, Mailpit, the API, and the frontend, with database migrations applied and demo data seeded automatically. Prefer to skip Aspire? A matching `compose.yaml` runs the same backing services so you can launch the API and frontend yourself.
 
