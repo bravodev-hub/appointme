@@ -2,8 +2,9 @@
 
 How to deploy your own copy of AppointMe to Azure. Everything is provisioned
 by the Bicep templates in this folder and deployed continuously by GitHub
-Actions (`.github/workflows/devtest.yml`): every push to `main` builds the
-container image and updates the Web App.
+Actions (`.github/workflows/devtest.yml`): every push of a `v*` release tag
+builds the container image and updates the Web App. Pushes to `main` only build
+and test.
 
 Follow the steps in order — each one uses outputs from the previous.
 
@@ -152,20 +153,13 @@ Use the `<acr-name>` and `<web-app-name>` from step 1's outputs.
 **Enable Actions** on your repo first (**Settings → Actions**) — fresh
 organization repos may have it disabled, which leaves runs stuck in `queued`.
 
-**Federated credentials.** Two are needed, because a job that targets a
-GitHub *environment* presents a different `sub` claim than a plain branch job:
+**Federated credential.** One is needed. Every Azure call happens in the
+`deploy-devtest` job, which targets the `devtest` GitHub *environment*, so its
+token carries an environment-scoped `sub` claim. That subject is the same for
+every release tag, whereas a branch- or tag-scoped subject would need a new
+credential per ref:
 
 ```bash
-# For the build-image job (branch-scoped subject)
-az identity federated-credential create \
-  --identity-name id-appointme-devtest-ci \
-  --resource-group rg-appointme-devtest \
-  --name github-main \
-  --issuer https://token.actions.githubusercontent.com \
-  --subject "repo:<owner>/<repo>:ref:refs/heads/main" \
-  --audiences api://AzureADTokenExchange
-
-# For the deploy-devtest job (environment-scoped subject)
 az identity federated-credential create \
   --identity-name id-appointme-devtest-ci \
   --resource-group rg-appointme-devtest \
@@ -198,17 +192,28 @@ The pipeline derives the ACR login server as `$ACR_NAME.azurecr.io`.
 | ---------------- | ------------------------------------------------------------------ |
 | `APP_PUBLIC_URL` | Public URL shown on the deployments page (e.g. `https://app.example.com`). A *variable*, not a secret — GitHub refuses secret-derived environment URLs. |
 
-The deploy job targets a GitHub environment named `devtest`; it is created
-automatically on first deploy (or pre-create it under **Settings →
-Environments** to attach protection rules).
+The deploy job targets a GitHub environment named `devtest`. Pre-create it
+under **Settings → Environments** and set **Deployment branches and tags** to
+*Selected branches and tags* with the tag pattern `v*`. That rule is what stops
+any other ref (a branch, or a pull request editing the workflow) from getting
+the environment's Azure credential. Optionally add required reviewers there to
+approve each release before it deploys.
 
-## 6. Push to deploy
+## 6. Tag to deploy
 
-Push (or merge) to `main`. The `devtest` workflow runs three jobs: build and
-test → build the container image in ACR (tagged with the commit's short SHA,
-also shown in the app's footer) → point the Web App at the new image and
-restart it. EF migrations run on container startup before the API serves
-traffic.
+Push a release tag:
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The `devtest` workflow runs two jobs: build and test → build the container image
+in ACR (tagged with the release version, which the app's footer shows, and the
+commit's short SHA), point the Web App at it and restart it. EF migrations run
+on container startup before the API serves traffic. To redeploy an existing
+release, run the workflow manually from the Actions tab against that tag; a
+manual run against a branch only builds and tests.
 
 Verify: the run is green, and `https://<your-app-service>.azurewebsites.net`
 responds (allow a couple of minutes for the first container start).

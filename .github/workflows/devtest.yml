@@ -1,12 +1,20 @@
 # CI/CD for AppointMe (GitHub Actions)
 #
 # Flow:
-#   test           — build the solution and run all tests (every PR + main)
-#   build-image    — build the API container in ACR (az acr build, server-side) on main
-#   deploy-devtest — repoint the devtest Web App at the new image on main
+#   test           — build the solution and run all tests (every PR, every push to
+#                    main, every v* tag)
+#   deploy-devtest — on a v* release tag only: build the API container in ACR
+#                    (az acr build, server-side), repoint the devtest Web App at it,
+#                    and restart it. main itself never deploys.
+#
+# Releasing: `git tag v1.2.0 && git push origin v1.2.0`. The same tag also
+# publishes the template package (template.yml), so the deployed demo and the
+# nuget.org package always come from the same commit.
 #
 # Azure auth is secret-less via GitHub OIDC federation: GitHub mints an ID token,
-# Azure trusts it through federated credentials on the CI identity.
+# Azure trusts it through federated credentials on the CI identity. Every Azure
+# call runs inside the `devtest` environment, so a single environment-scoped
+# federated credential covers them all, whatever tag triggered the run.
 #
 # Required repo Actions secrets (Settings → Secrets and variables → Actions):
 #   AZURE_CLIENT_ID        clientId of the CI managed identity
@@ -15,6 +23,8 @@
 #   AZURE_RESOURCE_GROUP   e.g. rg-appointme-devtest
 #   ACR_NAME               ACR name (Bicep output containerRegistryName, no .azurecr.io)
 #   APP_SERVICE_NAME       Web App name (Bicep output)
+# Required one-time setup: restrict the `devtest` environment (Settings →
+# Environments → devtest → Deployment branches and tags) to `v*` tags.
 # See the one-time Azure setup in infra/README.md (GitHub OIDC section).
 
 name: devtest
@@ -22,6 +32,7 @@ name: devtest
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -86,11 +97,19 @@ jobs:
         working-directory: src/AppointMe.Frontend
         run: npm run build
 
-  build-image:
-    name: Build image in ACR
+  deploy-devtest:
+    name: Build image and deploy to devtest
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # Release tags only. workflow_dispatch is allowed so an existing release can be
+    # redeployed from the Actions UI, but only when run against a v* tag -- a manual
+    # run on main (or any branch) still builds and tests without deploying.
+    if: startsWith(github.ref, 'refs/tags/v') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # environment.url may not contain secret-derived values (APP_SERVICE_NAME is
+    # a secret), so it comes from the optional APP_PUBLIC_URL repo variable.
+    environment:
+      name: devtest
+      url: ${{ vars.APP_PUBLIC_URL }}
     steps:
       - uses: actions/checkout@v7
 
@@ -101,33 +120,19 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # Tagged with both the release version (what the app's footer shows) and the
+      # commit's short SHA (what the Web App is pointed at, so a moved tag can never
+      # silently change what a deployment ran).
       - name: Build image (az acr build)
         run: |
           az acr build \
             --registry "${{ secrets.ACR_NAME }}" \
             --image "$IMAGE_REPO:${GITHUB_SHA::8}" \
+            --image "$IMAGE_REPO:$GITHUB_REF_NAME" \
             --image "$IMAGE_REPO:latest" \
-            --build-arg APP_VERSION="${GITHUB_SHA::8}" \
+            --build-arg APP_VERSION="$GITHUB_REF_NAME" \
             --file src/AppointMe.Api/Dockerfile \
             .
-
-  deploy-devtest:
-    name: Deploy to devtest
-    runs-on: ubuntu-latest
-    needs: build-image
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    # environment.url may not contain secret-derived values (APP_SERVICE_NAME is
-    # a secret), so it comes from the optional APP_PUBLIC_URL repo variable.
-    environment:
-      name: devtest
-      url: ${{ vars.APP_PUBLIC_URL }}
-    steps:
-      - name: Azure login (OIDC)
-        uses: azure/login@v3
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Point Web App at new image
         run: |

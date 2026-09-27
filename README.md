@@ -256,7 +256,7 @@ npm run generate:api   # regenerate the typed API client from the backend OpenAP
 
 Version history and release notes live in [`CHANGELOG.md`](./CHANGELOG.md) and on the
 [releases page](https://github.com/bravodev-hub/appointme/releases). The current release is
-**v1.1.0** — the dashboard release.
+**v1.2.0** — the template release: install it with `dotnet new install BravoDev.AppointMe.Templates::1.2.0`.
 
 ## License
 

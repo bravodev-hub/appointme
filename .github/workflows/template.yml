@@ -12,17 +12,26 @@
 #              verify's checks itself; it reuses verify's artifact rather than
 #              repacking, so what gets pushed is exactly what was tested.
 #
-# Required repo Actions secret:
-#   NUGET_API_KEY   nuget.org push key scoped to BravoDev.AppointMe.Templates
+# nuget.org auth is Trusted Publishing (OIDC), not a stored API key: the publish
+# job presents GitHub's signed OIDC token, nuget.org checks it against a policy,
+# and hands back a single-use API key valid for one hour. Nothing long-lived is
+# stored anywhere, so there is no key to leak or rotate.
 #
-# Required one-time repo setup, BEFORE that secret is even added: the `nuget`
-# environment below (Settings -> Environments -> nuget -> Deployment branches
-# and tags) must be restricted to `v*` tags. `environment: nuget` is the only
-# thing keeping NUGET_API_KEY out of pull_request-triggered jobs -- but only
-# because that deployment rule exists. Without it, a same-repo PR that edits
-# this very workflow to reference the `nuget` environment from any job could
-# read the secret, since a pull_request run executes the PR's own copy of this
-# file.
+# Required one-time setup:
+#   1. nuget.org -> your username -> Trusted Publishing -> add a policy:
+#        Repository Owner: bravodev-hub
+#        Repository:       appointme
+#        Workflow File:    template.yml   (file name only, no .github/workflows/)
+#        Environment:      nuget
+#      with a scope that allows pushing new packages (the first release creates
+#      BravoDev.AppointMe.Templates), limited to that package id.
+#   2. `nuget` environment secret NUGET_USER = the nuget.org profile name that
+#      owns the policy (not an email address).
+#   3. The `nuget` environment (Settings -> Environments -> nuget -> Deployment
+#      branches and tags) restricted to `v*` tags. The policy's Environment field
+#      only proves the job ran in `nuget`; this rule is what stops a same-repo PR
+#      that edits this very workflow (a pull_request run executes the PR's own
+#      copy of this file) from putting a job into that environment.
 #
 # NOTE: this workflow is deliberately excluded from the template package itself
 # (see templates/AppointMe.Templates.csproj) — a generated project must not
@@ -104,6 +113,11 @@ jobs:
     # is dispatch-is-verify-only; a real `git push` of the tag is what should publish.
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     environment: nuget
+    # id-token: write lets this job (and only this job) mint the OIDC token that
+    # NuGet/login exchanges for the short-lived push key.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
@@ -131,7 +145,7 @@ jobs:
           fi
           NUPKG="${MATCHES[0]}"
           PKG_VERSION="$(basename "$NUPKG" .nupkg)"
-          PKG_VERSION="${PKG_VERSION#$PKG_ID.}"
+          PKG_VERSION="${PKG_VERSION#"$PKG_ID".}"
           echo "tag=$TAG packaged=$PKG_VERSION"
           if [[ "$TAG" != "$PKG_VERSION" ]]; then
             echo "::error::Tag v$TAG does not match the packaged version $PKG_VERSION."
@@ -141,15 +155,19 @@ jobs:
           echo "NUPKG=$NUPKG" >> "$GITHUB_ENV"
           echo "PKG_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
 
+      # Requested only after the version check above, right before the push: the
+      # key is single-use per token and expires after one hour.
+      - name: NuGet login (OIDC -> short-lived API key)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Push
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           set -euo pipefail
-          if [[ -z "${NUGET_API_KEY:-}" ]]; then
-            echo "::error::NUGET_API_KEY is not set (or not visible to the 'nuget' environment)."
-            exit 1
-          fi
           PUSH_OUTPUT="$(dotnet nuget push "$NUPKG" \
             --api-key "$NUGET_API_KEY" \
             --source https://api.nuget.org/v3/index.json \

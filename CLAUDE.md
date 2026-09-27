@@ -39,6 +39,17 @@ dotnet test src/CRM/AppointMe.Crm.Tests        # Single test project
 dotnet test --filter "FullyQualifiedName~TestName"  # Single test
 ```
 
+### Releasing
+
+`main` is the development branch: pushes and PRs build, test and run the template
+smoke test, but deploy nothing. A release is a `v*` tag (`git tag v1.2.0 && git
+push origin v1.2.0`), which deploys the devtest environment
+(`.github/workflows/devtest.yml`). In the upstream template repository the same tag
+also publishes the template package to nuget.org (`.github/workflows/template.yml`,
+not shipped to generated projects); bump `<Version>` in
+`templates/AppointMe.Templates.csproj` to match the tag first — the publish job
+fails on a mismatch.
+
 ### Template package (`dotnet new appointme`)
 
 This subsection documents how **this repository** — the upstream source of the

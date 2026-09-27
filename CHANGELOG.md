@@ -5,6 +5,62 @@ All notable changes to AppointMe are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-09-27
+
+The **template** release. AppointMe is now installable as a `dotnet new` template from
+nuget.org, so a new project starts as a renamed copy of the whole foundation instead of a
+fork:
+
+```bash
+dotnet new install BravoDev.AppointMe.Templates::1.2.0
+dotnet new appointme -n Contoso.Booking
+```
+
+### Added
+
+- **`dotnet new appointme` template package** (`BravoDev.AppointMe.Templates`). The repo root
+  is the template source, so the package always ships the current app. Generation renames the
+  namespaces, projects, solution, database, Keycloak realm, container and Aspire resource
+  names, the demo account and the frontend API client to your project name. The domain word
+  `appointment` is left alone. Generated projects get their own README; this repo's changelog,
+  release media and deployment config are not included.
+- **Template smoke test** (`templates/smoke-test.sh`), run in CI on every PR. It packs the
+  template, installs it, generates a project, then builds, tests, lints and builds the
+  generated solution and frontend. It also checks the package contents against `git ls-files`,
+  checks that the realm file name matches the realm it contains, and fails the pack on
+  NU5123 (package paths too long once installed).
+- **Dev-certificate check at AppHost startup.** The Aspire AppHost stops with the exact fix
+  command when the ASP.NET Core HTTPS development certificate is missing or untrusted,
+  instead of starting the stack and failing later with an opaque 500 on login. On Linux it
+  only warns.
+- **Wolverine tracing and metrics** are exported through OpenTelemetry.
+
+### Changed
+
+- **Releases are tag-based.** `main` is the development branch: pushes and PRs build and test
+  but no longer deploy. Pushing a `v*` tag deploys the devtest demo and publishes the template
+  package from the same commit. The GitHub `devtest` and `nuget` environments accept `v*` tags
+  only. The demo footer now shows the release version.
+- **nuget.org publishing uses Trusted Publishing (OIDC).** No long-lived API key is stored;
+  the publish job exchanges its GitHub OIDC token for a one-hour, single-use key.
+- **The API gets its Keycloak URL from Aspire.** The authority and admin URLs come from
+  Keycloak's endpoint reference, so they follow whichever scheme Keycloak actually serves.
+  The fixed URL in `appsettings.Development.json` is still used when running without Aspire.
+- **The AppHost has only the `https` launch profile.** IDEs can no longer default to the
+  plain-HTTP profile.
+- **Dependency refresh** — .NET Aspire 13.5, Wolverine 6.40, EF Core and ASP.NET Core 10.0.12,
+  OpenTelemetry 1.19, Microsoft.Data.SqlClient 7.1, Microsoft Graph 6.7, Asp.Versioning 10.2,
+  Dapper 2.1.89, Hangfire 1.8.25 and the Keycloak admin client 26.7. ASPIRE010 (Aspire CLI
+  bundle) is suppressed; the dashboard and orchestrator still come from NuGet packages.
+
+### Fixed
+
+- The `Microsoft.OpenApi` security pin (GHSA-v5pm-xwqc-g5wc) is removed.
+  `Microsoft.AspNetCore.OpenApi` 10.0.12 already requires a patched 2.12+, and the pin was
+  blocking the upgrade.
+- Resolved the high-severity `System.Security.Cryptography.Xml` advisories reported on
+  restore (NU1903).
+
 ## [1.1.0] — 2026-08-22
 
 The **dashboard** release. AppointMe now ships a business-analytics surface on top of the
@@ -82,5 +138,6 @@ Core writes and Dapper reads; Wolverine domain events over a durable SQL transpo
 auto-discovered permission system; a typed React frontend generated from the OpenAPI spec; and
 a one-command .NET Aspire local stack.
 
+[1.2.0]: https://github.com/bravodev-hub/appointme/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/bravodev-hub/appointme/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bravodev-hub/appointme/releases/tag/v1.0.0
