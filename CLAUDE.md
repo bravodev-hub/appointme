@@ -48,7 +48,9 @@ push origin v1.2.0`), which deploys the devtest environment
 also publishes the template package to nuget.org (`.github/workflows/template.yml`,
 not shipped to generated projects); bump `<Version>` in
 `templates/AppointMe.Templates.csproj` to match the tag first — the publish job
-fails on a mismatch.
+fails on a mismatch. To deploy `main` to devtest without a release, run
+`devtest.yml` manually against `main` (`gh workflow run devtest.yml --ref main`);
+that never publishes to nuget.org.
 
 ### Template package (`dotnet new appointme`)
 

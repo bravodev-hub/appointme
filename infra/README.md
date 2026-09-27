@@ -194,9 +194,9 @@ The pipeline derives the ACR login server as `$ACR_NAME.azurecr.io`.
 
 The deploy job targets a GitHub environment named `devtest`. Pre-create it
 under **Settings → Environments** and set **Deployment branches and tags** to
-*Selected branches and tags* with the tag pattern `v*`. That rule is what stops
-any other ref (a branch, or a pull request editing the workflow) from getting
-the environment's Azure credential. Optionally add required reviewers there to
+*Selected branches and tags* with the tag pattern `v*` and the branch `main`. That
+rule is what stops any other ref (another branch, or a pull request editing the
+workflow) from getting the environment's Azure credential. Optionally add required reviewers there to
 approve each release before it deploys.
 
 ## 6. Tag to deploy
@@ -212,8 +212,10 @@ The `devtest` workflow runs two jobs: build and test → build the container ima
 in ACR (tagged with the release version, which the app's footer shows, and the
 commit's short SHA), point the Web App at it and restart it. EF migrations run
 on container startup before the API serves traffic. To redeploy an existing
-release, run the workflow manually from the Actions tab against that tag; a
-manual run against a branch only builds and tests.
+release, run the workflow manually from the Actions tab against that tag. To
+deploy `main` without cutting a release, run it manually against `main`; the
+footer then shows `main-<short sha>`. A manual run against any other branch
+only builds and tests.
 
 Verify: the run is green, and `https://<your-app-service>.azurewebsites.net`
 responds (allow a couple of minutes for the first container start).
