@@ -367,21 +367,29 @@ else
   pass "no residual lowercase brand tokens"
 fi
 
-# Lowercase-named files were renamed too (tokDash and tokDot are the only
+# Lowercase-named files were renamed too (tokRealm and tokDot are the only
 # lowercase symbols carrying fileRename, one per file -- see templates/README.md).
 #
 # The two src/api files are only covered indirectly, by the frontend build
 # below (its `tsc -b` has to resolve their import path, or the build fails) --
 # but nothing else asserts the realm file's *new* name positively, only the
-# old name's absence. If tokDash's fileRename ever produced a name diverging
-# from what src/AppointMe.Aspire/Program.cs passes to WithRealmImport(...),
-# this harness would stay green and Keycloak would only fail at
-# container-startup, at runtime. NAME_KEBAB mirrors the `kebabCase`
-# value-transform (lowercased, separators normalized to hyphens) well enough
-# for the harness's own fixed default name ("Contoso.Booking" ->
-# "contoso-booking"); it is not a general-purpose kebab-case implementation.
-NAME_KEBAB="$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr '._' '-')"
-assert_present_file "src/$NAME.Aspire/$NAME_KEBAB-realm.json"
+# old name's absence. Keycloak's directory import rejects any file not named
+# exactly `<realm>-realm.json` ("File name / realm name mismatch"), and this
+# harness never starts Keycloak, so a divergence between the file name
+# (tokRealm) and the realm name inside it (tokQuot) would stay green here and
+# only fail at container startup. That happened once: the file used to be
+# renamed by tokDash (kebab, "contoso-booking-") while the realm name is
+# lowerDotted ("contoso.booking"). Both sides are therefore asserted: the file
+# exists under the lowerDotted name, and its own "realm" value matches it.
+NAME_LOWER="$(echo "$NAME" | tr '[:upper:]' '[:lower:]')"
+REALM_FILE="src/$NAME.Aspire/$NAME_LOWER-realm.json"
+assert_present_file "$REALM_FILE"
+REALM_NAME="$(sed -n 's/^  "realm": "\(.*\)",$/\1/p' "$GEN_DIR/$REALM_FILE" 2>/dev/null | head -1 || true)"
+if [[ "$REALM_NAME" == "$NAME_LOWER" ]]; then
+  pass "realm name matches realm file name: $REALM_NAME"
+else
+  fail "realm name '$REALM_NAME' in $REALM_FILE does not match its file name (Keycloak import requires '<realm>-realm.json')"
+fi
 assert_absent "src/$NAME.Aspire/appointme-realm.json"
 assert_absent "src/$NAME.Frontend/src/api/appointme.ts"
 assert_absent "src/$NAME.Frontend/src/api/appointme.schemas.ts"

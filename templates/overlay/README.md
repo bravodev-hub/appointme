@@ -12,13 +12,43 @@ from a production-grade template.
 
 ## Run it
 
+One-time, per machine: trust the ASP.NET Core HTTPS dev certificate. The API,
+the frontend and Keycloak all serve HTTPS locally, and the AppHost refuses to
+start until the certificate is trusted.
+
+```bash
+dotnet dev-certs https --trust
+# still reported untrusted (e.g. a certificate left over from an older SDK)?
+# dotnet dev-certs https --clean && dotnet dev-certs https --trust
+```
+
+Then start everything:
+
 ```bash
 cd src/AppointMe.Aspire && dotnet run
 ```
 
+Or open the solution in Visual Studio or Rider, set `AppointMe.Aspire` as the
+startup project, and run it.
+
 .NET Aspire starts SQL Server, Keycloak, Mailpit, the API and the frontend, applies
 database migrations, and seeds demo data. The frontend comes up on
 https://localhost:5173.
+
+### Demo user
+
+The local Keycloak realm ships with a seeded demo account, which is also a
+super admin:
+
+| Email | Password |
+|---|---|
+| `demo@appointme.dev` | `AppointMe1` |
+
+The values above are already renamed for this project. They follow your
+`-n <Name>`: the email is `demo@<name, lowercased>.dev` and the password is
+`<name without separators>1`. Sign in with them on the Keycloak login page, or
+skip the form entirely with https://localhost:5173/api/v1/login/demo (Development
+only, `Demo:Enabled` in `appsettings.Development.json`).
 
 Prefer to run the backing services yourself? First, one-time setup so Keycloak's
 HTTPS works outside Aspire — trust the ASP.NET Core dev certificate and export it

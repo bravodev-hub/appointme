@@ -104,7 +104,8 @@ Both options start here:
 git clone <your-fork-or-clone-url> appointme
 cd appointme
 
-# One-time: trust the local HTTPS dev cert (used by the API, frontend, and Keycloak)
+# One-time: trust the local HTTPS dev cert (used by the API, frontend, and Keycloak).
+# The Aspire AppHost refuses to start until it is trusted.
 dotnet dev-certs https --trust
 ```
 

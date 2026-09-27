@@ -57,8 +57,9 @@
     "tokSlash":   { "type": "generated", "generator": "join", "replaces": "appointme/",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerDotted" }, { "type": "const", "value": "/" } ] } },
     "tokTick":    { "type": "generated", "generator": "join", "replaces": "appointme`",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerDotted" }, { "type": "const", "value": "`" } ] } },
     "tokSemi":    { "type": "generated", "generator": "join", "replaces": "appointme;",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerDotted" }, { "type": "const", "value": ";" } ] } },
+    "tokRealm":   { "type": "generated", "generator": "join", "replaces": "appointme-realm", "fileRename": "appointme-realm", "parameters": { "symbols": [ { "type": "ref", "value": "lowerDotted" }, { "type": "const", "value": "-realm" } ] } },
 
-    "tokDash":    { "type": "generated", "generator": "join", "replaces": "appointme-",  "fileRename": "appointme-", "parameters": { "symbols": [ { "type": "ref", "value": "lowerKebab" }, { "type": "const", "value": "-" } ] } },
+    "tokDash":    { "type": "generated", "generator": "join", "replaces": "appointme-",  "parameters": { "symbols": [ { "type": "ref", "value": "lowerKebab" }, { "type": "const", "value": "-" } ] } },
     "tokNewline": { "type": "generated", "generator": "join", "replaces": "appointme\n", "parameters": { "symbols": [ { "type": "ref", "value": "lowerKebab" }, { "type": "const", "value": "\n" } ] } },
     "tokCR":      { "type": "generated", "generator": "join", "replaces": "appointme\r", "parameters": { "symbols": [ { "type": "ref", "value": "lowerKebab" }, { "type": "const", "value": "\r" } ] } },
 

@@ -60,9 +60,9 @@ way the PascalCase family above does: `onlyIf` is exactly what guards
 the same follower-gating would work just as well here for the 13 lowercase
 symbols below that carry no `fileRename`.
 
-The actual reason all 15 lowercase symbols bake their guard character directly
+The actual reason all 16 lowercase symbols bake their guard character directly
 into the search text instead (`"appointme-"`, `"appointme."`, ...): two of
-them — `tokDot` and `tokDash` — carry `fileRename`, and `fileRename` ignores
+them — `tokDot` and `tokRealm` — carry `fileRename`, and `fileRename` ignores
 `onlyIf` entirely, the same fileRename-ignores-`onlyIf` fact that limits
 `identityBucket` to being the *only* PascalCase symbol allowed to declare it
 (see the table above). Those two symbols have no `onlyIf` to lean on and must
@@ -77,10 +77,12 @@ character that joins the base value with that literal follower (consuming and
 immediately re-emitting it, so the character itself is unchanged):
 
 **`lowerDotted`** (`lowerCaseInvariant`) → case-folded, separators preserved
-exactly as typed. Followers: `.` `'` `"` `/` `` ` `` `;` (`tokDot`, `tokApos`,
-`tokQuot`, `tokSlash`, `tokTick`, `tokSemi`). `tokDot` is also the only symbol
-in this bucket with `fileRename` (the same fileRename-ignores-`onlyIf` reason as
-`identityBucket` above). This bucket is **not** a free stylistic choice:
+exactly as typed. Followers: `.` `'` `"` `/` `` ` `` `;` `-realm` (`tokDot`,
+`tokApos`, `tokQuot`, `tokSlash`, `tokTick`, `tokSemi`, `tokRealm`). `tokDot`
+and `tokRealm` are the only symbols in this family with `fileRename` (the same
+fileRename-ignores-`onlyIf` reason as `identityBucket` above), one per file:
+`tokDot` renames the two `src/api/appointme.*` files, `tokRealm` renames
+`appointme-realm.json`. This bucket is **not** a free stylistic choice:
 `SuperAdminRegistryTests.should_match_email_case_insensitively` compares this
 rename's allowlist literal (`"demo@appointme.dev"`) against the PascalCase
 family's identity-preserving rename of `"Demo@AppointMe.DEV"` — both must fold
@@ -111,9 +113,15 @@ family for symmetry: on such a checkout, `tokNewline`'s one reachable
 occurrence — `compose.yaml`'s Compose project name — would have its follower
 become `\r` and fall out of every lowercase bucket without `tokCR`. Like
 `identityBucket`'s `\r`, it has zero actual occurrences on the LF checkout this
-repo and CI both use; it exists for the checkout that isn't this one. `tokDash`
-is also the only symbol in this bucket with `fileRename` (renames
-`appointme-realm.json`; `tokDot` carries the other one).
+repo and CI both use; it exists for the checkout that isn't this one. No symbol
+in this bucket carries `fileRename`. `tokDash` used to rename
+`appointme-realm.json`, but that made the file name kebab (`contoso-booking-`)
+while the realm name inside it is lowerDotted (`"contoso.booking"`), and
+Keycloak's directory import rejects any file not named exactly
+`<realm>-realm.json`. `tokRealm` (lowerDotted, above) now owns that file name and
+its references (`Program.cs`'s `WithRealmImport(...)`, `compose.yaml`'s mount). Its
+longer search text `"appointme-realm"` wins over `tokDash`'s `"appointme-"`
+through the engine's longest-match rule, so the two symbols never race.
 
 **`lowerCompact`** (`compactSafeNameLower`: `lowerCaseInvariant` then delete
 every non-alphanumeric character) → Followers: `A` `:` `$` `{` `d` `_` (`tokA`,
@@ -130,15 +138,15 @@ lowercase alphanumeric only (no hyphens, no dots); `tokD` is the illustrative
 kept consistent with it rather than given its own style; `tokUnder` is
 `main.bicepparam`'s `appointme_admin` SQL admin login example.
 
-This is a **closed enumeration** over these 15 followers (6 + 3 + 6 above),
+This is a **closed enumeration** over these 16 followers (7 + 3 + 6 above),
 independently measured with a byte-level scan (not `grep`, which — see the
 residual-check comments in `templates/smoke-test.sh` — silently strips
 line-terminating newlines before matching and would have missed the `\n`
 follower entirely) over the reachable file set (every git-tracked file minus
 `is_withheld()`'s paths minus `template.json`'s own `modifiers.exclude` globs
-minus `.template.config/`), not a sample: **203 non-domain occurrences total**
+minus `.template.config/`), not a sample: **205 non-domain occurrences total**
 on the LF checkout this repo and CI both use (`\r` contributes zero of them
-here — see `tokCR` above), zero left over once all 15 followers are routed.
+here — see `tokCR` above), zero left over once all 16 followers are routed.
 
 Adding a new lowercase `"appointme"`-prefixed string with a follower character
 outside this list falls out of every bucket: the residual check in
