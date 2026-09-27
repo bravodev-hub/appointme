@@ -3,11 +3,15 @@
   <PropertyGroup>
     <PackageType>Template</PackageType>
     <PackageId>BravoDev.AppointMe.Templates</PackageId>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Title>AppointMe — modular-monolith .NET 10 SaaS foundation</Title>
     <Description>A production-grade modular-monolith .NET 10 + React 19 SaaS foundation: multi-tenancy, OIDC auth, CQRS, domain events, durable messaging, an auto-discovered permission system, a business dashboard, and a one-command .NET Aspire local stack. Run: dotnet new appointme -n Your.Project</Description>
     <PackageTags>dotnet-new;template;templates;aspire;ddd;modular-monolith;multi-tenant;cqrs;react;saas</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/bravodev-hub/appointme</PackageProjectUrl>
+    <!-- The nuget.org package page. Not the generated project's README (templates/overlay/README.md):
+         nuget.org cannot resolve that file's repo-relative links. -->
+    <PackageReadmeFile>README.md</PackageReadmeFile>
 
     <!-- A template package carries content only: no assembly, no dependencies. -->
     <IncludeBuildOutput>false</IncludeBuildOutput>
@@ -117,6 +121,8 @@
          a rooted path and fails to generate with "Read-only file system : '/LICENSE'".
          Verified empirically (isolated repro, then confirmed end-to-end via
          smoke-test.sh) - a forward slash produces the correct single-separator path. -->
+    <None Include="PACKAGE_README.md" Pack="true" PackagePath="README.md" />
+
     <None Include="..\LICENSE"
           Pack="true"
           PackagePath="content/appointme/" />

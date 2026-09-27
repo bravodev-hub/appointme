@@ -5,6 +5,18 @@ All notable changes to AppointMe are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] — 2026-09-27
+
+A packaging-only follow-up to 1.2.0. The generated project is unchanged.
+
+### Added
+
+- **Package README on nuget.org.** The package page now explains what the template is,
+  how to install and run it, the prerequisites, and what's inside, with links to the source,
+  changelog and issues. It is a dedicated `templates/PACKAGE_README.md`, not the generated
+  project's README, because nuget.org cannot resolve that file's repo-relative links.
+- **Project URL** in the package metadata, pointing at the GitHub repository.
+
 ## [1.2.0] — 2026-09-27
 
 The **template** release. AppointMe is now installable as a `dotnet new` template from
@@ -138,6 +150,7 @@ Core writes and Dapper reads; Wolverine domain events over a durable SQL transpo
 auto-discovered permission system; a typed React frontend generated from the OpenAPI spec; and
 a one-command .NET Aspire local stack.
 
+[1.2.1]: https://github.com/bravodev-hub/appointme/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/bravodev-hub/appointme/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/bravodev-hub/appointme/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bravodev-hub/appointme/releases/tag/v1.0.0

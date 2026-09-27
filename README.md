@@ -18,7 +18,7 @@ Two ways in. Either clone this repo (see [Quick start](#quick-start)), or instal
 template package and generate a renamed copy:
 
 ```bash
-dotnet new install BravoDev.AppointMe.Templates::1.2.0
+dotnet new install BravoDev.AppointMe.Templates::1.2.1
 dotnet new appointme -n Contoso.Booking
 cd Contoso.Booking/src/Contoso.Booking.Aspire && dotnet run
 ```
@@ -28,7 +28,7 @@ the Keycloak realm and the container names to your project name, and leaves the 
 vocabulary alone. It ships the Bicep infrastructure and CI workflows; it does not ship
 this project's changelog, release media, or deployment config.
 
-Pin the version — `::1.2.0` — so a generation is reproducible. The template version
+Pin the version — `::1.2.1` — so a generation is reproducible. The template version
 tracks the app release it contains.
 
 `-n` must be a valid dotted .NET identifier — e.g. `Contoso.Booking` — since it becomes
@@ -256,7 +256,7 @@ npm run generate:api   # regenerate the typed API client from the backend OpenAP
 
 Version history and release notes live in [`CHANGELOG.md`](./CHANGELOG.md) and on the
 [releases page](https://github.com/bravodev-hub/appointme/releases). The current release is
-**v1.2.0** — the template release: install it with `dotnet new install BravoDev.AppointMe.Templates::1.2.0`.
+**v1.2.1**, a packaging follow-up to v1.2.0 (the template release): install it with `dotnet new install BravoDev.AppointMe.Templates::1.2.1`.
 
 ## License
 
