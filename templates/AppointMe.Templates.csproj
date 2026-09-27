@@ -38,6 +38,14 @@
          the root Directory.Build.props, so a reader of this file alone would not
          otherwise see where the TFM comes from. -->
     <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+    <!-- NU5123: a packed path is too long once installed. NuGet measures it with the
+         global-packages prefix (bravodev.appointme.templates/<version>/) prepended, so the
+         budget is roughly 165 characters of content/appointme/... path. A generated project
+         with a longer -n name lengthens every path again on disk, so fail the pack (and CI's
+         smoke test) instead of shipping a package that breaks on Windows without long-path
+         support. Fix by shortening the offending file or folder name. -->
+    <WarningsAsErrors>$(WarningsAsErrors);NU5123</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

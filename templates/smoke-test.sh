@@ -19,7 +19,12 @@ export LC_ALL=C
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAME="${NAME:-Contoso.Booking}"
 PKG_ID="BravoDev.AppointMe.Templates"
-OUT_DIR="$(mktemp -d)"
+# `pwd -P`: on macOS mktemp hands back /var/folders/..., but /var is a symlink to
+# /private/var and MSBuild resolves some project paths through it and some not. The
+# generated solution's restore then sees every project twice (once per spelling),
+# restores both copies in parallel, and fails with "...nuget.g.props already exists".
+# Resolving the real path once, up front, gives MSBuild a single spelling. No-op on Linux.
+OUT_DIR="$(cd "$(mktemp -d)" && pwd -P)"
 GEN_DIR="$OUT_DIR/gen"
 PACK_DIR="$OUT_DIR/pack"
 FAILURES=0

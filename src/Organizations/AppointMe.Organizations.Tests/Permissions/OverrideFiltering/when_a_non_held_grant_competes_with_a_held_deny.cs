@@ -1,6 +1,6 @@
 namespace AppointMe.Organizations.Tests.Permissions.OverrideFiltering;
 
-public class when_a_non_held_role_grant_override_competes_with_a_held_role_deny_override : behaves_like_resolving_permissions
+public class when_a_non_held_grant_competes_with_a_held_deny : behaves_like_resolving_permissions
 {
     // Owner (not held) grants Write — even with a permissive GrantWins policy
     // it must not offset the held Manager's deny
