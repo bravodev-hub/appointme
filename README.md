@@ -195,35 +195,6 @@ Deeper write-ups on how specific parts of AppointMe are designed:
 
 - [How does your domain know your user?](./docs/identity-resolution.md) — a two-part deep dive on separating *identity* from *principal* and resolving both across HTTP, Wolverine, background jobs, and domain event handlers.
 
-## Common commands
-
-```bash
-# Full stack (recommended) — from src/AppointMe.Aspire
-dotnet run
-
-# Backing services only, without Aspire (see Quick start → Option B)
-docker compose up -d        # start SQL Server, Keycloak, Mailpit
-docker compose ps           # check health
-docker compose down         # stop and remove containers (data volumes persist)
-
-# Backend only
-dotnet build AppointMe.sln
-dotnet run --project src/AppointMe.Api
-
-# Tests
-dotnet test                                          # everything
-dotnet test --filter "FullyQualifiedName~TestName"   # a single test
-
-# Frontend — from src/AppointMe.Frontend
-npm install
-npm run dev            # dev server on https://localhost:5173
-npm run build          # production build
-npm run lint           # ESLint
-npm run generate:api   # regenerate the typed API client from the backend OpenAPI spec
-```
-
-> When you change the backend contract (endpoints, request/response shapes, routes, or auth attributes), restart the API and run `npm run generate:api` to keep the frontend's typed client in sync.
-
 ## Tech stack
 
 - **Backend:** .NET 10, C# 14, EF Core 10, Wolverine 6, Dapper

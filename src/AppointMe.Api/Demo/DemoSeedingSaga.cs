@@ -10,7 +10,9 @@ namespace AppointMe.Api.Demo;
 
 public sealed class DemoSeedingSaga : Saga
 {
-    private const int CustomerCount = 400;
+    // CustomerCount x AppointmentsPerAttendee = ~450 appointments over the -21..+21 day seed window,
+    // roughly 80% chair utilization for a single provider.
+    private const int CustomerCount = 150;
     private const int AppointmentsPerAttendee = 3;
 
     public Guid Id { get; set; }

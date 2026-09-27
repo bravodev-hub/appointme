@@ -4,7 +4,7 @@ namespace AppointMe.Crm.Customers.TopUpDemoCustomers;
 
 public sealed class TopUpDemoCustomersJob(ICompanyRehydrationSource companySource, IMessageBus bus)
 {
-    private const int CustomersPerCompany = 6;
+    private const int CustomersPerCompany = 2;
 
     public async Task Run(CancellationToken cancellationToken)
     {

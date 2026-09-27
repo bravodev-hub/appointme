@@ -295,7 +295,7 @@ else
 # counts 0 on both sides can't pass vacuously; source is also asserted against
 # the same literal so a legitimate future change to the domain code surfaces
 # here as a deliberate "update this baseline" edit rather than silent drift.
-EXPECTED_APPOINTMENT=792
+EXPECTED_APPOINTMENT=793
 SRC_APPOINTMENT="$(grep -rIoh "Appointment" "$REPO_ROOT/src" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist | wc -l | tr -d ' ')"
 GEN_APPOINTMENT="$(grep -rIoh "Appointment" "$GEN_DIR/src" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist | wc -l | tr -d ' ')"
 if [[ "$SRC_APPOINTMENT" != "$EXPECTED_APPOINTMENT" ]]; then
