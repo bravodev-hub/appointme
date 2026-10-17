@@ -1,5 +1,5 @@
 import { Columns } from './columns';
-import { getGetCustomersQueryKey, useDeleteCustomer, useGetCustomers } from '@/api/appointme';
+import { getGetCustomersQueryKey, useDeleteCustomer, useGetCustomers } from '@/api/client';
 import { Can } from '@/components/auth/can';
 import { ConfirmDialog, useModalDialog } from '@/components/modal-dialog';
 import {
@@ -68,7 +68,7 @@ export const Customers = () => {
         { query: { placeholderData: keepPreviousData } },
     );
 
-    // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table is on the React Compiler's incompatible-library list; the compiler skips this component either way
+    // oxlint-disable-next-line react-hooks/incompatible-library -- TanStack Table is on the React Compiler's incompatible-library list; the compiler skips this component either way
     const table = useReactTable({
         data: response?.customers.items ?? [],
         columns: Columns,

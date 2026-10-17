@@ -1,4 +1,4 @@
-import { AppointmentDto } from '@/api/appointme.schemas';
+import { AppointmentDto } from '@/api/client.schemas';
 import { Can } from '@/components/auth/can';
 import { FormattedDate } from '@/components/format';
 import { Avatar, AvatarFallback, Button, Popover, PopoverContent, PopoverTrigger } from '@/components/ui';

@@ -133,7 +133,7 @@ assert_nupkg_absent 'infra/cloudflare-worker/\.wrangler/.*'
 assert_nupkg_present '\.editorconfig'
 assert_nupkg_present '\.gitignore'
 assert_nupkg_present '\.dockerignore'
-assert_nupkg_present 'src/AppointMe\.Frontend/\.prettierrc'
+assert_nupkg_present 'src/AppointMe\.Frontend/\.node-version'
 
 # extensionless files: NuGet nests the source path under any PackagePath whose final
 # segment has no extension (e.g. LICENSE, Dockerfile), unless the packaging project
@@ -373,11 +373,10 @@ else
 fi
 
 # Lowercase-named files were renamed too (tokRealm and tokDot are the only
-# lowercase symbols carrying fileRename, one per file -- see templates/README.md).
+# lowercase symbols carrying fileRename -- see templates/README.md; tokDot's
+# currently matches no shipped file).
 #
-# The two src/api files are only covered indirectly, by the frontend build
-# below (its `tsc -b` has to resolve their import path, or the build fails) --
-# but nothing else asserts the realm file's *new* name positively, only the
+# Nothing else asserts the realm file's *new* name positively, only the
 # old name's absence. Keycloak's directory import rejects any file not named
 # exactly `<realm>-realm.json` ("File name / realm name mismatch"), and this
 # harness never starts Keycloak, so a divergence between the file name
@@ -396,8 +395,13 @@ else
   fail "realm name '$REALM_NAME' in $REALM_FILE does not match its file name (Keycloak import requires '<realm>-realm.json')"
 fi
 assert_absent "src/$NAME.Aspire/appointme-realm.json"
-assert_absent "src/$NAME.Frontend/src/api/appointme.ts"
-assert_absent "src/$NAME.Frontend/src/api/appointme.schemas.ts"
+
+# The generated API client is brand-neutral on purpose (see templates/README.md):
+# if its file name carried the brand, the rename would change the length of every
+# `@/api/...` import line, and the generated frontend would fall out of Oxfmt's
+# 120-column format and fail `npm run check` below.
+assert_present_file "src/$NAME.Frontend/src/api/client.ts"
+assert_present_file "src/$NAME.Frontend/src/api/client.schemas.ts"
 
 # ...but the appointment-named paths must survive untouched. Counted
 # case-insensitively (matching both the PascalCase "Appointment" aggregate/
@@ -517,8 +521,8 @@ if [[ ! -d "$GEN_DIR/src" ]]; then
 else
   (
     cd "$GEN_DIR/src/$NAME.Frontend"
-    npm ci && npm run lint && npm run build
-  ) && pass "generated frontend lints and builds" || fail "generated frontend failed"
+    npm ci && npm run check && npm run build
+  ) && pass "generated frontend passes vp check and builds" || fail "generated frontend failed"
 fi
 
 # --- assertions: overlay README --------------------------------------------

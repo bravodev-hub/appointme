@@ -1,7 +1,7 @@
 import { RoleCheckboxGroup } from './role-checkbox-group';
 import { roleSchema } from './roles';
-import { Role, TeamMemberDto } from '@/api/appointme.schemas.ts';
-import { getGetTeamQueryKey, useUpdateRoles } from '@/api/appointme.ts';
+import { Role, TeamMemberDto } from '@/api/client.schemas.ts';
+import { getGetTeamQueryKey, useUpdateRoles } from '@/api/client.ts';
 import { usePermission } from '@/components/auth';
 import { SubmitButton } from '@/components/form';
 import { IModalProps } from '@/components/modal-dialog';

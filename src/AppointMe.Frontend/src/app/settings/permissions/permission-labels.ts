@@ -1,4 +1,4 @@
-import { Permission } from '@/api/appointme.schemas.ts';
+import { Permission } from '@/api/client.schemas.ts';
 
 const RESOURCE_LABELS: Record<string, string> = {
     customers: 'Customers',

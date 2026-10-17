@@ -24,6 +24,7 @@ axiosInstance.interceptors.response.use(
 export const apiClient = async <T = unknown>(config: AxiosRequestConfig): Promise<T> => {
     const companyId = currentCompanyStore.get();
     const headers = {
+        // oxlint-disable-next-line typescript/no-misused-spread -- orval passes plain-object headers; an AxiosHeaders instance also keeps its values as own enumerable props
         ...config.headers,
         ...(companyId ? { 'X-Company-Id': companyId } : {}),
     };

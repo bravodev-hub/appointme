@@ -2,8 +2,8 @@ import { AppointmentPreview, Calendar, CalendarToolbar, VIEW_MAP, ViewKey } from
 import { CancelAppointmentDialog } from './cancel-appointment';
 import { RescheduleAppointmentDialog } from './reschedule-appointment';
 import { ScheduleAppointmentDialog } from './schedule-appointment';
-import { getGetAppointmentsQueryKey, useCancelAppointment, useGetAppointments } from '@/api/appointme';
-import { AppointmentDto } from '@/api/appointme.schemas';
+import { getGetAppointmentsQueryKey, useCancelAppointment, useGetAppointments } from '@/api/client';
+import { AppointmentDto } from '@/api/client.schemas';
 import { useTimeZone } from '@/components/format';
 import { useModalDialog } from '@/components/modal-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';

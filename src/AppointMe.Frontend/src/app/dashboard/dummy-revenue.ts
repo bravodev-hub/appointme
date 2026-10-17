@@ -1,4 +1,4 @@
-import { TrendBucketDto } from '@/api/appointme.schemas';
+import { TrendBucketDto } from '@/api/client.schemas';
 
 // Template placeholder: AppointMe has no revenue/payments domain yet, so the
 // dashboard's revenue numbers are deterministic fake data derived from real

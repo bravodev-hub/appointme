@@ -1,4 +1,4 @@
-import { Permission } from '@/api/appointme.schemas';
+import { Permission } from '@/api/client.schemas';
 import { useUserAccess } from '@/components/auth/use-user-access';
 
 export const hasPermission = (granted: readonly string[], required: Permission | Permission[]): boolean =>

@@ -1,5 +1,5 @@
-import { getGetCustomersQueryKey, useRegisterCustomer } from '@/api/appointme';
-import { Gender } from '@/api/appointme.schemas.ts';
+import { getGetCustomersQueryKey, useRegisterCustomer } from '@/api/client';
+import { Gender } from '@/api/client.schemas.ts';
 import { SubmitButton } from '@/components/form';
 import { Button, Input } from '@/components/ui';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -50,7 +50,7 @@ export const CreateCustomer = () => {
         });
         await queryClient.invalidateQueries({ queryKey: getGetCustomersQueryKey() });
         toast.success('Customer created successfully');
-        navigate('/customers');
+        void navigate('/customers');
     };
 
     return (

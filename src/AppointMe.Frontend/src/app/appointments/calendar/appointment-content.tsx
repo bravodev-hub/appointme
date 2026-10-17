@@ -1,4 +1,4 @@
-import { AppointmentDto } from '@/api/appointme.schemas';
+import { AppointmentDto } from '@/api/client.schemas';
 import { FormattedDate } from '@/components/format';
 import { cn } from '@/lib/utils';
 import type { EventContentArg } from '@fullcalendar/core';

@@ -4,7 +4,24 @@
  * AppointMe.Api | v1
  * OpenAPI spec version: 1.0.0
  */
-import { apiClient } from '../lib/axios';
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import type {
+    DataTag,
+    DefinedInitialDataOptions,
+    DefinedUseQueryResult,
+    MutationFunction,
+    QueryClient,
+    QueryFunction,
+    QueryKey,
+    UndefinedInitialDataOptions,
+    UseMutationOptions,
+    UseMutationResult,
+    UseQueryOptions,
+    UseQueryResult,
+    UseSuspenseQueryOptions,
+    UseSuspenseQueryResult,
+} from '@tanstack/react-query';
+
 import type {
     AppointmentDto,
     CustomerDto,
@@ -38,24 +55,9 @@ import type {
     UpdateCustomerRequest,
     UpdateEmployeeRolesRequest,
     UpdatePermissionsRequest,
-} from './appointme.schemas';
-import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import type {
-    DataTag,
-    DefinedInitialDataOptions,
-    DefinedUseQueryResult,
-    MutationFunction,
-    QueryClient,
-    QueryFunction,
-    QueryKey,
-    UndefinedInitialDataOptions,
-    UseMutationOptions,
-    UseMutationResult,
-    UseQueryOptions,
-    UseQueryResult,
-    UseSuspenseQueryOptions,
-    UseSuspenseQueryResult,
-} from '@tanstack/react-query';
+} from './client.schemas';
+
+import { apiClient } from '../lib/axios';
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
     const result = { queryKey } as T & { queryKey: K };

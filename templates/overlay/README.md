@@ -64,6 +64,12 @@ Then `docker compose up` brings up SQL Server, Keycloak and Mailpit on the same
 ports Aspire uses; run `dotnet run --project src/AppointMe.Api`, and in
 `src/AppointMe.Frontend`, `npm ci` followed by `npm run dev`.
 
+The frontend is linted and formatted by [Vite+](https://viteplus.dev) (Oxlint +
+Oxfmt), and CI fails on unformatted code (`npm run check`). Point your editor at
+Oxc — the Oxc plugin from the JetBrains Marketplace, or VS Code's
+`VoidZero.vite-plus-extension-pack` — instead of ESLint and Prettier, or run
+`npm run format` before committing.
+
 ## What's inside
 
 - **Modular monolith** — Identity, Organizations, CRM and Booking, each a bounded

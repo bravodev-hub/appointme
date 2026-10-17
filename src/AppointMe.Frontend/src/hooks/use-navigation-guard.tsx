@@ -29,7 +29,7 @@ export const useNavigationGuard = ({
         }
 
         let cancelled = false;
-        modalDialog
+        void modalDialog
             .open<boolean>(props => (
                 <ConfirmDialog
                     {...props}

@@ -95,9 +95,9 @@ jobs:
         working-directory: src/AppointMe.Frontend
         run: npm ci
 
-      - name: Frontend lint
+      - name: Frontend check (format, lint, type-check)
         working-directory: src/AppointMe.Frontend
-        run: npm run lint
+        run: npm run check
 
       - name: Frontend build
         working-directory: src/AppointMe.Frontend

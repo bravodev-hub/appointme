@@ -27,7 +27,7 @@
     <!-- Without this, NuGet's pack task silently drops any file whose name has nothing
          before its (only) dot once split via Path.GetFileNameWithoutExtension - i.e.
          classic hidden dotfiles such as .editorconfig, .gitignore, .dockerignore,
-         .nvmrc, .prettierrc, .prettierignore, .gitkeep (warning NU5119: "Files and
+         .node-version, .gitkeep (warning NU5119: "Files and
          folders starting with '.' ... are excluded by default"). Those are tracked,
          non-withheld repo content per the spec's exclusion table, so the default must
          be disabled. Verified empirically: Path.GetFileNameWithoutExtension(".editorconfig")

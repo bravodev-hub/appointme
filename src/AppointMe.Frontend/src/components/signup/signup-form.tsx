@@ -1,5 +1,4 @@
-import { useSignup } from '@/api/appointme.ts';
-import { isAxiosError } from 'axios';
+import { useSignup } from '@/api/client.ts';
 import G from '@/assets/g.svg?react';
 import { Spinner } from '@/components/ui';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldSepar
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { isAxiosError } from 'axios';
 import { ComponentProps } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
@@ -34,7 +34,7 @@ export const SignupForm = ({ className, ...props }: ComponentProps<'form'>) => {
     const onSubmit = async (data: SignupFormValues) => {
         try {
             await signup({ data });
-            navigate(`/auth/verify-email/${data.email}`);
+            void navigate(`/auth/verify-email/${data.email}`);
         } catch (error) {
             if (isAxiosError(error)) {
                 const code = error.response?.data?.code;

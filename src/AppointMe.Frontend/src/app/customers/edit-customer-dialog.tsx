@@ -1,5 +1,5 @@
-import { Gender } from '@/api/appointme.schemas';
-import { getGetCustomerQueryKey, getGetCustomersQueryKey, useGetCustomer, useUpdateCustomer } from '@/api/appointme.ts';
+import { Gender } from '@/api/client.schemas';
+import { getGetCustomerQueryKey, getGetCustomersQueryKey, useGetCustomer, useUpdateCustomer } from '@/api/client.ts';
 import { SubmitButton } from '@/components/form';
 import { IModalProps } from '@/components/modal-dialog';
 import { Button, Input } from '@/components/ui';

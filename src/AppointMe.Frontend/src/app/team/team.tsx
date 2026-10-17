@@ -1,7 +1,7 @@
 import { Columns } from './columns';
 import { InviteEmployeeDialog } from './invite-employee-dialog';
-import { TeamMemberType } from '@/api/appointme.schemas.ts';
-import { getGetTeamQueryKey, useCancelInvitation, useDeleteEmployee, useGetTeam } from '@/api/appointme.ts';
+import { TeamMemberType } from '@/api/client.schemas.ts';
+import { getGetTeamQueryKey, useCancelInvitation, useDeleteEmployee, useGetTeam } from '@/api/client.ts';
 import { usePermission } from '@/components/auth';
 import { Can } from '@/components/auth/can';
 import { ConfirmDialog, useModalDialog } from '@/components/modal-dialog';
@@ -54,7 +54,7 @@ export const Team = () => {
         },
     );
 
-    // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table is on the React Compiler's incompatible-library list; the compiler skips this component either way
+    // oxlint-disable-next-line react-hooks/incompatible-library -- TanStack Table is on the React Compiler's incompatible-library list; the compiler skips this component either way
     const table = useReactTable({
         data: team?.members.items ?? [],
         columns: Columns,

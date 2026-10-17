@@ -1,6 +1,6 @@
 import { EditCustomerDialog } from './edit-customer-dialog';
-import { CustomerDto } from '@/api/appointme.schemas';
-import { getGetCustomersQueryKey, useDeleteCustomer } from '@/api/appointme.ts';
+import { CustomerDto } from '@/api/client.schemas';
+import { getGetCustomersQueryKey, useDeleteCustomer } from '@/api/client.ts';
 import { Can } from '@/components/auth/can';
 import { ConfirmDialog, useModalDialog } from '@/components/modal-dialog';
 import {

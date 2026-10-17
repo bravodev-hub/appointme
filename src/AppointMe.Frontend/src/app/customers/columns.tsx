@@ -1,11 +1,7 @@
 import { ActionsCell } from './actions-cell';
-import { CustomerDto } from '@/api/appointme.schemas';
+import { CustomerDto } from '@/api/client.schemas';
 import { FormattedDate } from '@/components/format';
-import {
-    Avatar,
-    AvatarFallback,
-    Checkbox,
-    } from '@/components/ui';
+import { Avatar, AvatarFallback, Checkbox } from '@/components/ui';
 import { ColumnDef } from '@tanstack/react-table';
 
 export const Columns: ColumnDef<CustomerDto>[] = [

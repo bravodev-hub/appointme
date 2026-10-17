@@ -21,8 +21,10 @@ dotnet run --project src/AppointMe.Api  # Run API
 cd src/AppointMe.Frontend
 npm install
 npm run dev          # Development server (port 5173)
-npm run build        # Production build
-npm run lint         # ESLint
+npm run build        # Production build (vp build)
+npm run check        # Format check + lint + type-check in one pass (vp check) — what CI runs
+npm run lint         # Oxlint + type-check (vp lint)
+npm run format       # Oxfmt (vp fmt)
 npm run generate:api # Regenerate API client from OpenAPI spec (see /regenerate-api skill)
 ```
 
@@ -231,7 +233,7 @@ public class PermissionResolverTests
 
 ### Tech Stack
 - **Backend**: .NET 10, C# 14, EF Core 10, Wolverine 6.24, Dapper
-- **Frontend**: React 19, TypeScript 6, Vite 8, Tailwind CSS 4, TanStack Query
+- **Frontend**: React 19, TypeScript 6, Vite+ 1.2 (Vite 8, Oxlint, Oxfmt), Tailwind CSS 4, TanStack Query
 - **Infrastructure**: SQL Server 2025, Keycloak, Mailpit (local dev); Azure Service Bus for production messaging
 
 ## Local Development Services

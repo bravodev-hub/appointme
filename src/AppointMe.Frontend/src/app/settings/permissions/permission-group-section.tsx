@@ -1,6 +1,6 @@
 import { PermissionCheckboxCell } from './permission-checkbox-cell.tsx';
 import { labelForPermission, labelForResource } from './permission-labels.ts';
-import { PermissionGroupDto, RoleDefinitionDto } from '@/api/appointme.schemas.ts';
+import { PermissionGroupDto, RoleDefinitionDto } from '@/api/client.schemas.ts';
 import { TableBody, TableCell, TableRow } from '@/components/ui';
 
 interface PermissionGroupSectionProps {

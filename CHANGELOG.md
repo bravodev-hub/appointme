@@ -5,6 +5,22 @@ All notable changes to AppointMe are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Frontend toolchain is now Vite+.** `vp` replaces the separate Vite, ESLint, Prettier
+  and `tsc` setup: lint (Oxlint) and format (Oxfmt) config live in `vite.config.ts`, and
+  `npm run check` format-checks, lints and type-checks in one pass — which CI now runs.
+  Formatting is enforced for the first time, and every Oxlint correctness rule — including
+  the React Compiler checks, `exhaustive-deps` and type-aware unhandled-promise detection —
+  now fails CI (six existing fire-and-forget calls are marked `void`). Requires Node 22.18+
+  (or 24.11+).
+- **Generated API client is now `src/api/client.ts`** (and `client.schemas.ts`), imported
+  as `@/api/client`, instead of the brand-named `appointme.ts`. A brand-named client made
+  `dotnet new` renames change the length of every import line that references it, so
+  generated projects could fail the now-enforced format check depending on their name.
+
 ## [1.2.1] — 2026-09-27
 
 A packaging-only follow-up to 1.2.0. The generated project is unchanged.

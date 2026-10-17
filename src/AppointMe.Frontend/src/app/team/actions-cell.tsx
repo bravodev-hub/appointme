@@ -1,6 +1,6 @@
 import { EditEmployeeRolesDialog } from './edit-employee-roles-dialog';
-import { TeamMemberDto, TeamMemberType } from '@/api/appointme.schemas.ts';
-import { getGetTeamQueryKey, useCancelInvitation, useDeleteEmployee, useResendInvitation } from '@/api/appointme.ts';
+import { TeamMemberDto, TeamMemberType } from '@/api/client.schemas.ts';
+import { getGetTeamQueryKey, useCancelInvitation, useDeleteEmployee, useResendInvitation } from '@/api/client.ts';
 import { usePermission } from '@/components/auth';
 import { Can } from '@/components/auth/can';
 import { ConfirmDialog, useModalDialog } from '@/components/modal-dialog';

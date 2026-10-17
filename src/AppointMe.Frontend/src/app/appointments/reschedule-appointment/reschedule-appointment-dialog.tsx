@@ -1,7 +1,7 @@
-import { useGetServiceProviders, useRescheduleAppointment } from '@/api/appointme';
-import { AppointmentDto } from '@/api/appointme.schemas';
-import { parseInputDateTime, toDateInputValue, toTimeInputValue, useTimeZone } from '@/components/format';
+import { useGetServiceProviders, useRescheduleAppointment } from '@/api/client';
+import { AppointmentDto } from '@/api/client.schemas';
 import { SubmitButton } from '@/components/form';
+import { parseInputDateTime, toDateInputValue, toTimeInputValue, useTimeZone } from '@/components/format';
 import { IModalProps } from '@/components/modal-dialog';
 import { Button, Input } from '@/components/ui';
 import {

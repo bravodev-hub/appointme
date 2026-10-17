@@ -1,5 +1,5 @@
 import { CurrentUserContext } from './use-current-user';
-import { useGetCurrentUserSuspense } from '@/api/appointme';
+import { useGetCurrentUserSuspense } from '@/api/client';
 import { type ReactNode } from 'react';
 
 export const CurrentUserProvider = ({ children }: { children: ReactNode }) => {

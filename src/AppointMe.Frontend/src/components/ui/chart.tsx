@@ -256,6 +256,7 @@ function ChartLegendContent({
             {payload
                 .filter(item => item.type !== 'none')
                 .map(item => {
+                    // oxlint-disable-next-line typescript/restrict-template-expressions -- vendored shadcn/ui chart; dataKey is a string key in every chart this app renders
                     const key = `${nameKey || item.dataKey || 'value'}`;
                     const itemConfig = getPayloadConfigFromPayload(config, item, key);
 

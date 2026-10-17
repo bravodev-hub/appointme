@@ -1,4 +1,4 @@
-import { Role } from '@/api/appointme.schemas.ts';
+import { Role } from '@/api/client.schemas.ts';
 import * as z from 'zod';
 
 export const EMPLOYEE_ROLES = [

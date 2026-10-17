@@ -1,11 +1,6 @@
 import { ActionsCell } from './actions-cell';
-import { TeamMemberDto, TeamMemberType } from '@/api/appointme.schemas.ts';
-import {
-    Avatar,
-    AvatarFallback,
-    Badge,
-    Checkbox,
-    } from '@/components/ui';
+import { TeamMemberDto, TeamMemberType } from '@/api/client.schemas.ts';
+import { Avatar, AvatarFallback, Badge, Checkbox } from '@/components/ui';
 import { ColumnDef } from '@tanstack/react-table';
 
 export const Columns: ColumnDef<TeamMemberDto>[] = [

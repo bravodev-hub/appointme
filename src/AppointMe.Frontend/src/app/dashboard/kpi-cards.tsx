@@ -1,5 +1,5 @@
 import { DashboardPeriod } from './use-dashboard-period';
-import { GetDashboardStatsResponse } from '@/api/appointme.schemas';
+import { GetDashboardStatsResponse } from '@/api/client.schemas';
 import { Card, CardContent, Progress, Skeleton } from '@/components/ui';
 
 interface KpiCardsProps {

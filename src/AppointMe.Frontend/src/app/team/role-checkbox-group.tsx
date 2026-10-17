@@ -1,5 +1,5 @@
 import { EMPLOYEE_ROLES } from './roles';
-import { Role } from '@/api/appointme.schemas.ts';
+import { Role } from '@/api/client.schemas.ts';
 import { Checkbox } from '@/components/ui';
 import { Label } from '@/components/ui/label';
 

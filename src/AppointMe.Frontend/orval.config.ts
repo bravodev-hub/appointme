@@ -6,7 +6,7 @@ export default defineConfig({
             target: 'https://localhost:7233/openapi/v1.json',
         },
         output: {
-            target: './src/api/appointme.ts',
+            target: './src/api/client.ts',
             mode: 'split',
             httpClient: 'axios',
             client: 'react-query',
@@ -22,7 +22,7 @@ export default defineConfig({
             clean: true,
         },
         hooks: {
-            afterAllFilesWrite: 'prettier --write',
+            afterAllFilesWrite: 'vp fmt',
         },
     },
 });

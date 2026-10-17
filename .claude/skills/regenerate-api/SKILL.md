@@ -5,7 +5,7 @@ description: Regenerate the AppointMe frontend API client (orval/TanStack Query 
 
 # regenerate-api
 
-Regenerate `src/AppointMe.Frontend/src/api/appointme.ts` and `appointme.schemas.ts` from the live backend OpenAPI document. The frontend uses orval with `clean: true`, so the generated files are fully overwritten on each run.
+Regenerate `src/AppointMe.Frontend/src/api/client.ts` and `client.schemas.ts` from the live backend OpenAPI document. The frontend uses orval with `clean: true`, so the generated files are fully overwritten on each run.
 
 ## When to use
 
@@ -79,7 +79,7 @@ cd src/AppointMe.Frontend && npm run generate:api
 
 Watch for:
 - Orval warnings about unresolved `$ref`s — usually indicates a backend serialization issue (a type missing `[JsonSerializable]` or a polymorphic type without a discriminator).
-- Prettier errors — the `afterAllFilesWrite` hook runs `prettier --write`; failure here means orval produced invalid output.
+- Formatter errors — the `afterAllFilesWrite` hook runs `vp fmt` (Oxfmt); failure here means orval produced invalid output.
 
 ### 5. Report the diff and follow-ups
 
@@ -90,17 +90,17 @@ cd src/AppointMe.Frontend && git diff --stat src/api/
 Then check whether existing call sites still type-check against the new client:
 
 ```bash
-cd src/AppointMe.Frontend && npx tsc -b
+cd src/AppointMe.Frontend && npx vp check --no-fmt --no-lint
 ```
 
-`tsc` **must** be pointed at a project. The root `tsconfig.json` is solution-style (`files: []` + `references`), so a bare `tsc --noEmit` checks nothing and exits 0 — it will happily "pass" a client that no longer matches its call sites. Use `-b` (what `npm run build` runs) or `-p tsconfig.app.json` for app sources only. No `--ignoreDeprecations` flag is needed; see the frontend CLAUDE.md.
+This type-checks the whole project (it follows the root `tsconfig.json` references) and prints `pass: Found no type errors…` when the call sites match.
 
-If `tsc` reports errors, those are **call sites that need updating to match the new contract** — fix them in the same task; don't leave the codebase in a broken state.
+If it reports errors, those are **call sites that need updating to match the new contract** — fix them in the same task; don't leave the codebase in a broken state.
 
 ## Known pitfalls
 
 - **Stale reachable backend**: the most common failure mode. The endpoint responds 200, orval succeeds, but the OpenAPI doc still describes the old contract because the API process wasn't restarted. If the diff looks empty or doesn't reflect your edits, this is why — restart Aspire and rerun.
-- **Don't hand-edit `src/api/appointme.ts` or `src/api/appointme.schemas.ts`** — orval's `clean: true` mode deletes them on each run.
+- **Don't hand-edit `src/api/client.ts` or `src/api/client.schemas.ts`** — orval's `clean: true` mode deletes them on each run.
 - **Mutator path**: the generated client imports `apiClient` from `src/lib/axios.ts`. If you ever change that path, update `orval.config.ts` too.
 - **HTTPS cert**: dev uses mkcert via `vite-plugin-mkcert`. The `NODE_TLS_REJECT_UNAUTHORIZED=0` env in the `generate:api` script bypasses verification for orval's fetch — don't remove it.
 

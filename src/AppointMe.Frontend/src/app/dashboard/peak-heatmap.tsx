@@ -1,4 +1,4 @@
-import { useGetPeakHours } from '@/api/appointme';
+import { useGetPeakHours } from '@/api/client';
 import { useTimeZone } from '@/components/format';
 import {
     Card,

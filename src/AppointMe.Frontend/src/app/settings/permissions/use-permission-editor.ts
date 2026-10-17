@@ -1,5 +1,5 @@
 import { PermissionCellState, PermissionEditor } from './use-permission-editor-context.ts';
-import { GetPermissionsResponse, Role } from '@/api/appointme.schemas.ts';
+import { GetPermissionsResponse, Role } from '@/api/client.schemas.ts';
 import { useCallback, useMemo, useState } from 'react';
 
 const LOCKED_CELL_STATE: PermissionCellState = { isGranted: true, isEditable: false, state: 'default' };

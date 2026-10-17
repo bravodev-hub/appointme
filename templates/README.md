@@ -80,17 +80,21 @@ immediately re-emitting it, so the character itself is unchanged):
 exactly as typed. Followers: `.` `'` `"` `/` `` ` `` `;` `-realm` (`tokDot`,
 `tokApos`, `tokQuot`, `tokSlash`, `tokTick`, `tokSemi`, `tokRealm`). `tokDot`
 and `tokRealm` are the only symbols in this family with `fileRename` (the same
-fileRename-ignores-`onlyIf` reason as `identityBucket` above), one per file:
-`tokDot` renames the two `src/api/appointme.*` files, `tokRealm` renames
-`appointme-realm.json`. This bucket is **not** a free stylistic choice:
+fileRename-ignores-`onlyIf` reason as `identityBucket` above): `tokRealm`
+renames `appointme-realm.json`, and `tokDot` renames any `appointme.*` file —
+none ships today. The generated frontend API client used to be
+`src/api/appointme.*`; it is now deliberately brand-neutral
+(`src/api/client.ts`, `client.schemas.ts`), because a branded file name makes
+the rename change the length of every `@/api/...` import line, which pushes
+the generated frontend out of Oxfmt's 120-column format and fails `npm run
+check` (asserted by `smoke-test.sh`). This bucket is **not** a free stylistic choice:
 `SuperAdminRegistryTests.should_match_email_case_insensitively` compares this
 rename's allowlist literal (`"demo@appointme.dev"`) against the PascalCase
 family's identity-preserving rename of `"Demo@AppointMe.DEV"` — both must fold
 to the same string, which only holds if this bucket preserves the user's own
 separators (e.g. the dot in `"Contoso.Booking"`) exactly as `identityBucket`
 does, rather than normalizing them to hyphens. The same value is also what
-keeps `'@/api/appointme'` import specifiers (`tokApos`) resolving to the file
-`tokDot` renames, and what keeps `main.bicep`'s apostrophe-quoted values in
+keeps `main.bicep`'s apostrophe-quoted values in
 sync with `main.json`'s double-quoted compiled equivalents (`tokQuot`) and with
 `appointme-realm.json`'s own realm name and URL-path segments (`tokQuot`,
 `tokSlash`).
@@ -130,7 +134,7 @@ sits in a context stricter than either bucket above allows: `tokA` is
 `Program.cs`'s `var appointmeApi = ...` C# local (a literal hyphen or dot
 mid-identifier would not compile); `tokColon` is `orval.config.ts`'s unquoted
 object key `appointme: { ... }` (a hyphen there is a JS syntax error — caught
-for real by `npm run lint`); `tokDollar` and `tokBrace` are `main.bicep`'s /
+for real by `npm run check`); `tokDollar` and `tokBrace` are `main.bicep`'s /
 `main.json`'s ACR and storage-account name construction
 (`"acrappointme${...}"` / `"acrappointme{0}{1}"`), which Azure restricts to
 lowercase alphanumeric only (no hyphens, no dots); `tokD` is the illustrative

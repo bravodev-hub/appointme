@@ -1,4 +1,4 @@
-import { Permission } from '@/api/appointme.schemas';
+import { Permission } from '@/api/client.schemas';
 import { CalendarIcon, ChartPieIcon, LucideIcon, ShieldIcon, TimerIcon, UserCogIcon, UsersIcon } from 'lucide-react';
 
 export const navData: NavData = {

@@ -1,5 +1,5 @@
 import { PermissionGroupSection } from './permission-group-section.tsx';
-import { PermissionGroupDto, RoleDefinitionDto } from '@/api/appointme.schemas.ts';
+import { PermissionGroupDto, RoleDefinitionDto } from '@/api/client.schemas.ts';
 import {
     Skeleton,
     Table,

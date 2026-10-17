@@ -2,7 +2,7 @@ import { AppointmentContent } from './appointment-content';
 import { VIEW_MAP, ViewKey } from './calendar-config';
 import { DayHeader } from './day-header';
 import './fullcalendar.css';
-import { AppointmentDto } from '@/api/appointme.schemas';
+import { AppointmentDto } from '@/api/client.schemas';
 import { Spinner } from '@/components/ui';
 import type { DateSelectArg, DatesSetArg, EventClickArg, EventDropArg, EventInput } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';

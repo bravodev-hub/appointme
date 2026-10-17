@@ -1,4 +1,4 @@
-import { PermissionDto, Role, RoleDefinitionDto, RolePermissionGrantDto } from '@/api/appointme.schemas.ts';
+import { PermissionDto, Role, RoleDefinitionDto, RolePermissionGrantDto } from '@/api/client.schemas.ts';
 import { createContext, use } from 'react';
 
 export interface PermissionCellState {

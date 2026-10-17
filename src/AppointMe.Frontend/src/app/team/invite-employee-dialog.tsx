@@ -1,8 +1,7 @@
-import { getGetTeamQueryKey, useInviteEmployee } from '@/api/appointme.ts';
-import { isAxiosError } from 'axios';
 import { RoleCheckboxGroup } from './role-checkbox-group';
 import { roleSchema } from './roles';
-import { Role } from '@/api/appointme.schemas.ts';
+import { Role } from '@/api/client.schemas.ts';
+import { getGetTeamQueryKey, useInviteEmployee } from '@/api/client.ts';
 import { usePermission } from '@/components/auth';
 import { SubmitButton } from '@/components/form';
 import { IModalProps } from '@/components/modal-dialog';
@@ -20,6 +19,7 @@ import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import * as z from 'zod';

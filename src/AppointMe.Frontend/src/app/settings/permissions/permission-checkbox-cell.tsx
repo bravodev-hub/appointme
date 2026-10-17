@@ -1,5 +1,5 @@
 import { PermissionCellState, usePermissionEditorContext } from './use-permission-editor-context.ts';
-import { PermissionDto, RoleDefinitionDto } from '@/api/appointme.schemas.ts';
+import { PermissionDto, RoleDefinitionDto } from '@/api/client.schemas.ts';
 import { Checkbox, TableCell, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui';
 import { cn } from '@/lib/utils.ts';
 

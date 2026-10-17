@@ -69,10 +69,24 @@ Both produce an identical running app — same images, ports, credentials, and s
 |---|---|---|
 | [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) | Builds and runs the API and the Aspire host | `dotnet --version` should report `10.x` |
 | [Docker](https://www.docker.com/products/docker-desktop/) (running) | Hosts SQL Server, Keycloak, and Mailpit containers | Docker Desktop or any OCI-compatible runtime |
-| [Node.js 22+](https://nodejs.org/) | Builds and serves the React frontend | npm ships with Node — nothing else to install. With Aspire (Option A) the frontend's `npm install` runs automatically on first start |
+| [Node.js 22.18+ or 24.11+](https://nodejs.org/) | Builds and serves the React frontend | npm ships with Node — nothing else to install. With Aspire (Option A) the frontend's `npm install` runs automatically on first start |
 | HTTPS dev certificate | Frontend and services run over HTTPS | `dotnet dev-certs https --trust` |
 
 > First run pulls container images and restores NuGet/npm packages, so it takes a few minutes. Subsequent runs are fast — the SQL Server, Keycloak, and Mailpit containers are persistent and reused across restarts.
+
+### Editor setup
+
+The frontend is linted and formatted by [Vite+](https://viteplus.dev) (Oxlint + Oxfmt), and CI fails on unformatted code (`npm run check`). The rules live in the `lint` and `fmt` blocks of `src/AppointMe.Frontend/vite.config.ts` — there is no `.prettierrc` or `eslint.config.js`, so an editor still set up for Prettier or ESLint falls back to its own style. Whatever your editor, `npm run format` in `src/AppointMe.Frontend` fixes formatting before you commit.
+
+**Rider / WebStorm / IntelliJ IDEA**
+
+1. *Settings → Plugins → Marketplace*: install **Oxc** (0.0.43 or newer) and restart the IDE. Older versions launch plain `oxfmt`, which ignores `vite.config.ts` and formats with Oxfmt's defaults.
+2. *Settings → Tools → Oxfmt*: leave it on **Automatic** — it finds `vite-plus` in the frontend's `node_modules` (run `npm install` there first) and runs `vp fmt --lsp`, which reads the `fmt` block. Tick **Run 'Fix All' on Save** for format-on-save, and **Prefer Oxfmt configuration to IDE code style** so the IDE's own edits (auto-imports, typing) follow the same style.
+3. *Settings → Tools → Oxlint*: leave it on **Automatic** (`vp lint --lsp`) for inline lint and type errors.
+4. Turn off the old integrations: *Languages & Frameworks → JavaScript → Prettier* → **Disabled** (and untick *Run on save*), and *Languages & Frameworks → JavaScript → Code Quality Tools → ESLint* → **Disable ESLint configuration**.
+5. *Languages & Frameworks → Node.js*: the interpreter must be Node 22.18+ or 24.11+ — the plugin runs `vp` with it.
+
+**VS Code**: install the `VoidZero.vite-plus-extension-pack` extension pack, set `oxc.oxc-vscode` as the default formatter for JavaScript/TypeScript, and disable the Prettier and ESLint extensions for this workspace.
 
 ### Clone and trust the dev cert
 
@@ -198,7 +212,7 @@ Deeper write-ups on how specific parts of AppointMe are designed:
 ## Tech stack
 
 - **Backend:** .NET 10, C# 14, EF Core 10, Wolverine 6, Dapper
-- **Frontend:** React 19, TypeScript 6, Vite 8, Tailwind CSS 4, TanStack Query
+- **Frontend:** React 19, TypeScript 6, Vite+ (Vite 8, Oxlint, Oxfmt), Tailwind CSS 4, TanStack Query
 - **Infrastructure:** SQL Server 2022/2025, Keycloak, orchestrated with .NET Aspire
 
 ## Releases

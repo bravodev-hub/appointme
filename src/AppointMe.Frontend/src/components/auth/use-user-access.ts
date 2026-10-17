@@ -1,4 +1,4 @@
-import { GetCurrentUserAccessResponse } from '@/api/appointme.schemas';
+import { GetCurrentUserAccessResponse } from '@/api/client.schemas';
 import { createContext, use } from 'react';
 
 export const UserAccessContext = createContext<GetCurrentUserAccessResponse | null>(null);

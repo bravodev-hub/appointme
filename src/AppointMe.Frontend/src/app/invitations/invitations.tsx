@@ -1,4 +1,4 @@
-import { useAcceptInvitation, useGetPendingInvitations } from '@/api/appointme';
+import { useAcceptInvitation, useGetPendingInvitations } from '@/api/client';
 import { ErrorWidget } from '@/components/error/error-widget';
 import { Badge, Button, Spinner } from '@/components/ui';
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 export const Invitations = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+
     const { data, isLoading, isError, refetch } = useGetPendingInvitations();
     const { mutateAsync: acceptInvitation } = useAcceptInvitation();
     const [acceptingId, setAcceptingId] = useState<string | null>(null);
@@ -34,7 +35,7 @@ export const Invitations = () => {
     const invitations = data?.invitations ?? [];
 
     if (invitations.length === 0) {
-        navigate('/', { replace: true });
+        void navigate('/', { replace: true });
         return null;
     }
 
@@ -44,7 +45,7 @@ export const Invitations = () => {
             await acceptInvitation({ id });
             toast.success('Invitation accepted');
             await queryClient.invalidateQueries();
-            navigate('/', { replace: true });
+            void navigate('/', { replace: true });
         } catch {
             toast.error('Failed to accept invitation. Please try again.');
         } finally {

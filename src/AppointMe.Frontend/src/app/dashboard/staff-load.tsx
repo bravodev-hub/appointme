@@ -1,5 +1,5 @@
 import { PERIOD_LABELS, PeriodPreset } from './use-dashboard-period';
-import { StaffLoadDto } from '@/api/appointme.schemas';
+import { StaffLoadDto } from '@/api/client.schemas';
 import {
     Avatar,
     AvatarFallback,

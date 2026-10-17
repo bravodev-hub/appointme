@@ -1,5 +1,5 @@
 import { EditCustomerDialog } from './edit-customer-dialog';
-import { useGetCustomer } from '@/api/appointme';
+import { useGetCustomer } from '@/api/client';
 import { Can } from '@/components/auth/can';
 import { FormattedDate } from '@/components/format';
 import { useModalDialog } from '@/components/modal-dialog';
@@ -18,7 +18,11 @@ const Field = ({ label, value }: { label: string; value: ReactNode }) => (
 export const CustomerProfile = () => {
     const { id } = useParams<{ id: string }>();
     const modalDialog = useModalDialog();
-    const { data: customer, isLoading, error } = useGetCustomer(id!, {
+    const {
+        data: customer,
+        isLoading,
+        error,
+    } = useGetCustomer(id!, {
         query: {
             enabled: !!id,
         },
@@ -75,7 +79,11 @@ export const CustomerProfile = () => {
                 <Field label='Email' value={customer.email} />
                 <Field
                     label='Date of birth'
-                    value={customer.dateOfBirth ? <FormattedDate date={customer.dateOfBirth} format='dayMonthShortYear' /> : null}
+                    value={
+                        customer.dateOfBirth ? (
+                            <FormattedDate date={customer.dateOfBirth} format='dayMonthShortYear' />
+                        ) : null
+                    }
                 />
                 <Field label='Gender' value={customer.gender} />
                 <Field

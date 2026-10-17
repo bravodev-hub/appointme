@@ -1,7 +1,7 @@
 import { revenueForBucket } from './dummy-revenue';
 import { DashboardPeriod, PERIOD_LABELS } from './use-dashboard-period';
-import { useGetNewCustomerStats } from '@/api/appointme';
-import { GetDashboardStatsResponse, TrendBucketDto } from '@/api/appointme.schemas';
+import { useGetNewCustomerStats } from '@/api/client';
+import { GetDashboardStatsResponse, TrendBucketDto } from '@/api/client.schemas';
 import { useCurrentCompany, usePermission } from '@/components/auth';
 import {
     Card,

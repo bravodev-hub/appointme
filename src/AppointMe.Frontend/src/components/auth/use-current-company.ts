@@ -1,4 +1,4 @@
-import { CompanyMembership } from '@/api/appointme.schemas';
+import { CompanyMembership } from '@/api/client.schemas';
 import { createContext, use } from 'react';
 
 export interface CurrentCompanyContextValue {

@@ -1,4 +1,4 @@
-import { Permission } from '@/api/appointme.schemas';
+import { Permission } from '@/api/client.schemas';
 import { usePermission } from '@/components/auth';
 import { ReactNode } from 'react';
 

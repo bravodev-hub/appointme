@@ -1,7 +1,7 @@
-import { useGetCustomers, useGetServiceProviders, useScheduleAppointment } from '@/api/appointme';
-import { CustomerDto } from '@/api/appointme.schemas';
-import { parseInputDateTime, toDateInputValue, toTimeInputValue, useTimeZone } from '@/components/format';
+import { useGetCustomers, useGetServiceProviders, useScheduleAppointment } from '@/api/client';
+import { CustomerDto } from '@/api/client.schemas';
 import { SubmitButton } from '@/components/form';
+import { parseInputDateTime, toDateInputValue, toTimeInputValue, useTimeZone } from '@/components/format';
 import { IModalProps } from '@/components/modal-dialog';
 import { Avatar, AvatarFallback, Button, Input } from '@/components/ui';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';

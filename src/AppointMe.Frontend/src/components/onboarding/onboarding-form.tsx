@@ -12,7 +12,7 @@ import {
     SelectValue,
     Spinner,
 } from '../ui';
-import { getGetCurrentUserQueryKey, useOnboarding } from '@/api/appointme';
+import { getGetCurrentUserQueryKey, useOnboarding } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -87,7 +87,7 @@ export const OnboardingForm = ({ className, ...props }: ComponentProps<'form'>) 
         try {
             await onboarding({ data });
             await queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
-            navigate('/');
+            void navigate('/');
         } catch {
             setError('root', {
                 type: 'server',

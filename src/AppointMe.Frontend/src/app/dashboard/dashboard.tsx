@@ -5,13 +5,14 @@ import { PeriodPicker } from './period-picker';
 import { StaffLoad } from './staff-load';
 import { TrendChart } from './trend-chart';
 import { useDashboardPeriod } from './use-dashboard-period';
-import { useGetDashboardStats } from '@/api/appointme';
+import { useGetDashboardStats } from '@/api/client';
 import { Can, useCurrentCompany, usePermission } from '@/components/auth';
 import { ErrorWidget } from '@/components/error/error-widget';
 import { FormattedDate } from '@/components/format';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui';
 import { keepPreviousData } from '@tanstack/react-query';
 import { ChartPieIcon } from 'lucide-react';
+import { useState } from 'react';
 
 export const Dashboard = () => (
     <Can permission={['appointments.statistics:view', 'customers.statistics:view']} fallback={<NoAccess />}>
@@ -35,6 +36,7 @@ const NoAccess = () => (
 
 const DashboardContent = () => {
     const period = useDashboardPeriod();
+    const [today] = useState(() => new Date());
     const { currentCompany } = useCurrentCompany();
     const canViewAppointmentStats = usePermission('appointments.statistics:view');
 
@@ -72,7 +74,7 @@ const DashboardContent = () => {
                 <div className='min-w-0'>
                     <h1 className='text-lg font-semibold tracking-tight sm:text-xl'>Dashboard</h1>
                     <p className='text-muted-foreground text-xs sm:text-sm'>
-                        <FormattedDate date={new Date()} />
+                        <FormattedDate date={today} />
                     </p>
                 </div>
                 <PeriodPicker period={period} />

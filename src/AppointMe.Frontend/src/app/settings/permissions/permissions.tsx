@@ -7,7 +7,7 @@ import {
     useGetPermissions,
     useResetPermissions,
     useUpdatePermissions,
-} from '@/api/appointme.ts';
+} from '@/api/client.ts';
 import { ConfirmDialog, useModalDialog } from '@/components/modal-dialog';
 import { Button, InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui';
 import { useNavigationGuard } from '@/hooks';
