@@ -174,7 +174,7 @@ parseInputDateTime(date, time, tz)     // company-tz wall clock → UTC ISO
 
 ### Routing
 
-React Router v7. Layout shell at `app/router/app-shell.tsx`, route table at `app/router/router.tsx`. Breadcrumbs and active-nav state come from route `handle` via `useBreadcrumbs()` / `useActiveNav()`. Protected routes are nested under `<CurrentCompanyProvider>` + `<UserAccessProvider>` + `<ModalDialogProvider>`.
+React Router v8. Layout shell at `app/router/app-shell.tsx`, route table at `app/router/router.tsx`. Breadcrumbs and active-nav state come from route `handle` via `useBreadcrumbs()` / `useActiveNav()`. Protected routes are nested under `<CurrentCompanyProvider>` + `<UserAccessProvider>` + `<ModalDialogProvider>`.
 
 ### Styling
 
@@ -195,7 +195,7 @@ Tailwind CSS 4 via `@tailwindcss/vite`. Always use shadcn theme tokens (`bg-back
 - **Vite+ 1.4** (Vite 8 + Oxlint + Oxfmt + bundled Vitest) with `@tailwindcss/vite`, `vite-plugin-svgr`, `vite-plugin-mkcert` (auto-HTTPS).
 - **Tailwind CSS 4**, **shadcn/ui** (vendored under `components/ui/`).
 - **TanStack Query 5** (suspense mode) + **orval** for OpenAPI codegen → axios mutator.
-- **React Router 7**.
+- **React Router 8**.
 - **react-hook-form 7** + **zod 4**.
 - **FullCalendar 6** (`@fullcalendar/react` + day/time/interaction plugins).
 - **sonner** for toasts.

@@ -25,7 +25,7 @@ terms (Hangfire, LGPL-3.0) so you can make an informed choice.
 
 | License | Components |
 |---|---|
-| **MIT** | .NET runtime & ASP.NET Core, Entity Framework Core, `Microsoft.Extensions.*`, `Microsoft.Data.SqlClient`, `Microsoft.AspNetCore.Authentication.*`, `Microsoft.AspNetCore.OpenApi`, Asp.Versioning, .NET Aspire (`Aspire.Hosting.*`), CommunityToolkit.Aspire, `Azure.Identity`, `Azure.Extensions.AspNetCore.DataProtection.Blobs`, `Microsoft.Graph`, Bogus, Scrutor, Wolverine (`WolverineFx.*`), `Schick.Keycloak.RestApiClient`, `Microsoft.NET.Test.Sdk`, `Microsoft.Extensions.TimeProvider.Testing`, coverlet |
+| **MIT** | .NET runtime & ASP.NET Core, Entity Framework Core, `Microsoft.Extensions.*`, `Microsoft.Data.SqlClient`, `Microsoft.AspNetCore.Authentication.*`, `Microsoft.AspNetCore.OpenApi`, Asp.Versioning, .NET Aspire (`Aspire.Hosting.*`), `Azure.Identity`, `Azure.Extensions.AspNetCore.DataProtection.Blobs`, `Microsoft.Graph`, Bogus, Scrutor, Wolverine (`WolverineFx.*`), `Schick.Keycloak.RestApiClient`, `Microsoft.NET.Test.Sdk`, `Microsoft.Extensions.TimeProvider.Testing`, coverlet |
 | **Apache-2.0** | Dapper & `Dapper.SqlBuilder`, OpenTelemetry (`OpenTelemetry.*`), xUnit |
 | **LGPL-3.0** *(or commercial)* | Hangfire (`Hangfire.Core`, `Hangfire.AspNetCore`, `Hangfire.SqlServer`) — see note below |
 

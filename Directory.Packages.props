@@ -11,11 +11,9 @@
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="Asp.Versioning.Abstractions" Version="10.2.1" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.6.4" />
     <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.6.4-preview.1.26523.11" />
     <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
-    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.NodeJS.Extensions" Version="9.9.0" />
     <PackageVersion Include="Dapper" Version="2.1.89" />
     <PackageVersion Include="Dapper.SqlBuilder" Version="2.1.89" />
     <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.25" />

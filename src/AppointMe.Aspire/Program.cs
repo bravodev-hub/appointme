@@ -48,9 +48,18 @@ var appointmeApi = builder.AddProject<AppointMe_Api>("appointme-api", launchProf
     .WaitFor(mailpit)
     .WithExternalHttpEndpoints();
 
-builder.AddViteApp(name: "appointme-frontend", workingDirectory: "../AppointMe.Frontend", packageManager: "npm")
-    .WithNpmPackageInstallation()
-    .WithHttpsEndpoint(port: 5173, env: "PORT")
+// AddViteApp runs `npm install` first and gives the app a single endpoint named "http". vite-plugin-mkcert makes
+// the dev server serve TLS, and the Keycloak realm's redirect URIs and the API's Frontend:BaseUrl expect
+// https://localhost:5173, so that endpoint is pinned to 5173 and switched to https rather than adding a second one.
+// --no-save installs the locked versions without rewriting package-lock.json: a local npm 11 would otherwise
+// reformat it on every launch, and CI's npm 10 is what the lockfile has to stay compatible with.
+builder.AddViteApp(name: "appointme-frontend", appDirectory: "../AppointMe.Frontend")
+    .WithNpm(installArgs: ["--no-save"])
+    .WithEndpoint("http", endpoint =>
+    {
+        endpoint.Port = 5173;
+        endpoint.UriScheme = "https";
+    })
     .WithReference(appointmeApi)
     .WaitFor(appointmeApi);
 
