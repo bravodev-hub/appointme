@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   React 19.3 and React Router 8.5 among in-range bumps. `System.Security.Cryptography.Pkcs`
   is pinned to 10.0.13 because SqlClient and the Aspire SQL Server host still pull in a
   vulnerable version.
+- **Tests run on xUnit.net v3** (`xunit.v3.mtp-off` 4.0, `xunit.runner.visualstudio` 4.0),
+  replacing the deprecated v2 `xunit` package. Test projects are now executables
+  (`OutputType` `Exe`) and still run through VSTest, so `dotnet test` and its output are
+  unchanged. The `-mtp-off` package keeps VSTest working on the .NET 10 SDK, since v3
+  defaults to Microsoft Testing Platform; switching to that is a separate step.
 - **`temporal-polyfill` 1.0**, which uses the browser's native Temporal where available and
   only polyfills elsewhere. Also `@tanstack/react-pacer` 0.24 and `@tanstack/react-hotkeys`
   0.14 (both now ESM-only), and `@types/node` now matches the Node 24 runtime.

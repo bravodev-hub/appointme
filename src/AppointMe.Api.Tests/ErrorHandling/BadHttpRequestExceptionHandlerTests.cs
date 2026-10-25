@@ -35,7 +35,8 @@ public class BadHttpRequestExceptionHandlerTests
             CancellationToken.None);
 
         context.Response.Body.Position = 0;
-        using var problem = await JsonDocument.ParseAsync(context.Response.Body);
+        using var problem = await JsonDocument.ParseAsync(context.Response.Body,
+            cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(400, problem.RootElement.GetProperty("status").GetInt32());
         Assert.Equal("Failed to bind parameter \"int Limit\" from \"abc\".",
             problem.RootElement.GetProperty("detail").GetString());
