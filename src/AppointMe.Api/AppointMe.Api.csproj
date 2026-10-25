@@ -63,6 +63,16 @@
     <ProjectReference Include="..\Booking\AppointMe.Booking\AppointMe.Booking.csproj" />
   </ItemGroup>
 
+  <!-- The package regenerates the document only when AppointMe.Api.dll changes, but the endpoints live in
+       the modules, and a change inside a method body (a route, a status code, an authorization rule)
+       rebuilds a module without rebuilding this assembly. Drop the package's up-to-date marker whenever a
+       referenced project's assembly is newer than it. -->
+  <Target Name="InvalidateOpenApiDocumentsOnReferenceChange" BeforeTargets="GenerateOpenApiDocuments"
+          Inputs="@(ReferencePath->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))"
+          Outputs="$(_OpenApiDocumentsCache)">
+    <Delete Files="$(_OpenApiDocumentsCache)" />
+  </Target>
+
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <Compile Remove="Internal\Generated\**\*.cs" />
   </ItemGroup>
