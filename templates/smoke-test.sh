@@ -295,7 +295,7 @@ else
 # counts 0 on both sides can't pass vacuously; source is also asserted against
 # the same literal so a legitimate future change to the domain code surfaces
 # here as a deliberate "update this baseline" edit rather than silent drift.
-EXPECTED_APPOINTMENT=809
+EXPECTED_APPOINTMENT=810
 SRC_APPOINTMENT="$(grep -rIoh "Appointment" "$REPO_ROOT/src" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist | wc -l | tr -d ' ')"
 GEN_APPOINTMENT="$(grep -rIoh "Appointment" "$GEN_DIR/src" --exclude-dir=node_modules --exclude-dir=obj --exclude-dir=bin --exclude-dir=dist | wc -l | tr -d ' ')"
 if [[ "$SRC_APPOINTMENT" != "$EXPECTED_APPOINTMENT" ]]; then
@@ -427,7 +427,7 @@ count_appointment_paths() {
   ( cd "$1/src" && find . -type d \( -name bin -o -name obj -o -name node_modules -o -name dist \) -prune -o -type f -print ) \
     | grep -ic "appointment" || true
 }
-EXPECTED_APPOINTMENT_PATHS=65
+EXPECTED_APPOINTMENT_PATHS=64
 SRC_PATHS="$(count_appointment_paths "$REPO_ROOT")"
 GEN_PATHS="$(count_appointment_paths "$GEN_DIR")"
 if [[ "$SRC_PATHS" != "$EXPECTED_APPOINTMENT_PATHS" ]]; then

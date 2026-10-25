@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   component updated to its Recharts 3 version. `react-is` is now an explicit dependency
   pinned to the React version, as Recharts requires; the version npm picked on its own was
   React 18's. Charts gain Recharts 3's keyboard-accessible layer by default.
+- **FullCalendar 7** for the appointments calendar. Styling moves from the `fc-*` CSS overrides,
+  which v7 no longer supports, to FullCalendar's shadcn theme component
+  (`components/ui/event-calendar-views.tsx`) plus a few overrides that keep the existing
+  look. The now-indicator line also shows in dark mode now. Named time zones resolve
+  through Temporal, so `@fullcalendar/luxon3` and `luxon` are gone, and the toolbar drives
+  the calendar through `useCalendarController`.
 - **TanStack Table 9** for the Customers and Team tables. The shared `DataTable` components
   are typed against one `dataTableFeatures` set (row selection, column visibility, manual
   pagination), registered explicitly so only those features are bundled.

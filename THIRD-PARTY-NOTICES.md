@@ -44,7 +44,7 @@ against it imposes no such obligation.
 
 | License | Components |
 |---|---|
-| **MIT** | React & React-DOM, Vite, Tailwind CSS, Radix UI (`@radix-ui/*`), TanStack (Query / Table / Pacer / Hotkeys), FullCalendar standard plugins (`@fullcalendar/*`), axios, Luxon, Zod, Recharts, react-hook-form, react-router-dom, sonner, clsx, class-variance-authority, tailwind-merge, nuqs, cmdk, vaul, embla-carousel, next-themes, orval, Vite+ (bundles Oxlint, Oxfmt, Vitest) |
+| **MIT** | React & React-DOM, Vite, Tailwind CSS, Radix UI (`@radix-ui/*`), TanStack (Query / Table / Pacer / Hotkeys), FullCalendar (`@fullcalendar/react`, `@fullcalendar/core`, `@full-ui/headless-calendar`), axios, Zod, Recharts, react-hook-form, react-router-dom, sonner, clsx, class-variance-authority, tailwind-merge, nuqs, cmdk, vaul, embla-carousel, next-themes, orval, Vite+ (bundles Oxlint, Oxfmt, Vitest) |
 | **Apache-2.0** | TypeScript |
 | **ISC** | lucide-react |
 

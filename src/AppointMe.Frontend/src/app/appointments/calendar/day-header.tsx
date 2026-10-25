@@ -1,8 +1,12 @@
 import { FormattedDate } from '@/components/format';
 import { cn } from '@/lib/utils';
-import type { DayHeaderContentArg } from '@fullcalendar/core';
+import type { DayHeaderInfo } from '@fullcalendar/react';
 
-export const DayHeader = ({ arg }: { arg: DayHeaderContentArg }) => {
+export const DayHeader = ({ arg }: { arg: DayHeaderInfo }) => {
+    if (arg.inPopover) {
+        return <FormattedDate date={arg.date} format='weekdayDayMonthShort' className='text-xs font-medium' />;
+    }
+
     if (arg.view.type === 'dayGridMonth') {
         return (
             <FormattedDate

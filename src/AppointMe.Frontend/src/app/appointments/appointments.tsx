@@ -7,17 +7,22 @@ import { AppointmentDto } from '@/api/client.schemas';
 import { useTimeZone } from '@/components/format';
 import { useModalDialog } from '@/components/modal-dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
-import type { DateSelectArg, DatesSetArg, EventClickArg, EventDropArg } from '@fullcalendar/core';
-import type { EventResizeDoneArg } from '@fullcalendar/interaction';
-import FullCalendar from '@fullcalendar/react';
+import {
+    type DateSelectInfo,
+    type DatesSetInfo,
+    type EventClickInfo,
+    type EventDropInfo,
+    type EventResizeDoneInfo,
+    useCalendarController,
+} from '@fullcalendar/react';
 import { keepPreviousData, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 export const Appointments = () => {
     const modalDialog = useModalDialog();
     const queryClient = useQueryClient();
-    const calendarRef = useRef<FullCalendar>(null);
+    const calendarController = useCalendarController();
     const timeZone = useTimeZone();
     const isMobile = useIsMobile();
     const initialView: ViewKey = isMobile ? 'day' : 'week';
@@ -31,7 +36,7 @@ export const Appointments = () => {
         query: { enabled: dateRange !== null, placeholderData: keepPreviousData },
     });
 
-    const handleDatesSet = useCallback(({ start, end }: DatesSetArg) => {
+    const handleDatesSet = useCallback(({ start, end }: DatesSetInfo) => {
         queueMicrotask(() => setDateRange({ From: start.toISOString(), To: end.toISOString() }));
     }, []);
 
@@ -55,12 +60,12 @@ export const Appointments = () => {
         [modalDialog, invalidateAppointments],
     );
 
-    const handleSelect = async (info: DateSelectArg) => {
-        calendarRef.current?.getApi().unselect();
+    const handleSelect = async (info: DateSelectInfo) => {
+        info.view.calendar.unselect();
         await openScheduleDialog({ start: info.start, end: info.end });
     };
 
-    const handleEventClick = (info: EventClickArg) => {
+    const handleEventClick = (info: EventClickInfo) => {
         const appointment = info.event.extendedProps as AppointmentDto;
         setPreview({ appointment, x: info.jsEvent.clientX, y: info.jsEvent.clientY });
     };
@@ -76,7 +81,7 @@ export const Appointments = () => {
         return rescheduled;
     };
 
-    const handleEventChange = async (info: EventDropArg | EventResizeDoneArg) => {
+    const handleEventChange = async (info: EventDropInfo | EventResizeDoneInfo) => {
         const appointment = info.event.extendedProps as AppointmentDto;
         if (appointment.status === 'Cancelled' || !info.event.start || !info.event.end) {
             info.revert();
@@ -122,15 +127,15 @@ export const Appointments = () => {
             <CalendarToolbar
                 initialView={initialView}
                 range={dateRange && { start: dateRange.From, end: dateRange.To }}
-                onToday={() => calendarRef.current?.getApi().today()}
-                onPrev={() => calendarRef.current?.getApi().prev()}
-                onNext={() => calendarRef.current?.getApi().next()}
-                onViewChange={next => calendarRef.current?.getApi().changeView(VIEW_MAP[next])}
+                onToday={() => calendarController.today()}
+                onPrev={() => calendarController.prev()}
+                onNext={() => calendarController.next()}
+                onViewChange={next => calendarController.changeView(VIEW_MAP[next])}
                 onNew={() => openScheduleDialog()}
             />
             <div className='min-h-0 flex-1'>
                 <Calendar
-                    ref={calendarRef}
+                    controller={calendarController}
                     initialView={initialView}
                     timeZone={timeZone}
                     events={events}

@@ -1,7 +1,7 @@
 import { AppointmentDto } from '@/api/client.schemas';
 import { FormattedDate } from '@/components/format';
 import { cn } from '@/lib/utils';
-import type { EventContentArg } from '@fullcalendar/core';
+import type { EventDisplayInfo } from '@fullcalendar/react';
 import { cva } from 'class-variance-authority';
 import { StickyNoteIcon } from 'lucide-react';
 
@@ -30,7 +30,7 @@ const attendeeStrikeVariants = cva('', {
     },
 });
 
-export const AppointmentContent = ({ arg }: { arg: EventContentArg }) => {
+export const AppointmentContent = ({ arg }: { arg: EventDisplayInfo }) => {
     const appointment = arg.event.extendedProps as AppointmentDto;
     const status = appointment.status === 'Cancelled' ? 'cancelled' : 'scheduled';
 

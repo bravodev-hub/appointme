@@ -21,6 +21,7 @@ export * from './data-table-pagination';
 export * from './data-table-view-options';
 export * from './dialog';
 export * from './drawer';
+export * from './event-calendar-views';
 export * from './dropdown-menu';
 export * from './empty';
 export * from './field';
