@@ -1,11 +1,11 @@
 ---
 name: regenerate-api
-description: Regenerate the AppointMe frontend API client (orval/TanStack Query hooks + TypeScript schemas) after the backend OpenAPI surface changes. Use this whenever backend endpoints, request/response DTOs, or other contract-affecting types are added, removed, or modified — e.g. after editing files under src/AppointMe.Api, *Endpoint.cs, *Request.cs, *Response.cs, or anything else that affects the OpenAPI document. The skill runs `npm run generate:api` (which builds the API, writing src/AppointMe.Api/openapi.json, then runs orval) and reports the diff on the spec and on src/api/.
+description: Regenerate the AppointMe frontend API client (orval/TanStack Query hooks + TypeScript schemas) after the backend OpenAPI surface changes. Use this whenever backend endpoints, request/response DTOs, or other contract-affecting types are added, removed, or modified — e.g. after editing files under src/AppointMe.Api, *Endpoint.cs, *Request.cs, *Response.cs, or anything else that affects the OpenAPI document. The skill runs `npm run generate:api` (which builds the API, writing its obj/openapi.json, then runs orval) and reports the diff on src/api/.
 ---
 
 # regenerate-api
 
-Regenerate `src/AppointMe.Frontend/src/api/client.ts` and `client.schemas.ts` from the build-time OpenAPI document. No running backend is needed: `npm run generate:api` builds `AppointMe.Api`, whose build writes `src/AppointMe.Api/openapi.json` (via `Microsoft.Extensions.ApiDescription.Server`), and then runs orval against that file. Orval uses `clean: true`, so the generated files are fully overwritten on each run.
+Regenerate `src/AppointMe.Frontend/src/api/client.ts` and `client.schemas.ts` from the build-time OpenAPI document. No running backend is needed: `npm run generate:api` builds `AppointMe.Api`, whose build writes `src/AppointMe.Api/obj/openapi.json` (via `Microsoft.Extensions.ApiDescription.Server`; a build artifact, never committed), and then runs orval against that file. Orval uses `clean: true`, so the generated files are fully overwritten on each run.
 
 ## When to use
 
@@ -28,7 +28,7 @@ Do **not** invoke it for backend-only changes that don't touch the contract (int
 ### 1. Capture the pre-state
 
 ```bash
-git status --short src/AppointMe.Api/openapi.json src/AppointMe.Frontend/src/api/
+git status --short src/AppointMe.Frontend/src/api/
 ```
 
 ### 2. Build the spec and regenerate the client
@@ -47,10 +47,10 @@ Watch for:
 ### 3. Report the diff and follow-ups
 
 ```bash
-git diff --stat src/AppointMe.Api/openapi.json src/AppointMe.Frontend/src/api/
+git diff --stat src/AppointMe.Frontend/src/api/
 ```
 
-The spec diff is the contract change; the `src/api/` diff is what it means for the frontend. An empty spec diff after a contract-affecting edit means the change isn't visible in the OpenAPI document — investigate before going on.
+The `src/api/` diff is the contract change as reviewers see it. An empty diff after a contract-affecting edit means the change isn't visible in the OpenAPI document — inspect `src/AppointMe.Api/obj/openapi.json` before going on.
 
 Then check whether existing call sites still type-check against the new client:
 
@@ -65,8 +65,7 @@ If it reports errors, those are **call sites that need updating to match the new
 ## Known pitfalls
 
 - **Build-time generation runs the app's startup.** The `GenerateOpenApiDocuments` build step launches `Program.cs` against a mock server and starts the host. `CodeGenerationDetection.IsRunningGeneration()` detects this run (as it does Wolverine's `codegen` command): the app then uses the `Codegen` environment (placeholder settings in `appsettings.Codegen.json`), skips Hangfire and the database migrations, and runs Wolverine as an in-memory mediator. New startup code that needs real configuration, a database, or another service must be gated the same way, or the build fails.
-- **Commit `openapi.json` with the client.** It is the source the client was generated from, and its diff is the reviewable contract change.
-- **Orval alone**: `npx orval` regenerates from the committed spec without building — only useful when the spec is already current.
+- **Orval alone**: `npx orval` regenerates from the last build's `obj/openapi.json` without building — only useful when that build is current.
 - **Don't hand-edit `src/api/client.ts` or `src/api/client.schemas.ts`** — orval's `clean: true` mode deletes them on each run.
 - **Mutator path**: the generated client imports `apiClient` from `src/lib/axios.ts`. If you ever change that path, update `orval.config.ts` too.
 - **The runtime document still exists**: `https://localhost:7233/openapi/v1.json` serves the same contract in Development (plus a `servers` entry from the request host); the client is no longer generated from it.

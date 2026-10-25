@@ -12,14 +12,14 @@ npm run build             # vp build — production bundle only, no type-check
 npm run check             # vp check — format check + Oxlint + type-check in one pass; what CI runs
 npm run lint              # vp lint — Oxlint + type-check
 npm run format            # vp fmt — Oxfmt; `npx vp check --fix` also applies lint autofixes
-npm run generate:api      # Build AppointMe.Api (writes openapi.json), then regenerate the API client
+npm run generate:api      # Build AppointMe.Api (writes its obj/openapi.json), then regenerate the API client
 ```
 
 **Type-checking** runs inside `vp lint` / `vp check` via tsgolint (TypeScript 7), enabled by `lint.options.typeCheck` in `vite.config.ts`. It follows the root `tsconfig.json` references, so it covers app and config sources. Type-check only: `npx vp check --no-fmt --no-lint`. TypeScript 6 stays installed for editor tooling; `npx tsc -b` still works but no script runs it.
 
 Lint and format config both live in `vite.config.ts` (`lint` and `fmt` blocks) — there is no `eslint.config.js` or `.prettierrc`.
 
-**API regeneration**: `npm run generate:api` builds `AppointMe.Api` in Release (so it doesn't collide with an API Aspire is running from `bin/Debug`), whose build writes `../AppointMe.Api/openapi.json`, and then runs orval against that file. It needs the .NET SDK but no running backend. `npx orval` alone regenerates from the committed spec. See the `/regenerate-api` skill.
+**API regeneration**: `npm run generate:api` builds `AppointMe.Api` in Release (so it doesn't collide with an API Aspire is running from `bin/Debug`), whose build writes `../AppointMe.Api/obj/openapi.json` (a build artifact, not committed), and then runs orval against that file. It needs the .NET SDK but no running backend. See the `/regenerate-api` skill.
 
 ## Architecture
 

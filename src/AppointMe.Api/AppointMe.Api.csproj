@@ -3,8 +3,9 @@
   <PropertyGroup>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <!-- Build-time OpenAPI document (Microsoft.Extensions.ApiDescription.Server): every build writes
-         openapi.json next to this project file, and the frontend's orval generates the API client from it. -->
-    <OpenApiDocumentsDirectory>.</OpenApiDocumentsDirectory>
+         obj/openapi.json (a build artifact, never committed), and the frontend's orval generates the API
+         client from it. -->
+    <OpenApiDocumentsDirectory>obj</OpenApiDocumentsDirectory>
     <OpenApiGenerateDocumentsOptions>--file-name openapi</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
 

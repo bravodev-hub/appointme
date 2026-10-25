@@ -3,7 +3,7 @@ import { defineConfig } from 'orval';
 export default defineConfig({
     appointme: {
         input: {
-            target: '../AppointMe.Api/openapi.json',
+            target: '../AppointMe.Api/obj/openapi.json',
         },
         output: {
             target: './src/api/client.ts',
