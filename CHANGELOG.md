@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   component updated to its Recharts 3 version. `react-is` is now an explicit dependency
   pinned to the React version, as Recharts requires; the version npm picked on its own was
   React 18's. Charts gain Recharts 3's keyboard-accessible layer by default.
+- **The OpenAPI document is generated at build time.** Every `dotnet build` of the API writes
+  `src/AppointMe.Api/openapi.json` (committed), and `npm run generate:api` builds the client
+  from that file, so regenerating no longer needs a running backend or the TLS workaround.
+  The build step runs the app's startup in the `Codegen` environment with no database and
+  Wolverine as an in-memory mediator; the shipped Wolverine handler code is generated as
+  before.
 - **FullCalendar 7** for the appointments calendar. Styling moves from the `fc-*` CSS overrides,
   which v7 no longer supports, to FullCalendar's shadcn theme component
   (`components/ui/event-calendar-views.tsx`) plus a few overrides that keep the existing

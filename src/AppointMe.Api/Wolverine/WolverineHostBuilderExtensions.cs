@@ -34,6 +34,14 @@ public static class HostBuilderExtensions
                     ? TypeLoadMode.Dynamic
                     : TypeLoadMode.Static;
 
+                // Build-time OpenAPI generation starts the host with no database and no pre-built handler types.
+                // Never for the `codegen` command: its output ships, so it must see the real configuration.
+                if (CodeGenerationDetection.IsGeneratingOpenApiDocument())
+                {
+                    options.Durability.Mode = DurabilityMode.MediatorOnly;
+                    options.CodeGeneration.TypeLoadMode = TypeLoadMode.Dynamic;
+                }
+
                 options.ServiceLocationPolicy = ServiceLocationPolicy.AlwaysAllowed;
 
                 options.Durability.MessageStorageSchemaName = "wolverine";

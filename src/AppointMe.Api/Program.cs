@@ -17,13 +17,20 @@ using AppointMe.Crm.Configuration;
 using AppointMe.Identity.Configuration;
 using AppointMe.Organizations.Configuration;
 using AppointMe.Shared.Configuration;
+using AppointMe.Shared.Database.Migrations;
 using AppointMe.Shared.Endpoints;
 using JasperFx;
 using Microsoft.AspNetCore.HttpOverrides;
 
-var builder = WebApplication.CreateBuilder(args);
-
 var isCodegen = CodeGenerationDetection.IsRunningGeneration();
+
+// Code-generation runs (Wolverine's `codegen` command and the build-time OpenAPI document) boot the app without its
+// real configuration; the Codegen environment's appsettings.Codegen.json supplies placeholder values.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    EnvironmentName = isCodegen ? "Codegen" : null,
+});
 
 builder.Services
     .AddAppointMeErrorHandling()
@@ -47,6 +54,12 @@ builder.Services
     .AddOrganizationsModule()
     .AddCrmModule()
     .AddBookingModule();
+
+if (isCodegen)
+{
+    // Build-time OpenAPI generation starts the host; it must not reach for the database.
+    builder.Services.DisableDatabaseMigrations();
+}
 
 builder.Services.AddDemoMode(builder.Configuration);
 

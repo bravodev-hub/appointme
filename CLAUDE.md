@@ -25,12 +25,14 @@ npm run build        # Production build (vp build)
 npm run check        # Format check + lint + type-check in one pass (vp check) — what CI runs
 npm run lint         # Oxlint + type-check (vp lint)
 npm run format       # Oxfmt (vp fmt)
-npm run generate:api # Regenerate API client from OpenAPI spec (see /regenerate-api skill)
+npm run generate:api # Regenerate API client from src/AppointMe.Api/openapi.json (see /regenerate-api skill)
 ```
 
 ### Regenerating the frontend API client after backend contract changes
 
-After any change that alters the OpenAPI surface — new/renamed/removed endpoint, changed `*Request.cs`/`*Response.cs` shape, changed route or HTTP verb, changed auth/permission attributes on an endpoint — invoke the `/regenerate-api` skill **in the same task**. It waits for the API to be reachable on `https://localhost:7233`, runs `npm run generate:api`, and reports the diff on `src/AppointMe.Frontend/src/api/`. The backend must be restarted (Aspire dashboard → restart `appointme-api`, or relaunch `dotnet run` in `src/AppointMe.Aspire`) so orval reads the new contract — a reachable-but-stale backend silently produces a stale client.
+After any change that alters the OpenAPI surface — new/renamed/removed endpoint, changed `*Request.cs`/`*Response.cs` shape, changed route or HTTP verb, changed auth/permission attributes on an endpoint — invoke the `/regenerate-api` skill **in the same task**. It builds `AppointMe.Api`, which writes the OpenAPI document to `src/AppointMe.Api/openapi.json` at build time, runs `npm run generate:api` (orval reads that file; no running backend needed), and reports the diff on the spec and on `src/AppointMe.Frontend/src/api/`. Commit `openapi.json` together with the regenerated client.
+
+The build-time step runs the app's startup in the `Codegen` environment (`appsettings.Codegen.json` placeholders, no database, Wolverine as an in-memory mediator); see `CodeGenerationDetection`. Startup code that needs real infrastructure must be gated on it, or `dotnet build` fails.
 
 Do **not** invoke `/regenerate-api` for backend-only changes that don't affect the contract (internal handlers, domain events, EF config, migrations, tests).
 

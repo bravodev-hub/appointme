@@ -10,7 +10,7 @@
         "lint": "vp lint .",
         "format": "vp fmt",
         "preview": "vp preview",
-        "generate:api": "NODE_DEBUG=undici export NODE_TLS_REJECT_UNAUTHORIZED=0 && orval"
+        "generate:api": "orval"
     },
     "engines": {
         "node": "^22.18.0 || ^24.11.0 || >=26.0.0"

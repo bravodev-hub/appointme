@@ -1,0 +1,2211 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "AppointMe.Api | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/signup": {
+      "post": {
+        "tags": [
+          "SignupEndpoint"
+        ],
+        "operationId": "Signup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/logout": {
+      "post": {
+        "tags": [
+          "LogoutEndpoint"
+        ],
+        "operationId": "Logout",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/login": {
+      "get": {
+        "tags": [
+          "LoginEndpoint"
+        ],
+        "operationId": "Login",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "returnUrl",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "/"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/me/access": {
+      "get": {
+        "tags": [
+          "GetCurrentUserAccessEndpoint"
+        ],
+        "operationId": "GetCurrentUserAccess",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCurrentUserAccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/permissions": {
+      "patch": {
+        "tags": [
+          "UpdatePermissionsEndpoint"
+        ],
+        "operationId": "UpdatePermissions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePermissionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "GetPermissionsEndpoint"
+        ],
+        "operationId": "GetPermissions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPermissionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/permissions/overrides": {
+      "delete": {
+        "tags": [
+          "ResetPermissionsEndpoint"
+        ],
+        "operationId": "ResetPermissions",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "GetCurrentUserEndpoint"
+        ],
+        "operationId": "GetCurrentUser",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCurrentUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/{id}/resend": {
+      "post": {
+        "tags": [
+          "ResendInvitationEndpoint"
+        ],
+        "operationId": "ResendInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/invitations": {
+      "post": {
+        "tags": [
+          "InviteEmployeeEndpoint"
+        ],
+        "operationId": "InviteEmployee",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteEmployeeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteEmployeeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/pending": {
+      "get": {
+        "tags": [
+          "GetPendingInvitationsEndpoint"
+        ],
+        "operationId": "GetPendingInvitations",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPendingInvitationsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/{id}": {
+      "delete": {
+        "tags": [
+          "CancelInvitationEndpoint"
+        ],
+        "operationId": "CancelInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/{id}/accept": {
+      "post": {
+        "tags": [
+          "AcceptInvitationEndpoint"
+        ],
+        "operationId": "AcceptInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/employees/{id}/roles": {
+      "put": {
+        "tags": [
+          "UpdateEmployeeRolesEndpoint"
+        ],
+        "operationId": "UpdateRoles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmployeeRolesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/team": {
+      "get": {
+        "tags": [
+          "GetTeamEndpoint"
+        ],
+        "operationId": "GetTeam",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTeamResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/employees/{id}": {
+      "delete": {
+        "tags": [
+          "DeleteEmployeeEndpoint"
+        ],
+        "operationId": "DeleteEmployee",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/onboarding": {
+      "post": {
+        "tags": [
+          "OnboardingEndpoint"
+        ],
+        "operationId": "Onboarding",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customers/{id}": {
+      "put": {
+        "tags": [
+          "UpdateCustomerEndpoint"
+        ],
+        "operationId": "UpdateCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "GetCustomerByIdEndpoint"
+        ],
+        "operationId": "GetCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "DeleteCustomerEndpoint"
+        ],
+        "operationId": "DeleteCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/customers": {
+      "post": {
+        "tags": [
+          "RegisterCustomerEndpoint"
+        ],
+        "operationId": "RegisterCustomer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterCustomerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterCustomerResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "GetCustomersEndpoint"
+        ],
+        "operationId": "GetCustomers",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCustomersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/crm/dashboard/new-customers": {
+      "get": {
+        "tags": [
+          "GetNewCustomerStatsEndpoint"
+        ],
+        "operationId": "GetNewCustomerStats",
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "CompareFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "CompareTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "Bucket",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "TimeZone",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetNewCustomerStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/booking/service-providers": {
+      "get": {
+        "tags": [
+          "GetServiceProvidersEndpoint"
+        ],
+        "operationId": "GetServiceProviders",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceProviderDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/booking/dashboard/peak-hours": {
+      "get": {
+        "tags": [
+          "GetPeakHoursEndpoint"
+        ],
+        "operationId": "GetPeakHours",
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "TimeZone",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetPeakHoursResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/booking/dashboard/stats": {
+      "get": {
+        "tags": [
+          "GetDashboardStatsEndpoint"
+        ],
+        "operationId": "GetDashboardStats",
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "CompareFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "CompareTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "Bucket",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "TimeZone",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetDashboardStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appointments": {
+      "post": {
+        "tags": [
+          "ScheduleAppointmentEndpoint"
+        ],
+        "operationId": "ScheduleAppointment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleAppointmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAppointmentResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "GetAppointmentsEndpoint"
+        ],
+        "operationId": "GetAppointments",
+        "parameters": [
+          {
+            "name": "From",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AppointmentDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appointments/{id}/reschedule": {
+      "put": {
+        "tags": [
+          "RescheduleAppointmentEndpoint"
+        ],
+        "operationId": "RescheduleAppointment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RescheduleAppointmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/appointments/{id}": {
+      "get": {
+        "tags": [
+          "GetAppointmentByIdEndpoint"
+        ],
+        "operationId": "GetAppointment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appointments/{id}/cancel": {
+      "post": {
+        "tags": [
+          "CancelAppointmentEndpoint"
+        ],
+        "operationId": "CancelAppointment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AppointmentDto": {
+        "required": [
+          "id",
+          "start",
+          "end",
+          "status",
+          "providerId",
+          "attendeeId",
+          "scheduledAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
+          },
+          "providerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "providerFirstName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerLastName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "providerInitials": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "attendeeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attendeeFirstName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "attendeeLastName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "attendeeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "attendeeInitials": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AppointmentStatus": {
+        "enum": [
+          "Scheduled",
+          "Cancelled"
+        ]
+      },
+      "CompanyMembership": {
+        "required": [
+          "companyId",
+          "companyName",
+          "timeZone"
+        ],
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          }
+        }
+      },
+      "CustomerDto": {
+        "required": [
+          "id",
+          "fullName",
+          "firstName",
+          "initials",
+          "registrationDate"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "initials": {
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "gender": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Gender"
+              }
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "registrationDate": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Gender": {
+        "enum": [
+          "Male",
+          "Female",
+          "Other",
+          null
+        ]
+      },
+      "GetCurrentUserAccessResponse": {
+        "required": [
+          "companyId",
+          "roles",
+          "permissions"
+        ],
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "GetCurrentUserResponse": {
+        "required": [
+          "isAuthenticated"
+        ],
+        "type": "object",
+        "properties": {
+          "isAuthenticated": {
+            "type": "boolean"
+          },
+          "userId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "initials": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "hasPendingInvitations": {
+            "type": "boolean"
+          },
+          "companies": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/CompanyMembership"
+            }
+          },
+          "hasMembership": {
+            "type": "boolean"
+          },
+          "isSuperAdmin": {
+            "type": "boolean"
+          }
+        }
+      },
+      "GetCustomersResponse": {
+        "required": [
+          "customers"
+        ],
+        "type": "object",
+        "properties": {
+          "customers": {
+            "$ref": "#/components/schemas/PagedResultOfCustomerDto"
+          }
+        }
+      },
+      "GetDashboardStatsResponse": {
+        "required": [
+          "appointments",
+          "compareAppointments",
+          "bookedMinutes",
+          "compareBookedMinutes",
+          "capacityMinutes",
+          "utilizationPercent",
+          "compareUtilizationPercent",
+          "returningAppointments",
+          "returningClientRatePercent",
+          "compareReturningClientRatePercent",
+          "trendBuckets",
+          "compareTrendBuckets",
+          "staffLoad"
+        ],
+        "type": "object",
+        "properties": {
+          "appointments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "compareAppointments": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "bookedMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "compareBookedMinutes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "utilizationPercent": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "compareUtilizationPercent": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "returningAppointments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "returningClientRatePercent": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "compareReturningClientRatePercent": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "trendBuckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendBucketDto"
+            }
+          },
+          "compareTrendBuckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrendBucketDto"
+            }
+          },
+          "staffLoad": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffLoadDto"
+            }
+          }
+        }
+      },
+      "GetNewCustomerStatsResponse": {
+        "required": [
+          "total",
+          "compareTotal",
+          "buckets",
+          "compareBuckets"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "compareTotal": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewCustomerBucketDto"
+            }
+          },
+          "compareBuckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NewCustomerBucketDto"
+            }
+          }
+        }
+      },
+      "GetPeakHoursResponse": {
+        "required": [
+          "days"
+        ],
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeakHoursDayDto"
+            }
+          }
+        }
+      },
+      "GetPendingInvitationsResponse": {
+        "required": [
+          "invitations"
+        ],
+        "type": "object",
+        "properties": {
+          "invitations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingInvitationDto"
+            }
+          }
+        }
+      },
+      "GetPermissionsResponse": {
+        "required": [
+          "roles",
+          "groups"
+        ],
+        "type": "object",
+        "properties": {
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleDefinitionDto"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionGroupDto"
+            }
+          }
+        }
+      },
+      "GetTeamResponse": {
+        "required": [
+          "members"
+        ],
+        "type": "object",
+        "properties": {
+          "members": {
+            "$ref": "#/components/schemas/PagedResultOfTeamMemberDto"
+          }
+        }
+      },
+      "InviteEmployeeRequest": {
+        "required": [
+          "email",
+          "roles"
+        ],
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        }
+      },
+      "InviteEmployeeResponse": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "NewCustomerBucketDto": {
+        "required": [
+          "bucketStart",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "bucketStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "OnboardingRequest": {
+        "required": [
+          "companyName",
+          "timeZone"
+        ],
+        "type": "object",
+        "properties": {
+          "companyName": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          }
+        }
+      },
+      "OnboardingResponse": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "PagedResultOfCustomerDto": {
+        "required": [
+          "items",
+          "totalCount",
+          "page",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerDto"
+            }
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfTeamMemberDto": {
+        "required": [
+          "items",
+          "totalCount",
+          "page",
+          "limit"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberDto"
+            }
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PeakHoursDayDto": {
+        "required": [
+          "isoWeekday",
+          "hourlyAverages"
+        ],
+        "type": "object",
+        "properties": {
+          "isoWeekday": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hourlyAverages": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        }
+      },
+      "PendingInvitationDto": {
+        "required": [
+          "id",
+          "companyId",
+          "companyName",
+          "roles",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Permission": {
+        "required": [
+          "resource",
+          "action"
+        ],
+        "enum": [
+          "permissions:view",
+          "permissions:manage",
+          "invitations:resend",
+          "invitations:cancel",
+          "employees:view",
+          "employees:invite",
+          "employees:remove",
+          "employees:update_roles",
+          "employees:manage_owners",
+          "customers:view",
+          "customers:create",
+          "customers:update",
+          "customers:delete",
+          "customers.statistics:view",
+          "appointments:view",
+          "appointments:schedule",
+          "appointments:reschedule",
+          "appointments:cancel",
+          "appointments.statistics:view"
+        ],
+        "type": "string",
+        "properties": {
+          "resource": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "code": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PermissionDto": {
+        "required": [
+          "key",
+          "grants"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "grants": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PermissionGrantDto"
+            }
+          }
+        }
+      },
+      "PermissionGrantDto": {
+        "required": [
+          "isGranted",
+          "isOverridden"
+        ],
+        "type": "object",
+        "properties": {
+          "isGranted": {
+            "type": "boolean"
+          },
+          "isOverridden": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PermissionGroupDto": {
+        "required": [
+          "name",
+          "permissions"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionDto"
+            }
+          }
+        }
+      },
+      "RegisterCustomerRequest": {
+        "required": [
+          "firstName"
+        ],
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dateOfBirth": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "gender": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "RegisterCustomerResponse": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "RescheduleAppointmentRequest": {
+        "required": [
+          "providerId",
+          "start",
+          "end"
+        ],
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Role": {
+        "enum": [
+          "Owner",
+          "Manager",
+          "Staff",
+          "Receptionist"
+        ],
+        "type": "string"
+      },
+      "RoleDefinitionDto": {
+        "required": [
+          "role",
+          "allowsPermissionOverrides"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "allowsPermissionOverrides": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RolePermissionGrantDto": {
+        "required": [
+          "permissionKey",
+          "role",
+          "isGranted"
+        ],
+        "type": "object",
+        "properties": {
+          "permissionKey": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "isGranted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ScheduleAppointmentRequest": {
+        "required": [
+          "providerId",
+          "attendeeId",
+          "start",
+          "end"
+        ],
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "attendeeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ScheduleAppointmentResponse": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ServiceProviderDto": {
+        "required": [
+          "id"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "firstName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SignupRequest": {
+        "required": [
+          "name",
+          "email"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "StaffLoadDto": {
+        "required": [
+          "providerId",
+          "name",
+          "bookings",
+          "bookedMinutes",
+          "capacityMinutes"
+        ],
+        "type": "object",
+        "properties": {
+          "providerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "bookings": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bookedMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "capacityMinutes": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "TeamMemberDto": {
+        "required": [
+          "id",
+          "email",
+          "roles",
+          "type",
+          "registrationDate"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "firstName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "initials": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          },
+          "type": {
+            "$ref": "#/components/schemas/TeamMemberType"
+          },
+          "registrationDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "isCurrentUser": {
+            "type": "boolean"
+          },
+          "isPrimaryOwner": {
+            "type": "boolean"
+          },
+          "lockedRoles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        }
+      },
+      "TeamMemberType": {
+        "enum": [
+          "Employee",
+          "Invitation"
+        ]
+      },
+      "TrendBucketDto": {
+        "required": [
+          "bucketStart",
+          "appointments",
+          "cancellations"
+        ],
+        "type": "object",
+        "properties": {
+          "bucketStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "appointments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cancellations": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "UpdateCustomerRequest": {
+        "required": [
+          "firstName"
+        ],
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dateOfBirth": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "gender": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "UpdateEmployeeRolesRequest": {
+        "required": [
+          "roles"
+        ],
+        "type": "object",
+        "properties": {
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        }
+      },
+      "UpdatePermissionsRequest": {
+        "required": [
+          "grants"
+        ],
+        "type": "object",
+        "properties": {
+          "grants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RolePermissionGrantDto"
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "SignupEndpoint"
+    },
+    {
+      "name": "LogoutEndpoint"
+    },
+    {
+      "name": "LoginEndpoint"
+    },
+    {
+      "name": "GetCurrentUserAccessEndpoint"
+    },
+    {
+      "name": "UpdatePermissionsEndpoint"
+    },
+    {
+      "name": "GetPermissionsEndpoint"
+    },
+    {
+      "name": "ResetPermissionsEndpoint"
+    },
+    {
+      "name": "GetCurrentUserEndpoint"
+    },
+    {
+      "name": "ResendInvitationEndpoint"
+    },
+    {
+      "name": "InviteEmployeeEndpoint"
+    },
+    {
+      "name": "GetPendingInvitationsEndpoint"
+    },
+    {
+      "name": "CancelInvitationEndpoint"
+    },
+    {
+      "name": "AcceptInvitationEndpoint"
+    },
+    {
+      "name": "UpdateEmployeeRolesEndpoint"
+    },
+    {
+      "name": "GetTeamEndpoint"
+    },
+    {
+      "name": "DeleteEmployeeEndpoint"
+    },
+    {
+      "name": "OnboardingEndpoint"
+    },
+    {
+      "name": "UpdateCustomerEndpoint"
+    },
+    {
+      "name": "GetCustomerByIdEndpoint"
+    },
+    {
+      "name": "DeleteCustomerEndpoint"
+    },
+    {
+      "name": "RegisterCustomerEndpoint"
+    },
+    {
+      "name": "GetCustomersEndpoint"
+    },
+    {
+      "name": "GetNewCustomerStatsEndpoint"
+    },
+    {
+      "name": "GetServiceProvidersEndpoint"
+    },
+    {
+      "name": "GetPeakHoursEndpoint"
+    },
+    {
+      "name": "GetDashboardStatsEndpoint"
+    },
+    {
+      "name": "ScheduleAppointmentEndpoint"
+    },
+    {
+      "name": "GetAppointmentsEndpoint"
+    },
+    {
+      "name": "RescheduleAppointmentEndpoint"
+    },
+    {
+      "name": "GetAppointmentByIdEndpoint"
+    },
+    {
+      "name": "CancelAppointmentEndpoint"
+    }
+  ]
+}

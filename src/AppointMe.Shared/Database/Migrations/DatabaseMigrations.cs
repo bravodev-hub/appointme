@@ -64,5 +64,19 @@ public static class DatabaseMigrationsExtensions
 
             return services;
         }
+
+        public IServiceCollection DisableDatabaseMigrations()
+        {
+            services.RemoveAll<DatabaseMigrationService>();
+            var hostedService = services.FirstOrDefault(descriptor =>
+                descriptor.ServiceType == typeof(IHostedService) &&
+                descriptor.ImplementationType == typeof(DatabaseMigrationService));
+            if (hostedService is not null)
+            {
+                services.Remove(hostedService);
+            }
+
+            return services;
+        }
     }
 }

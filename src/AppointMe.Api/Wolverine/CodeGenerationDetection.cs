@@ -7,7 +7,13 @@ public static class CodeGenerationDetection
 {
     public static bool IsRunningGeneration()
     {
-        return Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider"
-               || Environment.GetCommandLineArgs().Contains("codegen");
+        return IsGeneratingOpenApiDocument() || Environment.GetCommandLineArgs().Contains("codegen");
+    }
+
+    // Build-time OpenAPI generation (Microsoft.Extensions.ApiDescription.Server) runs the app under this entry
+    // assembly and starts the host against a mock server.
+    public static bool IsGeneratingOpenApiDocument()
+    {
+        return Assembly.GetEntryAssembly()?.GetName().Name == "GetDocument.Insider";
     }
 }
