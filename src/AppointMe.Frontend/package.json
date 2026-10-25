@@ -10,7 +10,7 @@
         "lint": "vp lint .",
         "format": "vp fmt",
         "preview": "vp preview",
-        "generate:api": "orval"
+        "generate:api": "dotnet build ../AppointMe.Api/AppointMe.Api.csproj -c Release --nologo -v q && orval"
     },
     "engines": {
         "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
