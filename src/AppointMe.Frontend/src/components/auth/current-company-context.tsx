@@ -10,20 +10,14 @@ export const CurrentCompanyProvider = ({ children }: { children: ReactNode }) =>
     const currentCompanyId = useCurrentCompanyId();
 
     const currentCompany = useMemo(() => {
-        return companies?.find(company => company.companyId === currentCompanyId) || companies?.[0];
+        return companies?.find(company => company.companyId === currentCompanyId);
     }, [companies, currentCompanyId]);
 
     useEffect(() => {
-        if (!companies?.length) {
-            return;
-        }
-
-        const isValidCompanyId =
-            currentCompanyId != null && companies.some(company => company.companyId === currentCompanyId);
-        if (!isValidCompanyId) {
+        if (companies?.length && !currentCompany) {
             currentCompanyStore.set(companies[0].companyId);
         }
-    }, [companies, currentCompanyId, currentCompany]);
+    }, [companies, currentCompany]);
 
     const setCurrentCompany = useCallback(
         async (companyId: string) => {

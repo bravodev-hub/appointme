@@ -52,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   into a 500 in Development. A dedicated handler now answers with the exception's own
   status code as ProblemDetails, which also gives Kestrel limits such as an oversized body
   their real status (413) in every environment.
+- **First load no longer starts with a 403.** With no company remembered yet (a new browser)
+  or a remembered company the user no longer belongs to, the app rendered with a fallback
+  company while requests still carried a missing or stale `X-Company-Id`, so `/me/access`
+  failed and was retried about a second later. The app now waits until the selected company
+  is stored before rendering.
 
 ## [1.2.1] — 2026-09-27
 
