@@ -8,6 +8,7 @@ internal static class ErrorHandlingServiceCollectionExtensions
         {
             return services
                 .AddProblemDetails()
+                .AddExceptionHandler<BadHttpRequestExceptionHandler>()
                 .AddExceptionHandler<ValidationExceptionHandler>()
                 .AddExceptionHandler<NotFoundExceptionHandler>()
                 .AddExceptionHandler<ConflictExceptionHandler>()

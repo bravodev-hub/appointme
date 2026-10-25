@@ -41,6 +41,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `dotnet new` renames change the length of every import line that references it, so
   generated projects could fail the now-enforced format check depending on their name.
 
+### Fixed
+
+- **`limit` and `page` are optional again on paginated endpoints** (`/customers`, `/team`).
+  Their defaults were property initializers, which minimal-API `[AsParameters]` binding
+  ignores, so omitting either was a bad request. They now default to 10 and 1, and the
+  generated client types them as optional.
+- **Request binding errors return 400, not 500.** A missing or unparsable parameter or a
+  malformed JSON body raises `BadHttpRequestException`, which the catch-all handler turned
+  into a 500 in Development. A dedicated handler now answers with the exception's own
+  status code as ProblemDetails, which also gives Kestrel limits such as an oversized body
+  their real status (413) in every environment.
+
 ## [1.2.1] — 2026-09-27
 
 A packaging-only follow-up to 1.2.0. The generated project is unchanged.

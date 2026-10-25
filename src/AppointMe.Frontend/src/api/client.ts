@@ -4,7 +4,7 @@
  * AppointMe.Api | v1
  * OpenAPI spec version: 1.0.0
  */
-import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import { queryOptions as queryOptionsBuilder, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import type {
     DataTag,
     DefinedInitialDataOptions,
@@ -84,17 +84,19 @@ export const signup = (signupRequest: SignupRequest, signal?: AbortSignal) => {
     });
 };
 
+export const getSignupMutationKey = () => ['signup'] as const;
+
 export const getSignupMutationOptions = <TError = unknown, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof signup>>, TError, { data: SignupRequest }, TContext>;
-}): UseMutationOptions<Awaited<ReturnType<typeof signup>>, TError, { data: SignupRequest }, TContext> => {
-    const mutationKey = ['signup'];
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof signup>>, TError, SignupMutationVariables, TContext>;
+}): UseMutationOptions<Awaited<ReturnType<typeof signup>>, TError, SignupMutationVariables, TContext> => {
+    const mutationKey = getSignupMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
             : { ...options, mutation: { ...options.mutation, mutationKey } }
         : { mutation: { mutationKey } };
 
-    const mutationFn: MutationFunction<Awaited<ReturnType<typeof signup>>, { data: SignupRequest }> = props => {
+    const mutationFn: MutationFunction<Awaited<ReturnType<typeof signup>>, SignupMutationVariables> = props => {
         const { data } = props ?? {};
 
         return signup(data);
@@ -106,13 +108,14 @@ export const getSignupMutationOptions = <TError = unknown, TContext = unknown>(o
 export type SignupMutationResult = NonNullable<Awaited<ReturnType<typeof signup>>>;
 export type SignupMutationBody = SignupRequest;
 export type SignupMutationError = unknown;
+export type SignupMutationVariables = { data: SignupRequest };
 
 export const useSignup = <TError = unknown, TContext = unknown>(
     options?: {
-        mutation?: UseMutationOptions<Awaited<ReturnType<typeof signup>>, TError, { data: SignupRequest }, TContext>;
+        mutation?: UseMutationOptions<Awaited<ReturnType<typeof signup>>, TError, SignupMutationVariables, TContext>;
     },
     queryClient?: QueryClient,
-): UseMutationResult<Awaited<ReturnType<typeof signup>>, TError, { data: SignupRequest }, TContext> => {
+): UseMutationResult<Awaited<ReturnType<typeof signup>>, TError, SignupMutationVariables, TContext> => {
     return useMutation(getSignupMutationOptions(options), queryClient);
 };
 
@@ -120,10 +123,12 @@ export const logout = (signal?: AbortSignal) => {
     return apiClient<void>({ url: `/api/v1/logout`, method: 'POST', signal });
 };
 
+export const getLogoutMutationKey = () => ['logout'] as const;
+
 export const getLogoutMutationOptions = <TError = unknown, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError, void, TContext>;
 }): UseMutationOptions<Awaited<ReturnType<typeof logout>>, TError, void, TContext> => {
-    const mutationKey = ['logout'];
+    const mutationKey = getLogoutMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
@@ -232,11 +237,13 @@ export const getLoginSuspenseQueryOptions = <TData = Awaited<ReturnType<typeof l
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof login>>> = ({ signal }) => login(params, signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof login>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof login>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type LoginSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof login>>>;
@@ -362,11 +369,13 @@ export const getGetCurrentUserAccessSuspenseQueryOptions = <
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentUserAccess>>> = ({ signal }) =>
         getCurrentUserAccess(signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getCurrentUserAccess>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getCurrentUserAccess>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetCurrentUserAccessSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentUserAccess>>>;
@@ -428,20 +437,22 @@ export const updatePermissions = (updatePermissionsRequest: UpdatePermissionsReq
     });
 };
 
+export const getUpdatePermissionsMutationKey = () => ['updatePermissions'] as const;
+
 export const getUpdatePermissionsMutationOptions = <TError = unknown, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
         Awaited<ReturnType<typeof updatePermissions>>,
         TError,
-        { data: UpdatePermissionsRequest },
+        UpdatePermissionsMutationVariables,
         TContext
     >;
 }): UseMutationOptions<
     Awaited<ReturnType<typeof updatePermissions>>,
     TError,
-    { data: UpdatePermissionsRequest },
+    UpdatePermissionsMutationVariables,
     TContext
 > => {
-    const mutationKey = ['updatePermissions'];
+    const mutationKey = getUpdatePermissionsMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
@@ -450,7 +461,7 @@ export const getUpdatePermissionsMutationOptions = <TError = unknown, TContext =
 
     const mutationFn: MutationFunction<
         Awaited<ReturnType<typeof updatePermissions>>,
-        { data: UpdatePermissionsRequest }
+        UpdatePermissionsMutationVariables
     > = props => {
         const { data } = props ?? {};
 
@@ -463,13 +474,14 @@ export const getUpdatePermissionsMutationOptions = <TError = unknown, TContext =
 export type UpdatePermissionsMutationResult = NonNullable<Awaited<ReturnType<typeof updatePermissions>>>;
 export type UpdatePermissionsMutationBody = UpdatePermissionsRequest;
 export type UpdatePermissionsMutationError = unknown;
+export type UpdatePermissionsMutationVariables = { data: UpdatePermissionsRequest };
 
 export const useUpdatePermissions = <TError = unknown, TContext = unknown>(
     options?: {
         mutation?: UseMutationOptions<
             Awaited<ReturnType<typeof updatePermissions>>,
             TError,
-            { data: UpdatePermissionsRequest },
+            UpdatePermissionsMutationVariables,
             TContext
         >;
     },
@@ -477,7 +489,7 @@ export const useUpdatePermissions = <TError = unknown, TContext = unknown>(
 ): UseMutationResult<
     Awaited<ReturnType<typeof updatePermissions>>,
     TError,
-    { data: UpdatePermissionsRequest },
+    UpdatePermissionsMutationVariables,
     TContext
 > => {
     return useMutation(getUpdatePermissionsMutationOptions(options), queryClient);
@@ -571,11 +583,13 @@ export const getGetPermissionsSuspenseQueryOptions = <
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getPermissions>>> = ({ signal }) => getPermissions(signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getPermissions>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getPermissions>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetPermissionsSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getPermissions>>>;
@@ -611,10 +625,12 @@ export const resetPermissions = (signal?: AbortSignal) => {
     return apiClient<void>({ url: `/api/v1/settings/permissions/overrides`, method: 'DELETE', signal });
 };
 
+export const getResetPermissionsMutationKey = () => ['resetPermissions'] as const;
+
 export const getResetPermissionsMutationOptions = <TError = unknown, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof resetPermissions>>, TError, void, TContext>;
 }): UseMutationOptions<Awaited<ReturnType<typeof resetPermissions>>, TError, void, TContext> => {
-    const mutationKey = ['resetPermissions'];
+    const mutationKey = getResetPermissionsMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
@@ -727,11 +743,13 @@ export const getGetCurrentUserSuspenseQueryOptions = <
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getCurrentUser>>> = ({ signal }) => getCurrentUser(signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getCurrentUser>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getCurrentUser>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetCurrentUserSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
@@ -767,17 +785,32 @@ export const resendInvitation = (id: string, signal?: AbortSignal) => {
     return apiClient<void>({ url: `/api/v1/invitations/${id}/resend`, method: 'POST', signal });
 };
 
+export const getResendInvitationMutationKey = () => ['resendInvitation'] as const;
+
 export const getResendInvitationMutationOptions = <TError = unknown, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof resendInvitation>>, TError, { id: string }, TContext>;
-}): UseMutationOptions<Awaited<ReturnType<typeof resendInvitation>>, TError, { id: string }, TContext> => {
-    const mutationKey = ['resendInvitation'];
+    mutation?: UseMutationOptions<
+        Awaited<ReturnType<typeof resendInvitation>>,
+        TError,
+        ResendInvitationMutationVariables,
+        TContext
+    >;
+}): UseMutationOptions<
+    Awaited<ReturnType<typeof resendInvitation>>,
+    TError,
+    ResendInvitationMutationVariables,
+    TContext
+> => {
+    const mutationKey = getResendInvitationMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
             : { ...options, mutation: { ...options.mutation, mutationKey } }
         : { mutation: { mutationKey } };
 
-    const mutationFn: MutationFunction<Awaited<ReturnType<typeof resendInvitation>>, { id: string }> = props => {
+    const mutationFn: MutationFunction<
+        Awaited<ReturnType<typeof resendInvitation>>,
+        ResendInvitationMutationVariables
+    > = props => {
         const { id } = props ?? {};
 
         return resendInvitation(id);
@@ -789,13 +822,24 @@ export const getResendInvitationMutationOptions = <TError = unknown, TContext = 
 export type ResendInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof resendInvitation>>>;
 
 export type ResendInvitationMutationError = unknown;
+export type ResendInvitationMutationVariables = { id: string };
 
 export const useResendInvitation = <TError = unknown, TContext = unknown>(
     options?: {
-        mutation?: UseMutationOptions<Awaited<ReturnType<typeof resendInvitation>>, TError, { id: string }, TContext>;
+        mutation?: UseMutationOptions<
+            Awaited<ReturnType<typeof resendInvitation>>,
+            TError,
+            ResendInvitationMutationVariables,
+            TContext
+        >;
     },
     queryClient?: QueryClient,
-): UseMutationResult<Awaited<ReturnType<typeof resendInvitation>>, TError, { id: string }, TContext> => {
+): UseMutationResult<
+    Awaited<ReturnType<typeof resendInvitation>>,
+    TError,
+    ResendInvitationMutationVariables,
+    TContext
+> => {
     return useMutation(getResendInvitationMutationOptions(options), queryClient);
 };
 
@@ -809,20 +853,22 @@ export const inviteEmployee = (inviteEmployeeRequest: InviteEmployeeRequest, sig
     });
 };
 
+export const getInviteEmployeeMutationKey = () => ['inviteEmployee'] as const;
+
 export const getInviteEmployeeMutationOptions = <TError = unknown, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
         Awaited<ReturnType<typeof inviteEmployee>>,
         TError,
-        { data: InviteEmployeeRequest },
+        InviteEmployeeMutationVariables,
         TContext
     >;
 }): UseMutationOptions<
     Awaited<ReturnType<typeof inviteEmployee>>,
     TError,
-    { data: InviteEmployeeRequest },
+    InviteEmployeeMutationVariables,
     TContext
 > => {
-    const mutationKey = ['inviteEmployee'];
+    const mutationKey = getInviteEmployeeMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
@@ -831,7 +877,7 @@ export const getInviteEmployeeMutationOptions = <TError = unknown, TContext = un
 
     const mutationFn: MutationFunction<
         Awaited<ReturnType<typeof inviteEmployee>>,
-        { data: InviteEmployeeRequest }
+        InviteEmployeeMutationVariables
     > = props => {
         const { data } = props ?? {};
 
@@ -844,18 +890,19 @@ export const getInviteEmployeeMutationOptions = <TError = unknown, TContext = un
 export type InviteEmployeeMutationResult = NonNullable<Awaited<ReturnType<typeof inviteEmployee>>>;
 export type InviteEmployeeMutationBody = InviteEmployeeRequest;
 export type InviteEmployeeMutationError = unknown;
+export type InviteEmployeeMutationVariables = { data: InviteEmployeeRequest };
 
 export const useInviteEmployee = <TError = unknown, TContext = unknown>(
     options?: {
         mutation?: UseMutationOptions<
             Awaited<ReturnType<typeof inviteEmployee>>,
             TError,
-            { data: InviteEmployeeRequest },
+            InviteEmployeeMutationVariables,
             TContext
         >;
     },
     queryClient?: QueryClient,
-): UseMutationResult<Awaited<ReturnType<typeof inviteEmployee>>, TError, { data: InviteEmployeeRequest }, TContext> => {
+): UseMutationResult<Awaited<ReturnType<typeof inviteEmployee>>, TError, InviteEmployeeMutationVariables, TContext> => {
     return useMutation(getInviteEmployeeMutationOptions(options), queryClient);
 };
 
@@ -949,11 +996,13 @@ export const getGetPendingInvitationsSuspenseQueryOptions = <
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getPendingInvitations>>> = ({ signal }) =>
         getPendingInvitations(signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getPendingInvitations>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getPendingInvitations>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetPendingInvitationsSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getPendingInvitations>>>;
@@ -1009,17 +1058,32 @@ export const cancelInvitation = (id: string, signal?: AbortSignal) => {
     return apiClient<void>({ url: `/api/v1/invitations/${id}`, method: 'DELETE', signal });
 };
 
+export const getCancelInvitationMutationKey = () => ['cancelInvitation'] as const;
+
 export const getCancelInvitationMutationOptions = <TError = unknown, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelInvitation>>, TError, { id: string }, TContext>;
-}): UseMutationOptions<Awaited<ReturnType<typeof cancelInvitation>>, TError, { id: string }, TContext> => {
-    const mutationKey = ['cancelInvitation'];
+    mutation?: UseMutationOptions<
+        Awaited<ReturnType<typeof cancelInvitation>>,
+        TError,
+        CancelInvitationMutationVariables,
+        TContext
+    >;
+}): UseMutationOptions<
+    Awaited<ReturnType<typeof cancelInvitation>>,
+    TError,
+    CancelInvitationMutationVariables,
+    TContext
+> => {
+    const mutationKey = getCancelInvitationMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
             : { ...options, mutation: { ...options.mutation, mutationKey } }
         : { mutation: { mutationKey } };
 
-    const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelInvitation>>, { id: string }> = props => {
+    const mutationFn: MutationFunction<
+        Awaited<ReturnType<typeof cancelInvitation>>,
+        CancelInvitationMutationVariables
+    > = props => {
         const { id } = props ?? {};
 
         return cancelInvitation(id);
@@ -1031,13 +1095,24 @@ export const getCancelInvitationMutationOptions = <TError = unknown, TContext = 
 export type CancelInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof cancelInvitation>>>;
 
 export type CancelInvitationMutationError = unknown;
+export type CancelInvitationMutationVariables = { id: string };
 
 export const useCancelInvitation = <TError = unknown, TContext = unknown>(
     options?: {
-        mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelInvitation>>, TError, { id: string }, TContext>;
+        mutation?: UseMutationOptions<
+            Awaited<ReturnType<typeof cancelInvitation>>,
+            TError,
+            CancelInvitationMutationVariables,
+            TContext
+        >;
     },
     queryClient?: QueryClient,
-): UseMutationResult<Awaited<ReturnType<typeof cancelInvitation>>, TError, { id: string }, TContext> => {
+): UseMutationResult<
+    Awaited<ReturnType<typeof cancelInvitation>>,
+    TError,
+    CancelInvitationMutationVariables,
+    TContext
+> => {
     return useMutation(getCancelInvitationMutationOptions(options), queryClient);
 };
 
@@ -1045,17 +1120,32 @@ export const acceptInvitation = (id: string, signal?: AbortSignal) => {
     return apiClient<void>({ url: `/api/v1/invitations/${id}/accept`, method: 'POST', signal });
 };
 
+export const getAcceptInvitationMutationKey = () => ['acceptInvitation'] as const;
+
 export const getAcceptInvitationMutationOptions = <TError = unknown, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError, { id: string }, TContext>;
-}): UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError, { id: string }, TContext> => {
-    const mutationKey = ['acceptInvitation'];
+    mutation?: UseMutationOptions<
+        Awaited<ReturnType<typeof acceptInvitation>>,
+        TError,
+        AcceptInvitationMutationVariables,
+        TContext
+    >;
+}): UseMutationOptions<
+    Awaited<ReturnType<typeof acceptInvitation>>,
+    TError,
+    AcceptInvitationMutationVariables,
+    TContext
+> => {
+    const mutationKey = getAcceptInvitationMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
             : { ...options, mutation: { ...options.mutation, mutationKey } }
         : { mutation: { mutationKey } };
 
-    const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptInvitation>>, { id: string }> = props => {
+    const mutationFn: MutationFunction<
+        Awaited<ReturnType<typeof acceptInvitation>>,
+        AcceptInvitationMutationVariables
+    > = props => {
         const { id } = props ?? {};
 
         return acceptInvitation(id);
@@ -1067,13 +1157,24 @@ export const getAcceptInvitationMutationOptions = <TError = unknown, TContext = 
 export type AcceptInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof acceptInvitation>>>;
 
 export type AcceptInvitationMutationError = unknown;
+export type AcceptInvitationMutationVariables = { id: string };
 
 export const useAcceptInvitation = <TError = unknown, TContext = unknown>(
     options?: {
-        mutation?: UseMutationOptions<Awaited<ReturnType<typeof acceptInvitation>>, TError, { id: string }, TContext>;
+        mutation?: UseMutationOptions<
+            Awaited<ReturnType<typeof acceptInvitation>>,
+            TError,
+            AcceptInvitationMutationVariables,
+            TContext
+        >;
     },
     queryClient?: QueryClient,
-): UseMutationResult<Awaited<ReturnType<typeof acceptInvitation>>, TError, { id: string }, TContext> => {
+): UseMutationResult<
+    Awaited<ReturnType<typeof acceptInvitation>>,
+    TError,
+    AcceptInvitationMutationVariables,
+    TContext
+> => {
     return useMutation(getAcceptInvitationMutationOptions(options), queryClient);
 };
 
@@ -1091,20 +1192,17 @@ export const updateRoles = (
     });
 };
 
+export const getUpdateRolesMutationKey = () => ['updateRoles'] as const;
+
 export const getUpdateRolesMutationOptions = <TError = unknown, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
         Awaited<ReturnType<typeof updateRoles>>,
         TError,
-        { id: string; data: UpdateEmployeeRolesRequest },
+        UpdateRolesMutationVariables,
         TContext
     >;
-}): UseMutationOptions<
-    Awaited<ReturnType<typeof updateRoles>>,
-    TError,
-    { id: string; data: UpdateEmployeeRolesRequest },
-    TContext
-> => {
-    const mutationKey = ['updateRoles'];
+}): UseMutationOptions<Awaited<ReturnType<typeof updateRoles>>, TError, UpdateRolesMutationVariables, TContext> => {
+    const mutationKey = getUpdateRolesMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
@@ -1113,7 +1211,7 @@ export const getUpdateRolesMutationOptions = <TError = unknown, TContext = unkno
 
     const mutationFn: MutationFunction<
         Awaited<ReturnType<typeof updateRoles>>,
-        { id: string; data: UpdateEmployeeRolesRequest }
+        UpdateRolesMutationVariables
     > = props => {
         const { id, data } = props ?? {};
 
@@ -1126,27 +1224,23 @@ export const getUpdateRolesMutationOptions = <TError = unknown, TContext = unkno
 export type UpdateRolesMutationResult = NonNullable<Awaited<ReturnType<typeof updateRoles>>>;
 export type UpdateRolesMutationBody = UpdateEmployeeRolesRequest;
 export type UpdateRolesMutationError = unknown;
+export type UpdateRolesMutationVariables = { id: string; data: UpdateEmployeeRolesRequest };
 
 export const useUpdateRoles = <TError = unknown, TContext = unknown>(
     options?: {
         mutation?: UseMutationOptions<
             Awaited<ReturnType<typeof updateRoles>>,
             TError,
-            { id: string; data: UpdateEmployeeRolesRequest },
+            UpdateRolesMutationVariables,
             TContext
         >;
     },
     queryClient?: QueryClient,
-): UseMutationResult<
-    Awaited<ReturnType<typeof updateRoles>>,
-    TError,
-    { id: string; data: UpdateEmployeeRolesRequest },
-    TContext
-> => {
+): UseMutationResult<Awaited<ReturnType<typeof updateRoles>>, TError, UpdateRolesMutationVariables, TContext> => {
     return useMutation(getUpdateRolesMutationOptions(options), queryClient);
 };
 
-export const getTeam = (params: GetTeamParams, signal?: AbortSignal) => {
+export const getTeam = (params?: GetTeamParams, signal?: AbortSignal) => {
     return apiClient<GetTeamResponse>({ url: `/api/v1/team`, method: 'GET', params, signal });
 };
 
@@ -1155,7 +1249,7 @@ export const getGetTeamQueryKey = (params?: GetTeamParams) => {
 };
 
 export const getGetTeamQueryOptions = <TData = Awaited<ReturnType<typeof getTeam>>, TError = unknown>(
-    params: GetTeamParams,
+    params?: GetTeamParams,
     options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> },
 ) => {
     const { query: queryOptions } = options ?? {};
@@ -1175,7 +1269,7 @@ export type GetTeamQueryResult = NonNullable<Awaited<ReturnType<typeof getTeam>>
 export type GetTeamQueryError = unknown;
 
 export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError = unknown>(
-    params: GetTeamParams,
+    params: undefined | GetTeamParams,
     options: {
         query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> &
             Pick<
@@ -1190,7 +1284,7 @@ export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError =
     queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError = unknown>(
-    params: GetTeamParams,
+    params?: GetTeamParams,
     options?: {
         query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> &
             Pick<
@@ -1205,13 +1299,13 @@ export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError =
     queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError = unknown>(
-    params: GetTeamParams,
+    params?: GetTeamParams,
     options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
 export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError = unknown>(
-    params: GetTeamParams,
+    params?: GetTeamParams,
     options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -1225,7 +1319,7 @@ export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError =
 }
 
 export const getGetTeamSuspenseQueryOptions = <TData = Awaited<ReturnType<typeof getTeam>>, TError = unknown>(
-    params: GetTeamParams,
+    params?: GetTeamParams,
     options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> },
 ) => {
     const { query: queryOptions } = options ?? {};
@@ -1234,34 +1328,36 @@ export const getGetTeamSuspenseQueryOptions = <TData = Awaited<ReturnType<typeof
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getTeam>>> = ({ signal }) => getTeam(params, signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getTeam>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetTeamSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getTeam>>>;
 export type GetTeamSuspenseQueryError = unknown;
 
 export function useGetTeamSuspense<TData = Awaited<ReturnType<typeof getTeam>>, TError = unknown>(
-    params: GetTeamParams,
+    params: undefined | GetTeamParams,
     options: { query: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetTeamSuspense<TData = Awaited<ReturnType<typeof getTeam>>, TError = unknown>(
-    params: GetTeamParams,
+    params?: GetTeamParams,
     options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetTeamSuspense<TData = Awaited<ReturnType<typeof getTeam>>, TError = unknown>(
-    params: GetTeamParams,
+    params?: GetTeamParams,
     options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
 export function useGetTeamSuspense<TData = Awaited<ReturnType<typeof getTeam>>, TError = unknown>(
-    params: GetTeamParams,
+    params?: GetTeamParams,
     options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -1278,17 +1374,32 @@ export const deleteEmployee = (id: string, signal?: AbortSignal) => {
     return apiClient<void>({ url: `/api/v1/employees/${id}`, method: 'DELETE', signal });
 };
 
+export const getDeleteEmployeeMutationKey = () => ['deleteEmployee'] as const;
+
 export const getDeleteEmployeeMutationOptions = <TError = unknown, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteEmployee>>, TError, { id: string }, TContext>;
-}): UseMutationOptions<Awaited<ReturnType<typeof deleteEmployee>>, TError, { id: string }, TContext> => {
-    const mutationKey = ['deleteEmployee'];
+    mutation?: UseMutationOptions<
+        Awaited<ReturnType<typeof deleteEmployee>>,
+        TError,
+        DeleteEmployeeMutationVariables,
+        TContext
+    >;
+}): UseMutationOptions<
+    Awaited<ReturnType<typeof deleteEmployee>>,
+    TError,
+    DeleteEmployeeMutationVariables,
+    TContext
+> => {
+    const mutationKey = getDeleteEmployeeMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
             : { ...options, mutation: { ...options.mutation, mutationKey } }
         : { mutation: { mutationKey } };
 
-    const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteEmployee>>, { id: string }> = props => {
+    const mutationFn: MutationFunction<
+        Awaited<ReturnType<typeof deleteEmployee>>,
+        DeleteEmployeeMutationVariables
+    > = props => {
         const { id } = props ?? {};
 
         return deleteEmployee(id);
@@ -1300,13 +1411,19 @@ export const getDeleteEmployeeMutationOptions = <TError = unknown, TContext = un
 export type DeleteEmployeeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteEmployee>>>;
 
 export type DeleteEmployeeMutationError = unknown;
+export type DeleteEmployeeMutationVariables = { id: string };
 
 export const useDeleteEmployee = <TError = unknown, TContext = unknown>(
     options?: {
-        mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteEmployee>>, TError, { id: string }, TContext>;
+        mutation?: UseMutationOptions<
+            Awaited<ReturnType<typeof deleteEmployee>>,
+            TError,
+            DeleteEmployeeMutationVariables,
+            TContext
+        >;
     },
     queryClient?: QueryClient,
-): UseMutationResult<Awaited<ReturnType<typeof deleteEmployee>>, TError, { id: string }, TContext> => {
+): UseMutationResult<Awaited<ReturnType<typeof deleteEmployee>>, TError, DeleteEmployeeMutationVariables, TContext> => {
     return useMutation(getDeleteEmployeeMutationOptions(options), queryClient);
 };
 
@@ -1320,22 +1437,24 @@ export const onboarding = (onboardingRequest: OnboardingRequest, signal?: AbortS
     });
 };
 
+export const getOnboardingMutationKey = () => ['onboarding'] as const;
+
 export const getOnboardingMutationOptions = <TError = unknown, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
         Awaited<ReturnType<typeof onboarding>>,
         TError,
-        { data: OnboardingRequest },
+        OnboardingMutationVariables,
         TContext
     >;
-}): UseMutationOptions<Awaited<ReturnType<typeof onboarding>>, TError, { data: OnboardingRequest }, TContext> => {
-    const mutationKey = ['onboarding'];
+}): UseMutationOptions<Awaited<ReturnType<typeof onboarding>>, TError, OnboardingMutationVariables, TContext> => {
+    const mutationKey = getOnboardingMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
             : { ...options, mutation: { ...options.mutation, mutationKey } }
         : { mutation: { mutationKey } };
 
-    const mutationFn: MutationFunction<Awaited<ReturnType<typeof onboarding>>, { data: OnboardingRequest }> = props => {
+    const mutationFn: MutationFunction<Awaited<ReturnType<typeof onboarding>>, OnboardingMutationVariables> = props => {
         const { data } = props ?? {};
 
         return onboarding(data);
@@ -1347,18 +1466,19 @@ export const getOnboardingMutationOptions = <TError = unknown, TContext = unknow
 export type OnboardingMutationResult = NonNullable<Awaited<ReturnType<typeof onboarding>>>;
 export type OnboardingMutationBody = OnboardingRequest;
 export type OnboardingMutationError = unknown;
+export type OnboardingMutationVariables = { data: OnboardingRequest };
 
 export const useOnboarding = <TError = unknown, TContext = unknown>(
     options?: {
         mutation?: UseMutationOptions<
             Awaited<ReturnType<typeof onboarding>>,
             TError,
-            { data: OnboardingRequest },
+            OnboardingMutationVariables,
             TContext
         >;
     },
     queryClient?: QueryClient,
-): UseMutationResult<Awaited<ReturnType<typeof onboarding>>, TError, { data: OnboardingRequest }, TContext> => {
+): UseMutationResult<Awaited<ReturnType<typeof onboarding>>, TError, OnboardingMutationVariables, TContext> => {
     return useMutation(getOnboardingMutationOptions(options), queryClient);
 };
 
@@ -1372,20 +1492,22 @@ export const updateCustomer = (id: string, updateCustomerRequest: UpdateCustomer
     });
 };
 
+export const getUpdateCustomerMutationKey = () => ['updateCustomer'] as const;
+
 export const getUpdateCustomerMutationOptions = <TError = unknown, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
         Awaited<ReturnType<typeof updateCustomer>>,
         TError,
-        { id: string; data: UpdateCustomerRequest },
+        UpdateCustomerMutationVariables,
         TContext
     >;
 }): UseMutationOptions<
     Awaited<ReturnType<typeof updateCustomer>>,
     TError,
-    { id: string; data: UpdateCustomerRequest },
+    UpdateCustomerMutationVariables,
     TContext
 > => {
-    const mutationKey = ['updateCustomer'];
+    const mutationKey = getUpdateCustomerMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
@@ -1394,7 +1516,7 @@ export const getUpdateCustomerMutationOptions = <TError = unknown, TContext = un
 
     const mutationFn: MutationFunction<
         Awaited<ReturnType<typeof updateCustomer>>,
-        { id: string; data: UpdateCustomerRequest }
+        UpdateCustomerMutationVariables
     > = props => {
         const { id, data } = props ?? {};
 
@@ -1407,23 +1529,19 @@ export const getUpdateCustomerMutationOptions = <TError = unknown, TContext = un
 export type UpdateCustomerMutationResult = NonNullable<Awaited<ReturnType<typeof updateCustomer>>>;
 export type UpdateCustomerMutationBody = UpdateCustomerRequest;
 export type UpdateCustomerMutationError = unknown;
+export type UpdateCustomerMutationVariables = { id: string; data: UpdateCustomerRequest };
 
 export const useUpdateCustomer = <TError = unknown, TContext = unknown>(
     options?: {
         mutation?: UseMutationOptions<
             Awaited<ReturnType<typeof updateCustomer>>,
             TError,
-            { id: string; data: UpdateCustomerRequest },
+            UpdateCustomerMutationVariables,
             TContext
         >;
     },
     queryClient?: QueryClient,
-): UseMutationResult<
-    Awaited<ReturnType<typeof updateCustomer>>,
-    TError,
-    { id: string; data: UpdateCustomerRequest },
-    TContext
-> => {
+): UseMutationResult<Awaited<ReturnType<typeof updateCustomer>>, TError, UpdateCustomerMutationVariables, TContext> => {
     return useMutation(getUpdateCustomerMutationOptions(options), queryClient);
 };
 
@@ -1515,11 +1633,13 @@ export const getGetCustomerSuspenseQueryOptions = <TData = Awaited<ReturnType<ty
 
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomer>>> = ({ signal }) => getCustomer(id, signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getCustomer>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getCustomer>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetCustomerSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomer>>>;
@@ -1559,17 +1679,32 @@ export const deleteCustomer = (id: string, signal?: AbortSignal) => {
     return apiClient<void>({ url: `/api/v1/customers/${id}`, method: 'DELETE', signal });
 };
 
+export const getDeleteCustomerMutationKey = () => ['deleteCustomer'] as const;
+
 export const getDeleteCustomerMutationOptions = <TError = unknown, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteCustomer>>, TError, { id: string }, TContext>;
-}): UseMutationOptions<Awaited<ReturnType<typeof deleteCustomer>>, TError, { id: string }, TContext> => {
-    const mutationKey = ['deleteCustomer'];
+    mutation?: UseMutationOptions<
+        Awaited<ReturnType<typeof deleteCustomer>>,
+        TError,
+        DeleteCustomerMutationVariables,
+        TContext
+    >;
+}): UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCustomer>>,
+    TError,
+    DeleteCustomerMutationVariables,
+    TContext
+> => {
+    const mutationKey = getDeleteCustomerMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
             : { ...options, mutation: { ...options.mutation, mutationKey } }
         : { mutation: { mutationKey } };
 
-    const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCustomer>>, { id: string }> = props => {
+    const mutationFn: MutationFunction<
+        Awaited<ReturnType<typeof deleteCustomer>>,
+        DeleteCustomerMutationVariables
+    > = props => {
         const { id } = props ?? {};
 
         return deleteCustomer(id);
@@ -1581,13 +1716,19 @@ export const getDeleteCustomerMutationOptions = <TError = unknown, TContext = un
 export type DeleteCustomerMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCustomer>>>;
 
 export type DeleteCustomerMutationError = unknown;
+export type DeleteCustomerMutationVariables = { id: string };
 
 export const useDeleteCustomer = <TError = unknown, TContext = unknown>(
     options?: {
-        mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteCustomer>>, TError, { id: string }, TContext>;
+        mutation?: UseMutationOptions<
+            Awaited<ReturnType<typeof deleteCustomer>>,
+            TError,
+            DeleteCustomerMutationVariables,
+            TContext
+        >;
     },
     queryClient?: QueryClient,
-): UseMutationResult<Awaited<ReturnType<typeof deleteCustomer>>, TError, { id: string }, TContext> => {
+): UseMutationResult<Awaited<ReturnType<typeof deleteCustomer>>, TError, DeleteCustomerMutationVariables, TContext> => {
     return useMutation(getDeleteCustomerMutationOptions(options), queryClient);
 };
 
@@ -1601,20 +1742,22 @@ export const registerCustomer = (registerCustomerRequest: RegisterCustomerReques
     });
 };
 
+export const getRegisterCustomerMutationKey = () => ['registerCustomer'] as const;
+
 export const getRegisterCustomerMutationOptions = <TError = unknown, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
         Awaited<ReturnType<typeof registerCustomer>>,
         TError,
-        { data: RegisterCustomerRequest },
+        RegisterCustomerMutationVariables,
         TContext
     >;
 }): UseMutationOptions<
     Awaited<ReturnType<typeof registerCustomer>>,
     TError,
-    { data: RegisterCustomerRequest },
+    RegisterCustomerMutationVariables,
     TContext
 > => {
-    const mutationKey = ['registerCustomer'];
+    const mutationKey = getRegisterCustomerMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
@@ -1623,7 +1766,7 @@ export const getRegisterCustomerMutationOptions = <TError = unknown, TContext = 
 
     const mutationFn: MutationFunction<
         Awaited<ReturnType<typeof registerCustomer>>,
-        { data: RegisterCustomerRequest }
+        RegisterCustomerMutationVariables
     > = props => {
         const { data } = props ?? {};
 
@@ -1636,13 +1779,14 @@ export const getRegisterCustomerMutationOptions = <TError = unknown, TContext = 
 export type RegisterCustomerMutationResult = NonNullable<Awaited<ReturnType<typeof registerCustomer>>>;
 export type RegisterCustomerMutationBody = RegisterCustomerRequest;
 export type RegisterCustomerMutationError = unknown;
+export type RegisterCustomerMutationVariables = { data: RegisterCustomerRequest };
 
 export const useRegisterCustomer = <TError = unknown, TContext = unknown>(
     options?: {
         mutation?: UseMutationOptions<
             Awaited<ReturnType<typeof registerCustomer>>,
             TError,
-            { data: RegisterCustomerRequest },
+            RegisterCustomerMutationVariables,
             TContext
         >;
     },
@@ -1650,13 +1794,13 @@ export const useRegisterCustomer = <TError = unknown, TContext = unknown>(
 ): UseMutationResult<
     Awaited<ReturnType<typeof registerCustomer>>,
     TError,
-    { data: RegisterCustomerRequest },
+    RegisterCustomerMutationVariables,
     TContext
 > => {
     return useMutation(getRegisterCustomerMutationOptions(options), queryClient);
 };
 
-export const getCustomers = (params: GetCustomersParams, signal?: AbortSignal) => {
+export const getCustomers = (params?: GetCustomersParams, signal?: AbortSignal) => {
     return apiClient<GetCustomersResponse>({ url: `/api/v1/customers`, method: 'GET', params, signal });
 };
 
@@ -1665,7 +1809,7 @@ export const getGetCustomersQueryKey = (params?: GetCustomersParams) => {
 };
 
 export const getGetCustomersQueryOptions = <TData = Awaited<ReturnType<typeof getCustomers>>, TError = unknown>(
-    params: GetCustomersParams,
+    params?: GetCustomersParams,
     options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData>> },
 ) => {
     const { query: queryOptions } = options ?? {};
@@ -1686,7 +1830,7 @@ export type GetCustomersQueryResult = NonNullable<Awaited<ReturnType<typeof getC
 export type GetCustomersQueryError = unknown;
 
 export function useGetCustomers<TData = Awaited<ReturnType<typeof getCustomers>>, TError = unknown>(
-    params: GetCustomersParams,
+    params: undefined | GetCustomersParams,
     options: {
         query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData>> &
             Pick<
@@ -1701,7 +1845,7 @@ export function useGetCustomers<TData = Awaited<ReturnType<typeof getCustomers>>
     queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetCustomers<TData = Awaited<ReturnType<typeof getCustomers>>, TError = unknown>(
-    params: GetCustomersParams,
+    params?: GetCustomersParams,
     options?: {
         query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData>> &
             Pick<
@@ -1716,13 +1860,13 @@ export function useGetCustomers<TData = Awaited<ReturnType<typeof getCustomers>>
     queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetCustomers<TData = Awaited<ReturnType<typeof getCustomers>>, TError = unknown>(
-    params: GetCustomersParams,
+    params?: GetCustomersParams,
     options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
 export function useGetCustomers<TData = Awaited<ReturnType<typeof getCustomers>>, TError = unknown>(
-    params: GetCustomersParams,
+    params?: GetCustomersParams,
     options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -1736,7 +1880,7 @@ export function useGetCustomers<TData = Awaited<ReturnType<typeof getCustomers>>
 }
 
 export const getGetCustomersSuspenseQueryOptions = <TData = Awaited<ReturnType<typeof getCustomers>>, TError = unknown>(
-    params: GetCustomersParams,
+    params?: GetCustomersParams,
     options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData>> },
 ) => {
     const { query: queryOptions } = options ?? {};
@@ -1746,34 +1890,36 @@ export const getGetCustomersSuspenseQueryOptions = <TData = Awaited<ReturnType<t
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomers>>> = ({ signal }) =>
         getCustomers(params, signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getCustomers>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetCustomersSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomers>>>;
 export type GetCustomersSuspenseQueryError = unknown;
 
 export function useGetCustomersSuspense<TData = Awaited<ReturnType<typeof getCustomers>>, TError = unknown>(
-    params: GetCustomersParams,
+    params: undefined | GetCustomersParams,
     options: { query: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetCustomersSuspense<TData = Awaited<ReturnType<typeof getCustomers>>, TError = unknown>(
-    params: GetCustomersParams,
+    params?: GetCustomersParams,
     options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGetCustomersSuspense<TData = Awaited<ReturnType<typeof getCustomers>>, TError = unknown>(
-    params: GetCustomersParams,
+    params?: GetCustomersParams,
     options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
 export function useGetCustomersSuspense<TData = Awaited<ReturnType<typeof getCustomers>>, TError = unknown>(
-    params: GetCustomersParams,
+    params?: GetCustomersParams,
     options?: { query?: Partial<UseSuspenseQueryOptions<Awaited<ReturnType<typeof getCustomers>>, TError, TData>> },
     queryClient?: QueryClient,
 ): UseSuspenseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
@@ -1889,11 +2035,13 @@ export const getGetNewCustomerStatsSuspenseQueryOptions = <
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getNewCustomerStats>>> = ({ signal }) =>
         getNewCustomerStats(params, signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getNewCustomerStats>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getNewCustomerStats>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetNewCustomerStatsSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getNewCustomerStats>>>;
@@ -2039,11 +2187,13 @@ export const getGetServiceProvidersSuspenseQueryOptions = <
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getServiceProviders>>> = ({ signal }) =>
         getServiceProviders(signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getServiceProviders>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getServiceProviders>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetServiceProvidersSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getServiceProviders>>>;
@@ -2190,11 +2340,13 @@ export const getGetPeakHoursSuspenseQueryOptions = <TData = Awaited<ReturnType<t
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getPeakHours>>> = ({ signal }) =>
         getPeakHours(params, signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getPeakHours>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getPeakHours>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetPeakHoursSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getPeakHours>>>;
@@ -2333,11 +2485,13 @@ export const getGetDashboardStatsSuspenseQueryOptions = <
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardStats>>> = ({ signal }) =>
         getDashboardStats(params, signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getDashboardStats>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getDashboardStats>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetDashboardStatsSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardStats>>>;
@@ -2389,20 +2543,22 @@ export const scheduleAppointment = (scheduleAppointmentRequest: ScheduleAppointm
     });
 };
 
+export const getScheduleAppointmentMutationKey = () => ['scheduleAppointment'] as const;
+
 export const getScheduleAppointmentMutationOptions = <TError = unknown, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
         Awaited<ReturnType<typeof scheduleAppointment>>,
         TError,
-        { data: ScheduleAppointmentRequest },
+        ScheduleAppointmentMutationVariables,
         TContext
     >;
 }): UseMutationOptions<
     Awaited<ReturnType<typeof scheduleAppointment>>,
     TError,
-    { data: ScheduleAppointmentRequest },
+    ScheduleAppointmentMutationVariables,
     TContext
 > => {
-    const mutationKey = ['scheduleAppointment'];
+    const mutationKey = getScheduleAppointmentMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
@@ -2411,7 +2567,7 @@ export const getScheduleAppointmentMutationOptions = <TError = unknown, TContext
 
     const mutationFn: MutationFunction<
         Awaited<ReturnType<typeof scheduleAppointment>>,
-        { data: ScheduleAppointmentRequest }
+        ScheduleAppointmentMutationVariables
     > = props => {
         const { data } = props ?? {};
 
@@ -2424,13 +2580,14 @@ export const getScheduleAppointmentMutationOptions = <TError = unknown, TContext
 export type ScheduleAppointmentMutationResult = NonNullable<Awaited<ReturnType<typeof scheduleAppointment>>>;
 export type ScheduleAppointmentMutationBody = ScheduleAppointmentRequest;
 export type ScheduleAppointmentMutationError = unknown;
+export type ScheduleAppointmentMutationVariables = { data: ScheduleAppointmentRequest };
 
 export const useScheduleAppointment = <TError = unknown, TContext = unknown>(
     options?: {
         mutation?: UseMutationOptions<
             Awaited<ReturnType<typeof scheduleAppointment>>,
             TError,
-            { data: ScheduleAppointmentRequest },
+            ScheduleAppointmentMutationVariables,
             TContext
         >;
     },
@@ -2438,7 +2595,7 @@ export const useScheduleAppointment = <TError = unknown, TContext = unknown>(
 ): UseMutationResult<
     Awaited<ReturnType<typeof scheduleAppointment>>,
     TError,
-    { data: ScheduleAppointmentRequest },
+    ScheduleAppointmentMutationVariables,
     TContext
 > => {
     return useMutation(getScheduleAppointmentMutationOptions(options), queryClient);
@@ -2537,11 +2694,13 @@ export const getGetAppointmentsSuspenseQueryOptions = <
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAppointments>>> = ({ signal }) =>
         getAppointments(params, signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getAppointments>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getAppointments>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetAppointmentsSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getAppointments>>>;
@@ -2591,20 +2750,22 @@ export const rescheduleAppointment = (
     });
 };
 
+export const getRescheduleAppointmentMutationKey = () => ['rescheduleAppointment'] as const;
+
 export const getRescheduleAppointmentMutationOptions = <TError = unknown, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
         Awaited<ReturnType<typeof rescheduleAppointment>>,
         TError,
-        { id: string; data: RescheduleAppointmentRequest },
+        RescheduleAppointmentMutationVariables,
         TContext
     >;
 }): UseMutationOptions<
     Awaited<ReturnType<typeof rescheduleAppointment>>,
     TError,
-    { id: string; data: RescheduleAppointmentRequest },
+    RescheduleAppointmentMutationVariables,
     TContext
 > => {
-    const mutationKey = ['rescheduleAppointment'];
+    const mutationKey = getRescheduleAppointmentMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
@@ -2613,7 +2774,7 @@ export const getRescheduleAppointmentMutationOptions = <TError = unknown, TConte
 
     const mutationFn: MutationFunction<
         Awaited<ReturnType<typeof rescheduleAppointment>>,
-        { id: string; data: RescheduleAppointmentRequest }
+        RescheduleAppointmentMutationVariables
     > = props => {
         const { id, data } = props ?? {};
 
@@ -2626,13 +2787,14 @@ export const getRescheduleAppointmentMutationOptions = <TError = unknown, TConte
 export type RescheduleAppointmentMutationResult = NonNullable<Awaited<ReturnType<typeof rescheduleAppointment>>>;
 export type RescheduleAppointmentMutationBody = RescheduleAppointmentRequest;
 export type RescheduleAppointmentMutationError = unknown;
+export type RescheduleAppointmentMutationVariables = { id: string; data: RescheduleAppointmentRequest };
 
 export const useRescheduleAppointment = <TError = unknown, TContext = unknown>(
     options?: {
         mutation?: UseMutationOptions<
             Awaited<ReturnType<typeof rescheduleAppointment>>,
             TError,
-            { id: string; data: RescheduleAppointmentRequest },
+            RescheduleAppointmentMutationVariables,
             TContext
         >;
     },
@@ -2640,7 +2802,7 @@ export const useRescheduleAppointment = <TError = unknown, TContext = unknown>(
 ): UseMutationResult<
     Awaited<ReturnType<typeof rescheduleAppointment>>,
     TError,
-    { id: string; data: RescheduleAppointmentRequest },
+    RescheduleAppointmentMutationVariables,
     TContext
 > => {
     return useMutation(getRescheduleAppointmentMutationOptions(options), queryClient);
@@ -2739,11 +2901,13 @@ export const getGetAppointmentSuspenseQueryOptions = <
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAppointment>>> = ({ signal }) =>
         getAppointment(id, signal);
 
-    return { queryKey, queryFn, ...queryOptions } as UseSuspenseQueryOptions<
-        Awaited<ReturnType<typeof getAppointment>>,
-        TError,
-        TData
-    > & { queryKey: DataTag<QueryKey, TData, TError> };
+    return queryOptionsBuilder({
+        queryKey,
+        ...queryOptions,
+        queryFn: queryOptions?.queryFn ?? queryFn,
+    }) as UseSuspenseQueryOptions<Awaited<ReturnType<typeof getAppointment>>, TError, TData> & {
+        queryKey: DataTag<QueryKey, TData, TError>;
+    } & { throwOnError?: ((this: never, error: TError) => boolean) & { readonly __inferenceOnly: never } };
 };
 
 export type GetAppointmentSuspenseQueryResult = NonNullable<Awaited<ReturnType<typeof getAppointment>>>;
@@ -2783,17 +2947,32 @@ export const cancelAppointment = (id: string, signal?: AbortSignal) => {
     return apiClient<void>({ url: `/api/v1/appointments/${id}/cancel`, method: 'POST', signal });
 };
 
+export const getCancelAppointmentMutationKey = () => ['cancelAppointment'] as const;
+
 export const getCancelAppointmentMutationOptions = <TError = unknown, TContext = unknown>(options?: {
-    mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelAppointment>>, TError, { id: string }, TContext>;
-}): UseMutationOptions<Awaited<ReturnType<typeof cancelAppointment>>, TError, { id: string }, TContext> => {
-    const mutationKey = ['cancelAppointment'];
+    mutation?: UseMutationOptions<
+        Awaited<ReturnType<typeof cancelAppointment>>,
+        TError,
+        CancelAppointmentMutationVariables,
+        TContext
+    >;
+}): UseMutationOptions<
+    Awaited<ReturnType<typeof cancelAppointment>>,
+    TError,
+    CancelAppointmentMutationVariables,
+    TContext
+> => {
+    const mutationKey = getCancelAppointmentMutationKey();
     const { mutation: mutationOptions } = options
         ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
             ? options
             : { ...options, mutation: { ...options.mutation, mutationKey } }
         : { mutation: { mutationKey } };
 
-    const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelAppointment>>, { id: string }> = props => {
+    const mutationFn: MutationFunction<
+        Awaited<ReturnType<typeof cancelAppointment>>,
+        CancelAppointmentMutationVariables
+    > = props => {
         const { id } = props ?? {};
 
         return cancelAppointment(id);
@@ -2805,12 +2984,23 @@ export const getCancelAppointmentMutationOptions = <TError = unknown, TContext =
 export type CancelAppointmentMutationResult = NonNullable<Awaited<ReturnType<typeof cancelAppointment>>>;
 
 export type CancelAppointmentMutationError = unknown;
+export type CancelAppointmentMutationVariables = { id: string };
 
 export const useCancelAppointment = <TError = unknown, TContext = unknown>(
     options?: {
-        mutation?: UseMutationOptions<Awaited<ReturnType<typeof cancelAppointment>>, TError, { id: string }, TContext>;
+        mutation?: UseMutationOptions<
+            Awaited<ReturnType<typeof cancelAppointment>>,
+            TError,
+            CancelAppointmentMutationVariables,
+            TContext
+        >;
     },
     queryClient?: QueryClient,
-): UseMutationResult<Awaited<ReturnType<typeof cancelAppointment>>, TError, { id: string }, TContext> => {
+): UseMutationResult<
+    Awaited<ReturnType<typeof cancelAppointment>>,
+    TError,
+    CancelAppointmentMutationVariables,
+    TContext
+> => {
     return useMutation(getCancelAppointmentMutationOptions(options), queryClient);
 };

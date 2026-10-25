@@ -495,7 +495,7 @@ echo "$TEST_OUTPUT"
 TOTAL_TESTS="$(grep -oE 'Total:[[:space:]]*[0-9]+' <<< "$TEST_OUTPUT" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)"
 FAILED_TESTS="$(grep -oE 'Failed:[[:space:]]*[0-9]+' <<< "$TEST_OUTPUT" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}' || true)"
 
-EXPECTED_TOTAL_TESTS=217
+EXPECTED_TOTAL_TESTS=221
 if [[ "$TOTAL_TESTS" != "$EXPECTED_TOTAL_TESTS" ]]; then
   fail "generated solution ran $TOTAL_TESTS tests, expected $EXPECTED_TOTAL_TESTS -- update EXPECTED_TOTAL_TESTS if tests were legitimately added to or removed from the app"
 elif [[ "$FAILED_TESTS" -eq 0 ]]; then

@@ -45,7 +45,7 @@ export interface CompanyMembership {
     timeZone: string;
 }
 
-export type Gender = (typeof Gender)[keyof typeof Gender];
+export type Gender = (typeof Gender)[keyof typeof Gender] | null;
 
 export const Gender = {
     Male: 'Male',
@@ -374,14 +374,14 @@ export type LoginParams = {
 
 export type GetTeamParams = {
     search?: string;
-    limit: number;
-    page: number;
+    limit?: number;
+    page?: number;
 };
 
 export type GetCustomersParams = {
     search?: string;
-    limit: number;
-    page: number;
+    limit?: number;
+    page?: number;
 };
 
 export type GetNewCustomerStatsParams = {
