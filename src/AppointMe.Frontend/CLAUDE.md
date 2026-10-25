@@ -192,7 +192,7 @@ Tailwind CSS 4 via `@tailwindcss/vite`. Always use shadcn theme tokens (`bg-back
 ## Tech Stack
 
 - **React 19** + **TypeScript 6** (strict, `noUnusedLocals`, `noUnusedParameters`).
-- **Vite+ 1.2** (Vite 8 + Oxlint + Oxfmt + bundled Vitest) with `@tailwindcss/vite`, `vite-plugin-svgr`, `vite-plugin-mkcert` (auto-HTTPS).
+- **Vite+ 1.4** (Vite 8 + Oxlint + Oxfmt + bundled Vitest) with `@tailwindcss/vite`, `vite-plugin-svgr`, `vite-plugin-mkcert` (auto-HTTPS).
 - **Tailwind CSS 4**, **shadcn/ui** (vendored under `components/ui/`).
 - **TanStack Query 5** (suspense mode) + **orval** for OpenAPI codegen → axios mutator.
 - **React Router 7**.
