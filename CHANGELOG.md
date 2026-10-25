@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`OutputType` `Exe`) and still run through VSTest, so `dotnet test` and its output are
   unchanged. The `-mtp-off` package keeps VSTest working on the .NET 10 SDK, since v3
   defaults to Microsoft Testing Platform; switching to that is a separate step.
+- **Recharts 3** (3.10) for the dashboard trend chart, with the vendored shadcn `chart`
+  component updated to its Recharts 3 version. `react-is` is now an explicit dependency
+  pinned to the React version, as Recharts requires; the version npm picked on its own was
+  React 18's. Charts gain Recharts 3's keyboard-accessible layer by default.
 - **`temporal-polyfill` 1.0**, which uses the browser's native Temporal where available and
   only polyfills elsewhere. Also `@tanstack/react-pacer` 0.24 and `@tanstack/react-hotkeys`
   0.14 (both now ESM-only), and `@types/node` now matches the Node 24 runtime.
