@@ -15,7 +15,7 @@ internal sealed class LoginEndpoint : IEndpoint
     }
 
     private static ChallengeHttpResult Login([FromQuery] string? provider,
-        [FromServices] IOptions<FrontendOptions> frontendOptions, [FromQuery] string returnUrl = "/")
+        IOptions<FrontendOptions> frontendOptions, [FromQuery] string returnUrl = "/")
     {
         var redirectUri = new UriBuilder(frontendOptions.Value.BaseUrl);
         if (Uri.IsWellFormedUriString(returnUrl, UriKind.Relative))
