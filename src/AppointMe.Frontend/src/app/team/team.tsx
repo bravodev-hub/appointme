@@ -9,6 +9,7 @@ import {
     Button,
     DataTable,
     DataTablePagination,
+    dataTableFeatures,
     InputGroup,
     InputGroupAddon,
     InputGroupInput,
@@ -16,7 +17,7 @@ import {
 } from '@/components/ui';
 import { useDebouncedValue } from '@tanstack/react-pacer/debouncer';
 import { keepPreviousData, useQueryClient } from '@tanstack/react-query';
-import { RowSelectionState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { RowSelectionState, useTable } from '@tanstack/react-table';
 import { PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { Fragment, useState } from 'react';
@@ -54,8 +55,8 @@ export const Team = () => {
         },
     );
 
-    // oxlint-disable-next-line react-hooks/incompatible-library -- TanStack Table is on the React Compiler's incompatible-library list; the compiler skips this component either way
-    const table = useReactTable({
+    const table = useTable({
+        features: dataTableFeatures,
         data: team?.members.items ?? [],
         columns: Columns,
         state: {
@@ -66,7 +67,6 @@ export const Team = () => {
         enableRowSelection: row => canRemove && !row.original.isCurrentUser,
         onRowSelectionChange: setRowSelection,
         onPaginationChange: setPagination,
-        getCoreRowModel: getCoreRowModel(),
         manualPagination: true,
         rowCount: team?.members.totalCount,
     });

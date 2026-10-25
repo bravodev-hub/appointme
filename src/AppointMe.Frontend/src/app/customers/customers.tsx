@@ -7,13 +7,14 @@ import {
     DataTable,
     DataTablePagination,
     DataTableViewOptions,
+    dataTableFeatures,
     InputGroup,
     InputGroupAddon,
     InputGroupInput,
 } from '@/components/ui';
 import { useDebouncedValue } from '@tanstack/react-pacer/debouncer';
 import { keepPreviousData, useQueryClient } from '@tanstack/react-query';
-import { RowSelectionState, VisibilityState, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { ColumnVisibilityState, RowSelectionState, useTable } from '@tanstack/react-table';
 import { PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useState } from 'react';
@@ -25,7 +26,7 @@ export const Customers = () => {
     const modalDialog = useModalDialog();
     const queryClient = useQueryClient();
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+    const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({});
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
     const { mutateAsync: deleteCustomer } = useDeleteCustomer();
@@ -68,8 +69,8 @@ export const Customers = () => {
         { query: { placeholderData: keepPreviousData } },
     );
 
-    // oxlint-disable-next-line react-hooks/incompatible-library -- TanStack Table is on the React Compiler's incompatible-library list; the compiler skips this component either way
-    const table = useReactTable({
+    const table = useTable({
+        features: dataTableFeatures,
         data: response?.customers.items ?? [],
         columns: Columns,
         state: {
@@ -82,7 +83,6 @@ export const Customers = () => {
         onRowSelectionChange: setRowSelection,
         onColumnVisibilityChange: setColumnVisibility,
         onPaginationChange: setPagination,
-        getCoreRowModel: getCoreRowModel(),
         manualPagination: true,
         rowCount: response?.customers.totalCount,
     });

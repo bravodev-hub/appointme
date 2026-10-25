@@ -1,13 +1,14 @@
+import { type DataTableFeatures } from '@/components/ui/data-table-features';
 import { Skeleton } from '@/components/ui/skeleton.tsx';
 import { TableCell, TableRow } from '@/components/ui/table.tsx';
-import { Column } from '@tanstack/react-table';
+import { Column, RowData } from '@tanstack/react-table';
 
-interface DataTableLoadingProps<TData> {
-    columns: Column<TData, unknown>[];
+interface DataTableLoadingProps<TData extends RowData> {
+    columns: Column<DataTableFeatures, TData, unknown>[];
     rows?: number;
 }
 
-export function DataTableLoading<TData>({ columns, rows = 5 }: DataTableLoadingProps<TData>) {
+export function DataTableLoading<TData extends RowData>({ columns, rows = 5 }: DataTableLoadingProps<TData>) {
     return (
         <>
             {Array.from({ length: rows }).map((_, i) => (

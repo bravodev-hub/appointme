@@ -1,23 +1,25 @@
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
-import { Table } from '@tanstack/react-table';
+import { type DataTableFeatures } from '@/components/ui/data-table-features';
+import { RowData, Table } from '@tanstack/react-table';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
-interface DataTablePaginationProps<TData> {
-    table: Table<TData>;
+interface DataTablePaginationProps<TData extends RowData> {
+    table: Table<DataTableFeatures, TData>;
 }
 
-export function DataTablePagination<TData>({ table }: DataTablePaginationProps<TData>) {
+export function DataTablePagination<TData extends RowData>({ table }: DataTablePaginationProps<TData>) {
+    const { pagination } = table.store.state;
+
     return (
         <div className='flex items-center justify-end px-2 sm:justify-between'>
             <div className='text-muted-foreground hidden flex-1 text-sm sm:block'>
-                {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row(s)
-                selected.
+                {table.getSelectedRowModel().rows.length} of {table.getCoreRowModel().rows.length} row(s) selected.
             </div>
             <div className='flex items-center gap-3 sm:gap-6 lg:gap-8'>
                 <div className='flex items-center space-x-2'>
                     <p className='hidden text-sm font-medium sm:block'>Rows per page</p>
                     <Select
-                        value={`${table.getState().pagination.pageSize}`}
+                        value={`${pagination.pageSize}`}
                         onValueChange={value => {
                             table.setPageSize(Number(value));
                         }}
@@ -37,7 +39,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
                 <div className='flex items-center justify-center text-sm font-medium sm:w-25'>
                     {table.getPageCount() > 0 && (
                         <>
-                            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                            Page {pagination.pageIndex + 1} of {table.getPageCount()}
                         </>
                     )}
                 </div>

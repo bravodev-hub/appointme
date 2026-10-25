@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { type DataTableFeatures } from '@/components/ui/data-table-features';
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -7,10 +8,10 @@ import {
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
-import { Table } from '@tanstack/react-table';
+import { RowData, Table } from '@tanstack/react-table';
 import { Settings2 } from 'lucide-react';
 
-export function DataTableViewOptions<TData>({ table }: { table: Table<TData> }) {
+export function DataTableViewOptions<TData extends RowData>({ table }: { table: Table<DataTableFeatures, TData> }) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>

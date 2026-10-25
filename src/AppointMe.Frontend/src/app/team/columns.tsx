@@ -1,9 +1,9 @@
 import { ActionsCell } from './actions-cell';
 import { TeamMemberDto, TeamMemberType } from '@/api/client.schemas.ts';
-import { Avatar, AvatarFallback, Badge, Checkbox } from '@/components/ui';
+import { Avatar, AvatarFallback, Badge, Checkbox, type DataTableFeatures } from '@/components/ui';
 import { ColumnDef } from '@tanstack/react-table';
 
-export const Columns: ColumnDef<TeamMemberDto>[] = [
+export const Columns: ColumnDef<DataTableFeatures, TeamMemberDto>[] = [
     {
         id: 'select',
         header: ({ table }) => (
@@ -21,7 +21,6 @@ export const Columns: ColumnDef<TeamMemberDto>[] = [
                 aria-label='Select row'
             />
         ),
-        enableSorting: false,
         enableHiding: false,
         meta: {
             className: 'w-0',
@@ -82,15 +81,12 @@ export const Columns: ColumnDef<TeamMemberDto>[] = [
                 ))}
             </div>
         ),
-        enableSorting: false,
         meta: {
             className: 'hidden lg:table-cell',
         },
     },
     {
         id: 'actions',
-        enableResizing: false,
-        enableSorting: false,
         enableHiding: false,
         meta: {
             className: 'w-0',

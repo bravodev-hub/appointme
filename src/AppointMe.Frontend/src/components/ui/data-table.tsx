@@ -8,35 +8,47 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui';
+import { type DataTableFeatures } from '@/components/ui/data-table-features';
 import { cn } from '@/lib/utils';
-import { Table as ReactTable, Row, RowData, flexRender } from '@tanstack/react-table';
+import {
+    type CellData,
+    Table as ReactTable,
+    Row,
+    RowData,
+    type TableFeatures,
+    flexRender,
+} from '@tanstack/react-table';
 import { ReactNode } from 'react';
 
 declare module '@tanstack/react-table' {
     // The type parameters must match TanStack's declaration to merge, even though unused here.
-    interface ColumnMeta<TData extends RowData, TValue = unknown> {
+    interface ColumnMeta<
+        in out TFeatures extends TableFeatures,
+        in out TData extends RowData,
+        TValue extends CellData = CellData,
+    > {
         className?: string;
         /** Overrides `className` for header cells only (e.g. different sticky background). */
         headerClassName?: string;
     }
 }
 
-interface DataTableProps<TData> {
-    table: ReactTable<TData>;
+interface DataTableProps<TData extends RowData> {
+    table: ReactTable<DataTableFeatures, TData>;
     isLoading?: boolean;
     isFetching?: boolean;
     skeletonRows?: number;
     emptyMessage?: string;
     className?: string;
-    onRowClick?: (row: Row<TData>) => void;
+    onRowClick?: (row: Row<DataTableFeatures, TData>) => void;
     /**
      * Custom row renderer. Return a ReactNode to replace the default row rendering,
      * or return `undefined` to fall back to the default rendering.
      */
-    renderRow?: (row: Row<TData>) => ReactNode | undefined;
+    renderRow?: (row: Row<DataTableFeatures, TData>) => ReactNode | undefined;
 }
 
-export function DataTable<TData>({
+export function DataTable<TData extends RowData>({
     table,
     isLoading = false,
     isFetching = false,

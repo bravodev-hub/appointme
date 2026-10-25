@@ -16,6 +16,7 @@ export * from './collapsible';
 export * from './command';
 export * from './context-menu';
 export * from './data-table';
+export * from './data-table-features';
 export * from './data-table-pagination';
 export * from './data-table-view-options';
 export * from './dialog';

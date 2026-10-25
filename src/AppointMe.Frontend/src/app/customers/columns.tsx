@@ -1,10 +1,10 @@
 import { ActionsCell } from './actions-cell';
 import { CustomerDto } from '@/api/client.schemas';
 import { FormattedDate } from '@/components/format';
-import { Avatar, AvatarFallback, Checkbox } from '@/components/ui';
+import { Avatar, AvatarFallback, Checkbox, type DataTableFeatures } from '@/components/ui';
 import { ColumnDef } from '@tanstack/react-table';
 
-export const Columns: ColumnDef<CustomerDto>[] = [
+export const Columns: ColumnDef<DataTableFeatures, CustomerDto>[] = [
     {
         id: 'select',
         header: ({ table }) => (
@@ -23,7 +23,6 @@ export const Columns: ColumnDef<CustomerDto>[] = [
                 onClick={e => e.stopPropagation()}
             />
         ),
-        enableSorting: false,
         enableHiding: false,
         meta: {
             className: 'w-0',
@@ -73,8 +72,6 @@ export const Columns: ColumnDef<CustomerDto>[] = [
     },
     {
         id: 'actions',
-        enableResizing: false,
-        enableSorting: false,
         enableHiding: false,
         meta: {
             className: 'w-0',
