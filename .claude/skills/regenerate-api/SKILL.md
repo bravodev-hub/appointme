@@ -64,7 +64,7 @@ If it reports errors, those are **call sites that need updating to match the new
 
 ## Known pitfalls
 
-- **Build-time generation runs the app's startup.** The `GenerateOpenApiDocuments` build step launches `Program.cs` against a mock server and starts the host. `CodeGenerationDetection.IsGeneratingOpenApiDocument()` detects this run: the app then uses the `Codegen` environment (placeholder settings in `appsettings.Codegen.json`), skips Hangfire and the database migrations, and runs Wolverine as an in-memory mediator. New startup code that needs real configuration, a database, or another service must be gated the same way, or the build fails.
+- **Build-time generation runs the app's startup.** The `GenerateOpenApiDocuments` build step launches `Program.cs` against a mock server and starts the host. `CodeGenerationDetection.IsRunningGeneration()` detects this run (as it does Wolverine's `codegen` command): the app then uses the `Codegen` environment (placeholder settings in `appsettings.Codegen.json`), skips Hangfire and the database migrations, and runs Wolverine as an in-memory mediator. New startup code that needs real configuration, a database, or another service must be gated the same way, or the build fails.
 - **Commit `openapi.json` with the client.** It is the source the client was generated from, and its diff is the reviewable contract change.
 - **Orval alone**: `npx orval` regenerates from the committed spec without building — only useful when the spec is already current.
 - **Don't hand-edit `src/api/client.ts` or `src/api/client.schemas.ts`** — orval's `clean: true` mode deletes them on each run.

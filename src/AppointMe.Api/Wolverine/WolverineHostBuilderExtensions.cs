@@ -35,8 +35,8 @@ public static class HostBuilderExtensions
                     : TypeLoadMode.Static;
 
                 // Build-time OpenAPI generation starts the host with no database and no pre-built handler types.
-                // Never for the `codegen` command: its output ships, so it must see the real configuration.
-                if (CodeGenerationDetection.IsGeneratingOpenApiDocument())
+                // Mediator mode only affects a started host, so the handler code `codegen write` emits is unchanged.
+                if (isCodegen)
                 {
                     options.Durability.Mode = DurabilityMode.MediatorOnly;
                     options.CodeGeneration.TypeLoadMode = TypeLoadMode.Dynamic;
