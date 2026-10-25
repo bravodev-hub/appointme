@@ -12,7 +12,7 @@ var passwordParameter = builder.AddParameter("sqlPassword", "Password1");
 
 var sqlServer = builder
     .AddSqlServer("appointme-sql", passwordParameter)
-    .WithImage("mssql/server:2025-CU1-ubuntu-24.04")
+    .WithImage("mssql/server:2025-CU10-ubuntu-24.04")
     .WithHostPort(60740)
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent);
@@ -33,7 +33,7 @@ var keycloak = builder.AddKeycloak("keycloak", 8082,
 // Keycloak actually serves.
 var keycloakEndpoint = keycloak.GetEndpoint("http");
 
-var mailpit = builder.AddContainer("Mailpit", "axllent/mailpit")
+var mailpit = builder.AddContainer("Mailpit", "axllent/mailpit", "v1.32.0")
     .WithEndpoint(8026, 8025, name: "web-ui", scheme: "http")
     .WithEndpoint(1026, 1025, name: "smtp-server")
     .WithLifetime(ContainerLifetime.Persistent);
@@ -51,8 +51,8 @@ var appointmeApi = builder.AddProject<AppointMe_Api>("appointme-api", launchProf
 // AddViteApp runs `npm install` first and gives the app a single endpoint named "http". vite-plugin-mkcert makes
 // the dev server serve TLS, and the Keycloak realm's redirect URIs and the API's Frontend:BaseUrl expect
 // https://localhost:5173, so that endpoint is pinned to 5173 and switched to https rather than adding a second one.
-// --no-save installs the locked versions without rewriting package-lock.json: a local npm 11 would otherwise
-// reformat it on every launch, and CI's npm 10 is what the lockfile has to stay compatible with.
+// --no-save installs the locked versions without rewriting package-lock.json, so a launch never leaves lockfile
+// changes behind (npm install would otherwise rewrite it whenever the local npm differs from the one that wrote it).
 builder.AddViteApp(name: "appointme-frontend", appDirectory: "../AppointMe.Frontend")
     .WithNpm(installArgs: ["--no-save"])
     .WithEndpoint("http", endpoint =>

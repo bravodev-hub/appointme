@@ -1,0 +1,47 @@
+# Weekly dependency PRs. Minor and patch updates are grouped into one PR per ecosystem; major updates arrive one
+# per package so each can be reviewed on its own. The cooldown skips releases younger than a week; it and the
+# groups apply to version updates only, so security updates still arrive immediately and individually.
+#
+# Not covered: container image tags. compose.yaml mirrors the images src/AppointMe.Aspire/Program.cs pins
+# (SQL Server, Mailpit), and Dependabot can only edit the YAML side, so both are bumped by hand together.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      # A PR of its own: the Aspire.AppHost.Sdk version in src/AppointMe.Aspire/AppointMe.Aspire.csproj is not
+      # a package reference, so it has to be bumped by hand in the same PR.
+      aspire:
+        patterns: ["Aspire.*"]
+      nuget-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /src/AppointMe.Frontend
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      # package.json pins vite-plus, the `vite` alias and the `vite` override to the same version; Dependabot
+      # can only move one of them, and the resulting EOVERRIDE would fail the whole group. Bump these by hand.
+      - dependency-name: vite-plus
+      - dependency-name: vite
+      - dependency-name: "@voidzero-dev/vite-plus-core"
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]

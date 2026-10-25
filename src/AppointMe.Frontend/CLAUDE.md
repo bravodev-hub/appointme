@@ -211,8 +211,4 @@ Tailwind CSS 4 via `@tailwindcss/vite`. Always use shadcn theme tokens (`bg-back
 - **Don't render Radix `<Dialog>` or `<Popover>` controlled-mode without a Trigger** — Radix logs a warning. Use the hidden-trigger pattern shown above.
 - **Don't use raw hex colours** — use Tailwind theme tokens so dark mode / theme changes propagate.
 - **Don't put zod schemas in shared files** — co-locate with the dialog/form that uses them.
-- **Don't let npm 11 write `package-lock.json`** — CI (GitHub runner + the Dockerfile's `node:22-alpine`) runs npm 10, whose `npm ci` rejects npm-11-written lockfiles (`Missing: @emnapi/core from lock file`, an incomplete optional-dependency branch). After ANY dependency change, regenerate and verify with:
-  ```bash
-  npx -y npm@10 install   # rewrite the lockfile in npm-10-compatible form
-  npx -y npm@10 ci        # verify the exact path CI takes
-  ```
+- **Don't write `package-lock.json` with a different npm major than CI** — CI (GitHub runner) and the Dockerfile's `node:24-alpine` run Node 24 / npm 11, matching `.node-version`. Mixing majors churns the lockfile, and npm 10's `npm ci` has rejected npm-11-written lockfiles before (`Missing: @emnapi/core from lock file`). Change dependencies on Node 24, then verify the path CI takes with `npm ci`. Aspire installs with `npm install --no-save`, so launching it never rewrites the lockfile.

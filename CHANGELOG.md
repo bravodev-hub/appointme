@@ -7,8 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dependabot.** Weekly NuGet, npm and GitHub Actions updates, with minor and patch bumps
+  grouped into one PR per ecosystem and a one-week cooldown on new releases (security
+  updates are neither grouped nor delayed). Aspire packages get a PR of their own, since
+  the AppHost SDK version has to move with them by hand, and Vite+ is excluded because its
+  three pinned entries in `package.json` have to change together.
+
 ### Changed
 
+- **Dependencies refreshed and all open npm and NuGet security advisories cleared.** .NET
+  10.0.13, Aspire 13.6.4, Wolverine 6.53, OpenTelemetry 1.20; on the frontend Vite+ 1.4,
+  React 19.3 and React Router 8.5 among in-range bumps. `System.Security.Cryptography.Pkcs`
+  is pinned to 10.0.13 because SqlClient and the Aspire SQL Server host still pull in a
+  vulnerable version.
+- **Aspire hosts the frontend with `Aspire.Hosting.JavaScript`**, replacing the deprecated
+  `Aspire.Hosting.NodeJs` and the CommunityToolkit Node.js extensions. It installs packages
+  with `npm install --no-save`, so starting Aspire no longer rewrites `package-lock.json`.
+- **Node 24 for CI and the Docker build** (and `.node-version`); the lockfile is now written
+  by npm 11. Node 22.18+ still works locally.
+- **Local SQL Server image is 2025-CU10** (was CU1), and Mailpit is pinned to v1.32.0
+  instead of `latest`, in both the Aspire host and `compose.yaml`.
 - **Frontend toolchain is now Vite+.** `vp` replaces the separate Vite, ESLint, Prettier
   and `tsc` setup: lint (Oxlint) and format (Oxfmt) config live in `vite.config.ts`, and
   `npm run check` format-checks, lints and type-checks in one pass — which CI now runs.

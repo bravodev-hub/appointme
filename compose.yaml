@@ -23,7 +23,7 @@ name: appointme
 
 services:
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2025-CU1-ubuntu-24.04
+    image: mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
     container_name: appointme-sql
     environment:
       ACCEPT_EULA: "Y"
@@ -67,7 +67,7 @@ services:
       start_period: 20s
 
   mailpit:
-    image: axllent/mailpit
+    image: axllent/mailpit:v1.32.0
     container_name: appointme-mailpit
     networks:
       default:

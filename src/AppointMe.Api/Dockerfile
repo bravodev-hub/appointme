@@ -2,7 +2,7 @@
 # Build context is the repo root, not src/AppointMe.Api.
 
 # Stage 1: frontend bundle
-FROM node:22-alpine AS frontend
+FROM node:24-alpine AS frontend
 # Git short SHA of the build; shown in the app footer. CI passes it explicitly.
 ARG APP_VERSION=local
 ENV VITE_APP_VERSION=$APP_VERSION
