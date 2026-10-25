@@ -21,7 +21,7 @@ container and Aspire resource names. The domain vocabulary (`Appointment`,
 
 ## Run it
 
-You need the .NET 10 SDK, Docker, and Node.js 22.
+You need the .NET 10 SDK, Docker, and Node.js 22.18+ or 24.11+.
 
 ```bash
 dotnet dev-certs https --trust          # one-time, per machine
