@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   updates are neither grouped nor delayed). Aspire packages get a PR of their own, since
   the AppHost SDK version has to move with them by hand, and Vite+ is excluded because its
   three pinned entries in `package.json` have to change together.
+- **CI checks the Wolverine handler code.** The build-and-test job runs `codegen test`,
+  which generates and compiles all handler code in memory. Before, only the Docker image
+  build did this, and that runs only on deploys.
 
 ### Changed
 
