@@ -20,6 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **.NET 10.0.14 and Wolverine 6.60.** The out-of-band .NET servicing release of 25 October
+  2026 fixes CVE-2026-111497 (Brotli decoder out-of-bounds write); every Microsoft 10.0.x
+  package and the `System.Security.Cryptography.Pkcs` transitive pin move to 10.0.14. The pin
+  stays: SqlClient 7.1.1 still asks for 9.0.18 and the Aspire SQL Server host for 10.0.12.
+  Wolverine 6.54–6.60 brings dead-letter failure groups (an additive schema migration: nullable
+  columns and an index on `wolverine_dead_letters`, plus a `wolverine_dead_letter_history`
+  table, applied at startup like earlier Wolverine migrations) and SQL Server message-store
+  fixes, notably 6.59.1, where inbox and outbox statements seek on their indexes again
+  instead of scanning the envelope table.
 - **Dependencies refreshed and all open npm and NuGet security advisories cleared.** .NET
   10.0.13, Aspire 13.6.4, Wolverine 6.53, OpenTelemetry 1.20; on the frontend Vite+ 1.4,
   React 19.3 and React Router 8.5 among in-range bumps. `System.Security.Cryptography.Pkcs`
