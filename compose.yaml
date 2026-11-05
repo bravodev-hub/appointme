@@ -7,7 +7,7 @@
 #
 # Unlike Aspire, Compose runs ONLY the dependencies. You start the API and the
 # frontend yourself:
-#   dotnet run --project src/AppointMe.Api              # API on https://localhost:7233
+#   dotnet run --project src/AppointMe.Api --launch-profile https   # API on https://localhost:7233
 #   cd src/AppointMe.Frontend && npm install && npm run dev   # frontend on https://localhost:5173
 #
 # One-time setup before the first `docker compose up`: export the trusted

@@ -140,8 +140,9 @@ Compose runs only the backing services (SQL Server, Keycloak, Mailpit) — on th
 docker compose up -d
 docker compose ps          # SQL Server and Keycloak should show "healthy"
 
-# 3. Run the API (applies migrations + seeds demo data on first start)
-dotnet run --project src/AppointMe.Api
+# 3. Run the API (applies migrations + seeds demo data on first start).
+#    The https profile serves https://localhost:7233, where the frontend proxies /api.
+dotnet run --project src/AppointMe.Api --launch-profile https
 
 # 4. In a second terminal, run the frontend
 cd src/AppointMe.Frontend

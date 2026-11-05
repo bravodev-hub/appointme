@@ -61,7 +61,7 @@ dotnet dev-certs https --format PEM --no-password -ep docker/keycloak/certs/keyc
 ```
 
 Then `docker compose up` brings up SQL Server, Keycloak and Mailpit on the same
-ports Aspire uses; run `dotnet run --project src/AppointMe.Api`, and in
+ports Aspire uses; run `dotnet run --project src/AppointMe.Api --launch-profile https`, and in
 `src/AppointMe.Frontend`, `npm ci` followed by `npm run dev`.
 
 The frontend is linted and formatted by [Vite+](https://viteplus.dev) (Oxlint +

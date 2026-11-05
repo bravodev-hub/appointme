@@ -13,7 +13,7 @@ This starts all services via .NET Aspire: SQL Server, Keycloak, Mailpit, API, an
 ### Backend Only
 ```bash
 dotnet build AppointMe.sln        # Build entire solution
-dotnet run --project src/AppointMe.Api  # Run API
+dotnet run --project src/AppointMe.Api --launch-profile https  # Run API on https://localhost:7233 (the frontend proxies to it)
 ```
 
 ### Frontend Only
