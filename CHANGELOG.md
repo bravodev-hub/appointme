@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-11-08
+
+The **toolchain** release. The frontend moves to Vite+, with one `npm run check` for
+formatting, linting and type-checking that CI now enforces. The OpenAPI document is generated
+at build time, so regenerating the client no longer needs a running backend. Tests run on
+xUnit.net v3, and the major frontend libraries move up a version (FullCalendar 7, TanStack
+Table 9, Recharts 3). It also includes .NET 10.0.14, an out-of-band security release.
+
+```bash
+dotnet new install BravoDev.AppointMe.Templates::1.3.0
+```
+
 ### Added
 
 - **Dependabot.** Weekly NuGet, npm and GitHub Actions updates, with minor and patch bumps
@@ -243,6 +255,8 @@ Core writes and Dapper reads; Wolverine domain events over a durable SQL transpo
 auto-discovered permission system; a typed React frontend generated from the OpenAPI spec; and
 a one-command .NET Aspire local stack.
 
+[Unreleased]: https://github.com/bravodev-hub/appointme/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/bravodev-hub/appointme/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/bravodev-hub/appointme/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/bravodev-hub/appointme/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/bravodev-hub/appointme/compare/v1.0.0...v1.1.0
