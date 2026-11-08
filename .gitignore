@@ -383,3 +383,6 @@ src/AppointMe.Api/Internal/Generated/
 # Keycloak dev certificate exported for docker-compose (see docker/keycloak/export-dev-cert.sh)
 docker/keycloak/certs/*.crt
 docker/keycloak/certs/*.key
+
+# Superpowers brainstorming companion (local mockups and session state)
+.superpowers/
