@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **.NET 11.** Every project targets `net11.0` with C# 15, and the Microsoft packages
+  (ASP.NET Core, EF Core, `Microsoft.Extensions.*`) move to 11.0.0. `global.json`, the CI
+  workflows and the API Dockerfile (`sdk:11.0`, `aspnet:11.0`) now need the .NET 11 SDK.
+  EF Core 11 reports no pending model changes, so there is no new migration, and the
+  generated OpenAPI client is unchanged. `AppointMe.Shared` no longer references
+  `Microsoft.Extensions.DependencyInjection.Abstractions`, `.Hosting.Abstractions` and
+  `.Logging.Abstractions` directly: the shared framework already provides them, and NuGet
+  warns (NU1510) about the redundant references on .NET 11.
+- **Aspire 13.6.5**, for the AppHost SDK and the hosting packages. It clears the two
+  advisories reported against 13.6.4 (GHSA-4g86-54fm-h9h8 in the dashboard,
+  GHSA-f7vh-h5g3-7jrh in `Aspire.Hosting`).
+- **Remaining dependencies refreshed.** Wolverine 6.64, OpenTelemetry 1.21, SqlClient 7.1.2,
+  Microsoft Graph 6.10, `Microsoft.NET.Test.Sdk` 18.12, `xunit.v3.mtp-off` 4.0.3 and the
+  ASP.NET Core 2.3.14 abstractions, with no code changes.
+
+### Removed
+
+- **The `System.Security.Cryptography.Pkcs` transitive pin.** SqlClient 7.1.2 and the Aspire
+  13.6.5 SQL Server host both reference patched versions themselves, so GHSA-846f-f764-76mx
+  no longer needs a central pin.
+
 ## [1.3.0] — 2026-11-08
 
 The **toolchain** release. The frontend moves to Vite+, with one `npm run check` for

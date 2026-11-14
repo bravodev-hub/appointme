@@ -4,8 +4,8 @@
     <PackageType>Template</PackageType>
     <PackageId>BravoDev.AppointMe.Templates</PackageId>
     <Version>1.3.0</Version>
-    <Title>AppointMe — modular-monolith .NET 10 SaaS foundation</Title>
-    <Description>A production-grade modular-monolith .NET 10 + React 19 SaaS foundation: multi-tenancy, OIDC auth, CQRS, domain events, durable messaging, an auto-discovered permission system, a business dashboard, and a one-command .NET Aspire local stack. Run: dotnet new appointme -n Your.Project</Description>
+    <Title>AppointMe — modular-monolith .NET 11 SaaS foundation</Title>
+    <Description>A production-grade modular-monolith .NET 11 + React 19 SaaS foundation: multi-tenancy, OIDC auth, CQRS, domain events, durable messaging, an auto-discovered permission system, a business dashboard, and a one-command .NET Aspire local stack. Run: dotnet new appointme -n Your.Project</Description>
     <PackageTags>dotnet-new;template;templates;aspire;ddd;modular-monolith;multi-tenant;cqrs;react;saas</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/bravodev-hub/appointme</PackageProjectUrl>
@@ -38,7 +38,7 @@
     <NoDefaultExcludes>true</NoDefaultExcludes>
 
     <!-- NU5128: no lib/ or ref/ assets in a package that declares a TFM. Expected -
-         this project declares no TargetFramework of its own; it inherits net10.0 from
+         this project declares no TargetFramework of its own; it inherits net11.0 from
          the root Directory.Build.props, so a reader of this file alone would not
          otherwise see where the TFM comes from. -->
     <NoWarn>$(NoWarn);NU5128</NoWarn>

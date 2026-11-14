@@ -5,7 +5,7 @@
   "identity": "BravoDev.AppointMe.ModularMonolith.CSharp",
   "name": "AppointMe modular-monolith SaaS foundation",
   "shortName": "appointme",
-  "description": "A modular-monolith .NET 10 + React 19 multi-tenant SaaS foundation with Identity, Organizations, CRM and Booking bounded contexts, CQRS, domain events, a permission system, and a .NET Aspire local stack.",
+  "description": "A modular-monolith .NET 11 + React 19 multi-tenant SaaS foundation with Identity, Organizations, CRM and Booking bounded contexts, CQRS, domain events, a permission system, and a .NET Aspire local stack.",
   "tags": {
     "language": "C#",
     "type": "solution"

@@ -1,8 +1,8 @@
 # AppointMe
 
-A production-grade **modular-monolith .NET 10 SaaS foundation** for advanced .NET teams, solo founders, and agencies who want a real base.
+A production-grade **modular-monolith .NET 11 SaaS foundation** for advanced .NET teams, solo founders, and agencies who want a real base.
 
-AppointMe is a modular monolith (.NET 10 + React 19) with the hard parts already solved: multi-tenancy, authentication, authorization, CQRS, domain events, durable messaging, and a typed frontend wired to the backend contract. Clone it, press F5, and you have a running multi-tenant app — then build your product on top.
+AppointMe is a modular monolith (.NET 11 + React 19) with the hard parts already solved: multi-tenancy, authentication, authorization, CQRS, domain events, durable messaging, and a typed frontend wired to the backend contract. Clone it, press F5, and you have a running multi-tenant app — then build your product on top.
 
 **Documentation: [appointme.dev/docs](https://appointme.dev/docs/)** — quick start, architecture concepts, a reference page per module, step-by-step guides (add an endpoint, a module, a permission) and Azure deployment.
 
@@ -70,7 +70,7 @@ Both produce an identical running app — same images, ports, credentials, and s
 
 | Requirement | Why | Notes |
 |---|---|---|
-| [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) | Builds and runs the API and the Aspire host | `dotnet --version` should report `10.x` |
+| [.NET 11 SDK](https://dotnet.microsoft.com/download/dotnet/11.0) | Builds and runs the API and the Aspire host | `dotnet --version` should report `11.x` |
 | [Docker](https://www.docker.com/products/docker-desktop/) (running) | Hosts SQL Server, Keycloak, and Mailpit containers | Docker Desktop or any OCI-compatible runtime |
 | [Node.js 22.18+ or 24.11+](https://nodejs.org/) | Builds and serves the React frontend | npm ships with Node — nothing else to install. With Aspire (Option A) the frontend's `npm install` runs automatically on first start |
 | HTTPS dev certificate | Frontend and services run over HTTPS | `dotnet dev-certs https --trust` |
@@ -216,7 +216,7 @@ Deeper write-ups on how specific parts of AppointMe are designed:
 
 ## Tech stack
 
-- **Backend:** .NET 10, C# 14, EF Core 10, Wolverine 6, Dapper
+- **Backend:** .NET 11, C# 15, EF Core 11, Wolverine 6, Dapper
 - **Frontend:** React 19, TypeScript 6, Vite+ (Vite 8, Oxlint, Oxfmt), Tailwind CSS 4, TanStack Query
 - **Infrastructure:** SQL Server 2022/2025, Keycloak, orchestrated with .NET Aspire
 

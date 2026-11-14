@@ -13,7 +13,7 @@ COPY src/AppointMe.Frontend/ ./
 RUN npm run build
 
 # Stage 2: API publish
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY . .
@@ -28,7 +28,7 @@ RUN dotnet publish src/AppointMe.Api/AppointMe.Api.csproj \
     /p:UseAppHost=false
 
 # Stage 3: runtime
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:11.0
 WORKDIR /app
 COPY --from=build /app/publish ./
 COPY --from=frontend /src/dist ./wwwroot

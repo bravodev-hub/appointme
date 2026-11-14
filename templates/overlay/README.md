@@ -1,6 +1,6 @@
 # AppointMe
 
-A modular-monolith .NET 10 + React 19 multi-tenant SaaS foundation, generated
+A modular-monolith .NET 11 + React 19 multi-tenant SaaS foundation, generated
 from a production-grade template.
 
 > Generated from a `dotnet new` template. The `-n <Name>` you passed must be a valid

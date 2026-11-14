@@ -1,6 +1,6 @@
 # AppointMe template
 
-A `dotnet new` template for a production-grade **modular-monolith .NET 10 + React 19
+A `dotnet new` template for a production-grade **modular-monolith .NET 11 + React 19
 SaaS foundation**: multi-tenancy, OIDC auth, CQRS, domain events, durable messaging,
 an auto-discovered permission system, a business dashboard, and a one-command
 .NET Aspire local stack.
@@ -21,7 +21,7 @@ container and Aspire resource names. The domain vocabulary (`Appointment`,
 
 ## Run it
 
-You need the .NET 10 SDK, Docker, and Node.js 22.18+ or 24.11+.
+You need the .NET 11 SDK, Docker, and Node.js 22.18+ or 24.11+.
 
 ```bash
 dotnet dev-certs https --trust          # one-time, per machine

@@ -121,7 +121,7 @@ once during development; it remains the single easiest way to break the harness.
 
 ## Architecture
 
-This is a **modular monolithic** .NET 10 application following Domain-Driven Design principles.
+This is a **modular monolithic** .NET 11 application following Domain-Driven Design principles.
 
 ### Module Structure
 ```
@@ -234,7 +234,7 @@ public class PermissionResolverTests
 ```
 
 ### Tech Stack
-- **Backend**: .NET 10, C# 14, EF Core 10, Wolverine 6.60, Dapper
+- **Backend**: .NET 11, C# 15, EF Core 11, Wolverine 6.64, Dapper
 - **Frontend**: React 19, TypeScript 6, Vite+ 1.4 (Vite 8, Oxlint, Oxfmt), Tailwind CSS 4, TanStack Query
 - **Infrastructure**: SQL Server 2025, Keycloak, Mailpit (local dev); Azure Service Bus for production messaging
 
