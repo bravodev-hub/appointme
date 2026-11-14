@@ -2,6 +2,6 @@ namespace AppointMe.Shared.Authentication;
 
 public interface ICurrentIdentity
 {
-    IIdentity? Identity { get; }
-    IDisposable Change(IIdentity identity);
+    Identity? Identity { get; }
+    IDisposable Change(Identity identity);
 }

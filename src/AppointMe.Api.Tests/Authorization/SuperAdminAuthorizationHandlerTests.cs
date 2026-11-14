@@ -7,11 +7,13 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace AppointMe.Api.Tests.Authorization;
 
+using Identity = AppointMe.Shared.Authentication.Identity;
+
 public class SuperAdminAuthorizationHandlerTests
 {
     private static readonly SuperAdminRegistry Registry = new(["demo@appointme.dev"]);
 
-    private static async Task<bool> Evaluate(IIdentity identity)
+    private static async Task<bool> Evaluate(Identity identity)
     {
         var handler = new SuperAdminAuthorizationHandler(new StubIdentityResolver(identity), Registry);
         var requirement = new SuperAdminRequirement();
@@ -55,9 +57,9 @@ public class SuperAdminAuthorizationHandlerTests
         Assert.False(await Evaluate(new SystemIdentity()));
     }
 
-    private sealed class StubIdentityResolver(IIdentity identity) : IIdentityResolver
+    private sealed class StubIdentityResolver(Identity identity) : IIdentityResolver
     {
-        public ValueTask<IIdentity> Resolve(CancellationToken cancellationToken)
+        public ValueTask<Identity> Resolve(CancellationToken cancellationToken)
         {
             return ValueTask.FromResult(identity);
         }

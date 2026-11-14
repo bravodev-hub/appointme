@@ -7,7 +7,7 @@ namespace AppointMe.Organizations.Invitations.AcceptInvitation;
 
 public sealed class AcceptInvitationCommandHandler(OrganizationsDbContext dbContext, TimeProvider timeProvider)
 {
-    public async Task HandleAsync(AcceptInvitationCommand command, IIdentity identity,
+    public async Task HandleAsync(AcceptInvitationCommand command, Identity identity,
         CancellationToken cancellationToken)
     {
         if (identity is not UserIdentity currentUser)

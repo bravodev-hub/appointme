@@ -7,7 +7,7 @@ namespace AppointMe.Organizations.Settings.Permissions.ResetPermissions;
 public sealed class ResetPermissionsCommandHandler(OrganizationsDbContext dbContext)
 {
     public async Task<CompanyPermissionsChanged?> HandleAsync(ResetPermissionsCommand command, CompanyId companyId,
-        IPrincipal principal, IIdentity identity, CancellationToken cancellationToken)
+        IPrincipal principal, Identity identity, CancellationToken cancellationToken)
     {
         principal.Require(PermissionPermissions.Manage);
 

@@ -20,7 +20,6 @@ public sealed class CurrentPrincipalResolver(
             AnonymousIdentity => new AnonymousPrincipal(),
             SystemIdentity => new SystemPrincipal(),
             UserIdentity user => await userPrincipalFactory.Create(user, cancellationToken),
-            _ => throw new NotSupportedException($"Unknown identity type: {identity.GetType().Name}")
         };
 
         currentPrincipal.Change(principal);

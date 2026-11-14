@@ -7,25 +7,27 @@ So it helps to split the concept into two abstractions.
 **Identity — who are you?**
 
 ```csharp
-public interface IIdentity;
+public union Identity(AnonymousIdentity, SystemIdentity, UserIdentity);
 ```
+
+A C# 15 union is a closed set of case types: any of the three records converts implicitly to `Identity`, and the compiler knows the full set, so a `switch` over an identity needs no default arm.
 
 It might be a registered user:
 
 ```csharp
-public sealed record UserIdentity(UserId Id, PersonName Name, Email Email) : IIdentity;
+public sealed record UserIdentity(UserId Id, PersonName Name, Email Email);
 ```
 
 the system itself — a background job, or a handler reacting to an event from another bounded context:
 
 ```csharp
-public sealed record SystemIdentity : IIdentity;
+public sealed record SystemIdentity;
 ```
 
 or anonymous:
 
 ```csharp
-public sealed record AnonymousIdentity : IIdentity;
+public sealed record AnonymousIdentity;
 ```
 
 **Principal — what are you allowed to do?**
@@ -75,7 +77,7 @@ This is a simple model, but it's a powerful starting point for writing business 
 public sealed class DeleteEmployeeCommandHandler(OrganizationsDbContext dbContext)
 {
     public async Task HandleAsync(DeleteEmployeeCommand command, CompanyId companyId, IPrincipal principal,
-        IIdentity identity, CancellationToken cancellationToken)
+        Identity identity, CancellationToken cancellationToken)
     {
         principal.Require(EmployeePermissions.Remove);
 
@@ -93,7 +95,7 @@ public sealed class DeleteEmployeeCommandHandler(OrganizationsDbContext dbContex
 
 The principal guarantees the authorization check. The identity lets us enforce a business rule the principal can't express — you can't delete yourself from the company. Two questions, two abstractions, both answered cleanly inside the handler.
 
-Notice that the handler simply *receives* `IPrincipal` and `IIdentity` as parameters. It doesn't reach into `HttpContext`, doesn't call a static accessor, doesn't know where the user came from. That's deliberate — and it's also where the hard part begins.
+Notice that the handler simply *receives* `IPrincipal` and `Identity` as parameters. It doesn't reach into `HttpContext`, doesn't call a static accessor, doesn't know where the user came from. That's deliberate — and it's also where the hard part begins.
 
 Because the handler takes identity and principal for granted. Something, somewhere, has to actually produce them. And in a real system, the same handler can run in any of several contexts:
 
@@ -112,7 +114,7 @@ It gets worse from there, in three specific ways.
 
 **And then there's the constraint — module boundaries.** Modules are isolated — the Booking module that needs to know the current principal can't just reach into the Organizations module's tables. Fine, we accept a query across the boundary. But if you're using Wolverine with an outbox and automatic transactions, you hit another problem: Wolverine starts the transaction automatically, and it won't know *which* `DbContext` to open it on if resolution touches a different module's context mid-handler. You *can* tell Wolverine which context to use for the transaction, but there's a cleaner way out — resolution simply *cannot* happen inside the command or query handler. It has to happen before the handler's transaction is ever opened.
 
-That last constraint is the one that shapes everything. It means the clean handler signature you saw above — `IPrincipal principal, IIdentity identity` as plain parameters — is only possible if some layer *above* the handler has already resolved them, lazily, with the right answer for whichever of the four contexts we happen to be in, and made them available without the handler knowing any of it happened.
+That last constraint is the one that shapes everything. It means the clean handler signature you saw above — `IPrincipal principal, Identity identity` as plain parameters — is only possible if some layer *above* the handler has already resolved them, lazily, with the right answer for whichever of the four contexts we happen to be in, and made them available without the handler knowing any of it happened.
 
 So how do you build that layer?
 
@@ -122,7 +124,7 @@ That's what the next part is about: the resolvers, the two kinds of laziness tha
 
 # Part 2: Two resolvers, four entry points
 
-In part 1 we established the shape of the problem: handlers want `IIdentity` and `IPrincipal` handed to them as plain parameters, but something above the handler has to produce those — lazily, correctly, for whichever execution context we're in, and *before* any transaction opens. Let's build that layer.
+In part 1 we established the shape of the problem: handlers want `Identity` and `IPrincipal` handed to them as plain parameters, but something above the handler has to produce those — lazily, correctly, for whichever execution context we're in, and *before* any transaction opens. Let's build that layer.
 
 ## The resolvers
 
@@ -134,7 +136,7 @@ public sealed class CurrentIdentityResolver(
     HttpIdentityFactory httpIdentityFactory
 ) : IIdentityResolver
 {
-    public async ValueTask<IIdentity> Resolve(CancellationToken cancellationToken)
+    public async ValueTask<Identity> Resolve(CancellationToken cancellationToken)
     {
         if (currentIdentity.Identity is { } resolved)
         {
@@ -171,7 +173,6 @@ public sealed class CurrentPrincipalResolver(
             AnonymousIdentity => new AnonymousPrincipal(),
             SystemIdentity => new SystemPrincipal(),
             UserIdentity user => await userPrincipalFactory.Create(user, cancellationToken),
-            _ => throw new NotSupportedException($"Unknown identity type: {identity.GetType().Name}")
         };
 
         currentPrincipal.Change(principal);
@@ -200,7 +201,7 @@ public sealed class HttpIdentityFactory(
     IUserIdentityRegistry userIdentityRegistry
 )
 {
-    public async ValueTask<IIdentity> Create(CancellationToken cancellationToken)
+    public async ValueTask<Identity> Create(CancellationToken cancellationToken)
     {
         var principal = httpContextAccessor.HttpContext?.User;
         if (principal?.Identity?.IsAuthenticated != true)
@@ -292,7 +293,7 @@ public class IdentityContextPolicy : IHandlerPolicy
 {
     public void Apply(IReadOnlyList<HandlerChain> chains, GenerationRules rules, IServiceContainer container)
     {
-        foreach (var chain in chains.Where(chain => chain.Uses<Shared.Authentication.IIdentity>()))
+        foreach (var chain in chains.Where(chain => chain.Uses<Identity>()))
         {
             chain.Middleware.Add(
                 new MethodCall(typeof(IdentityContextBehavior), nameof(IdentityContextBehavior.Load)));
@@ -302,7 +303,7 @@ public class IdentityContextPolicy : IHandlerPolicy
 
 public static class IdentityContextBehavior
 {
-    public static async Task<IIdentity> Load(IIdentityResolver identityResolver,
+    public static async Task<Identity> Load(IIdentityResolver identityResolver,
         CancellationToken cancellationToken)
     {
         return await identityResolver.Resolve(cancellationToken);
@@ -310,7 +311,7 @@ public static class IdentityContextBehavior
 }
 ```
 
-This is the bootstrap-time selectivity from earlier. At code-generation time, Wolverine inspects every handler chain; only the ones whose handler actually *uses* `IIdentity` get the `Load` middleware attached. Wolverine threads the middleware's return value down the chain, so the handler can take `IIdentity` as a parameter and it's simply there. Handlers that don't need identity pay nothing — no middleware, no resolution. Like HTTP, this is **pull**: the middleware calls the resolver on demand.
+This is the bootstrap-time selectivity from earlier. At code-generation time, Wolverine inspects every handler chain; only the ones whose handler actually *uses* `Identity` get the `Load` middleware attached. Wolverine threads the middleware's return value down the chain, so the handler can take `Identity` as a parameter and it's simply there. Handlers that don't need identity pay nothing — no middleware, no resolution. Like HTTP, this is **pull**: the middleware calls the resolver on demand.
 
 Identity is only half of what `DeleteEmployeeCommandHandler` asked for back in part 1 — it also takes `IPrincipal`. That's wired by a second, near-identical policy:
 
@@ -337,7 +338,7 @@ public static class PrincipalContextBehavior
 }
 ```
 
-The shape is identical; only two things change. The selection predicate is `chain.Uses<IPrincipal>()` instead of `IIdentity`, and the behavior delegates to the `CurrentPrincipalResolver` we built at the start of this part — which is what finally gives that resolver its entry point. The two policies are independent and registered side by side, so a handler gets exactly the middleware it declares: one asking only for `IIdentity` gets the identity `Load`; one asking for both — like `DeleteEmployeeCommandHandler` — gets both. And because principal resolution calls into identity resolution underneath (the `switch` we saw earlier), the two compose: resolving the principal lazily resolves the identity too, each memoized once.
+The shape is identical; only two things change. The selection predicate is `chain.Uses<IPrincipal>()` instead of `Identity`, and the behavior delegates to the `CurrentPrincipalResolver` we built at the start of this part — which is what finally gives that resolver its entry point. The two policies are independent and registered side by side, so a handler gets exactly the middleware it declares: one asking only for `Identity` gets the identity `Load`; one asking for both — like `DeleteEmployeeCommandHandler` — gets both. And because principal resolution calls into identity resolution underneath (the `switch` we saw earlier), the two compose: resolving the principal lazily resolves the identity too, each memoized once.
 
 This is the "magic" part of Wolverine in both good and bad senses.
 
@@ -380,7 +381,7 @@ A job has no user and no `HttpContext`. So instead of resolving, the filter **pu
 
 There's a fourth context hiding in the async path. When a handler reacts to a domain event raised by *another* module, there's no user behind it — the originating action already happened, possibly in a different request. These handlers should run as the system.
 
-The same Wolverine policy mechanism from Seam 2 applies, but with a different selection rule and the opposite strategy. Instead of selecting handlers that *use* `IIdentity`, we select handlers whose message *is* a domain event, and instead of pulling, we push:
+The same Wolverine policy mechanism from Seam 2 applies, but with a different selection rule and the opposite strategy. Instead of selecting handlers that *use* `Identity`, we select handlers whose message *is* a domain event, and instead of pulling, we push:
 
 ```csharp
 public class DomainEventContextPolicy : IHandlerPolicy
@@ -401,13 +402,13 @@ Note `Insert(0, ...)` rather than `Add`: the system context is pushed in at the 
 
 The two pushes differ in one detail of housekeeping. The Hangfire filter keeps the `IDisposable` that `Change` hands back and disposes it in `OnPerformed`, restoring whatever the holder contained before the job. `SystemContextBehavior.Apply` doesn't — it pushes the system context and walks away, relying on the message's async context ending with the handler. Both are correct for their setting; just don't read them as byte-for-byte identical.
 
-So the same Wolverine mechanism serves two of our contexts in opposite ways. Command handlers that declare `IIdentity` get the resolver wired in and **pull** lazily. Domain-event handlers get the system context **pushed** in up front. The selection criterion — "uses `IIdentity`" versus "is an `IDomainEvent`" — decides which.
+So the same Wolverine mechanism serves two of our contexts in opposite ways. Command handlers that declare `Identity` get the resolver wired in and **pull** lazily. Domain-event handlers get the system context **pushed** in up front. The selection criterion — "uses `Identity`" versus "is an `IDomainEvent`" — decides which.
 
 ## The shape of the whole thing
 
 Step back and the design is one idea: **a single ambient holder that every context populates differently.** HTTP requests and command handlers *pull* — resolution happens lazily, on demand, when a handler or an authorization requirement asks. Background jobs and domain-event handlers *push* — the system context is seeded up front because there's no user to resolve. The holder is the same in every case; only *who fills it, and when* changes.
 
-The handler, at the end of all this, knows none of it. It declares `IPrincipal` and `IIdentity` as parameters and trusts that they're correct — whether the caller was a browser, an API client, an event from another module, or a 3 a.m. cron job.
+The handler, at the end of all this, knows none of it. It declares `IPrincipal` and `Identity` as parameters and trusts that they're correct — whether the caller was a browser, an API client, an event from another module, or a 3 a.m. cron job.
 
 ## The hard feeling
 

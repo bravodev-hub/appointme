@@ -24,6 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Microsoft Graph 6.10, `Microsoft.NET.Test.Sdk` 18.12, `xunit.v3.mtp-off` 4.0.3 and the
   ASP.NET Core 2.3.14 abstractions, with no code changes.
 
+- **`IIdentity` is now the union `Identity`.** The marker interface becomes a C# 15 union,
+  `union Identity(AnonymousIdentity, SystemIdentity, UserIdentity)`, and the three records no
+  longer share a base type. A `switch` over an identity is checked for exhaustiveness at
+  compile time, so `CurrentPrincipalResolver` loses its unreachable "unknown identity type"
+  arm. Handlers declare an `Identity` parameter instead of `IIdentity`. Inside the Api
+  project the name collides with the `AppointMe.Identity` namespace, so the files that use
+  it declare `using Identity = AppointMe.Shared.Authentication.Identity;` below their
+  `namespace` line.
+
 ### Removed
 
 - **The `System.Security.Cryptography.Pkcs` transitive pin.** SqlClient 7.1.2 and the Aspire

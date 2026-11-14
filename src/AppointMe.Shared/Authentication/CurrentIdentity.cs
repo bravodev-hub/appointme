@@ -2,15 +2,15 @@ namespace AppointMe.Shared.Authentication;
 
 public sealed class CurrentIdentity : ICurrentIdentity
 {
-    private static readonly AsyncLocal<IIdentity?> Current = new();
+    private static readonly AsyncLocal<Identity?> Current = new();
 
-    public IIdentity? Identity
+    public Identity? Identity
     {
         get => Current.Value;
         private set => Current.Value = value;
     }
 
-    public IDisposable Change(IIdentity identity)
+    public IDisposable Change(Identity identity)
     {
         var previous = Identity;
         Identity = identity;

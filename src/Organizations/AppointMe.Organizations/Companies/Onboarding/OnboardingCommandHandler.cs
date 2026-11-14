@@ -4,7 +4,7 @@ namespace AppointMe.Organizations.Companies.Onboarding;
 
 public sealed class OnboardingCommandHandler(OrganizationsDbContext dbContext, TimeProvider timeProvider)
 {
-    public async Task<OnboardingResponse> HandleAsync(OnboardingCommand command, IIdentity identity,
+    public async Task<OnboardingResponse> HandleAsync(OnboardingCommand command, Identity identity,
         CancellationToken cancellationToken)
     {
         if (identity is not UserIdentity currentUser)

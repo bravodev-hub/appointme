@@ -4,7 +4,7 @@ namespace AppointMe.Shared.Authentication;
 
 public static class IdentityExtensions
 {
-    extension(IIdentity identity)
+    extension(Identity identity)
     {
         public UserId? UserId => identity is UserIdentity user ? user.Id : null;
     }

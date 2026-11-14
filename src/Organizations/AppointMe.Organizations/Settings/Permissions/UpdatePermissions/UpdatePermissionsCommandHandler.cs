@@ -8,7 +8,7 @@ namespace AppointMe.Organizations.Settings.Permissions.UpdatePermissions;
 public sealed class UpdatePermissionsCommandHandler(PermissionRegistry registry, OrganizationsDbContext dbContext)
 {
     public async Task<CompanyPermissionsChanged?> HandleAsync(UpdatePermissionsCommand command, CompanyId companyId,
-        IPrincipal principal, IIdentity identity, CancellationToken cancellationToken)
+        IPrincipal principal, Identity identity, CancellationToken cancellationToken)
     {
         principal.Require(PermissionPermissions.Manage);
 

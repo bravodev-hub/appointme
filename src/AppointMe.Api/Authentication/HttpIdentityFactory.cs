@@ -3,12 +3,14 @@ using AppointMe.Identity.Users;
 
 namespace AppointMe.Api.Authentication;
 
+using Identity = AppointMe.Shared.Authentication.Identity;
+
 public sealed class HttpIdentityFactory(
     IHttpContextAccessor httpContextAccessor,
     IUserIdentityRegistry userIdentityRegistry
 )
 {
-    public async ValueTask<IIdentity> Create(CancellationToken cancellationToken)
+    public async ValueTask<Identity> Create(CancellationToken cancellationToken)
     {
         var principal = httpContextAccessor.HttpContext?.User;
         if (principal?.Identity?.IsAuthenticated != true)

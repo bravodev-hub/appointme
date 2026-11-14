@@ -2,5 +2,5 @@ namespace AppointMe.Shared.Authentication;
 
 public interface IIdentityResolver
 {
-    ValueTask<IIdentity> Resolve(CancellationToken cancellationToken);
+    ValueTask<Identity> Resolve(CancellationToken cancellationToken);
 }

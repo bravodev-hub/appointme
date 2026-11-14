@@ -7,7 +7,7 @@ namespace AppointMe.Organizations.Me;
 
 public sealed class GetCurrentUserQueryHandler(OrganizationsDbContext dbContext, SuperAdminRegistry superAdmins)
 {
-    public async Task<GetCurrentUserResponse> HandleAsync(GetCurrentUserQuery query, IIdentity identity,
+    public async Task<GetCurrentUserResponse> HandleAsync(GetCurrentUserQuery query, Identity identity,
         CancellationToken cancellationToken)
     {
         if (identity is not UserIdentity user)

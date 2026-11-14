@@ -10,7 +10,7 @@ namespace AppointMe.Organizations.Employees.GetTeam;
 public sealed class GetTeamQueryHandler(TeamRepository repository, OrganizationsDbContext dbContext)
 {
     public async Task<GetTeamResponse> HandleAsync(GetTeamQuery query, CompanyId companyId, IPrincipal principal,
-        IIdentity identity, CancellationToken cancellationToken)
+        Identity identity, CancellationToken cancellationToken)
     {
         principal.Require(EmployeePermissions.View);
 

@@ -1,3 +1,3 @@
 namespace AppointMe.Shared.Authentication;
 
-public sealed record AnonymousIdentity : IIdentity;
+public sealed record AnonymousIdentity;

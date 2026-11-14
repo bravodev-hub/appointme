@@ -3,4 +3,4 @@ using AppointMe.Shared.Users;
 
 namespace AppointMe.Shared.Authentication;
 
-public sealed record UserIdentity(UserId Id, PersonName Name, Email Email) : IIdentity;
+public sealed record UserIdentity(UserId Id, PersonName Name, Email Email);

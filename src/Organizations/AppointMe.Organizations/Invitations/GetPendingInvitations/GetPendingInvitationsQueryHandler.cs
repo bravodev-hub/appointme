@@ -5,7 +5,7 @@ namespace AppointMe.Organizations.Invitations.GetPendingInvitations;
 
 public sealed class GetPendingInvitationsQueryHandler(OrganizationsDbContext dbContext)
 {
-    public async Task<GetPendingInvitationsResponse> HandleAsync(GetPendingInvitationsQuery query, IIdentity identity,
+    public async Task<GetPendingInvitationsResponse> HandleAsync(GetPendingInvitationsQuery query, Identity identity,
         CancellationToken cancellationToken)
     {
         if (identity is not UserIdentity user)
