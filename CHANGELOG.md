@@ -56,12 +56,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`dotnet ef` reads `.config/dotnet-ef.json`** (new in EF Core 11) for the startup project,
   so migrations commands run from a module directory with only `--context`.
 
+- **The build-time OpenAPI document gets its environment from the project file.**
+  `<OpenApiGenerationEnvironment>Codegen</OpenApiGenerationEnvironment>` (new in .NET 11)
+  replaces detecting the generator by its entry-assembly name. `Program.cs` now derives
+  `isCodegen` from the environment, and command-line detection remains only for Wolverine's
+  `codegen` command.
+
 ### Fixed
 
 - **`dotnet ef migrations add` works again on .NET 11.** EF Core Design 11 brings the Roslyn
   workspaces at 5.9.0 while `JasperFx.RuntimeCompiler` (through Wolverine) asked for 5.0.0,
   and the mix failed with a `ReflectionTypeLoadException`. `Microsoft.CodeAnalysis` is now
   pinned to 5.9.0 as a transitive pin.
+- **Local `docker build` after a local .NET 11 build.** A build on macOS or Linux now leaves a
+  directory literally named `bin\Debug` next to `bin/` (Roslyn's BuildHost content files, from
+  EF Core Design 11). `.dockerignore` did not match it, and inside the image it broke MSBuild
+  globbing with MSB3552. It is now ignored. Builds from a fresh checkout, as in CI, were not
+  affected.
 
 ### Removed
 

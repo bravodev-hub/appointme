@@ -13,6 +13,10 @@
 **/*.jfm
 **/azds.yaml
 **/bin
+# On macOS and Linux a build also leaves a directory literally named `bin\Debug` (Roslyn's BuildHost
+# content files, brought in by EF Core Design 11). Copied into the image without the real bin/, it breaks
+# MSBuild globbing (MSB3552).
+**/bin\\*
 **/charts
 **/docker-compose*
 **/Dockerfile*

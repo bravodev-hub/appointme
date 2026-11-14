@@ -22,15 +22,17 @@ using AppointMe.Shared.Endpoints;
 using JasperFx;
 using Microsoft.AspNetCore.HttpOverrides;
 
-var isCodegen = CodeGenerationDetection.IsRunningGeneration();
-
-// Code-generation runs (Wolverine's `codegen` command and the build-time OpenAPI document) boot the app without its
-// real configuration; the Codegen environment's appsettings.Codegen.json supplies placeholder values.
+// Code-generation runs boot the app without its real configuration; the Codegen environment's
+// appsettings.Codegen.json supplies placeholder values. The build-time OpenAPI document gets that environment
+// from <OpenApiGenerationEnvironment> in the project file; Wolverine's `codegen` command is detected from the
+// command line, so it works without ASPNETCORE_ENVIRONMENT being set.
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
-    EnvironmentName = isCodegen ? "Codegen" : null,
+    EnvironmentName = CodeGenerationDetection.IsRunningCodegenCommand() ? "Codegen" : null,
 });
+
+var isCodegen = builder.Environment.IsEnvironment("Codegen");
 
 builder.Services
     .AddAppointMeErrorHandling()

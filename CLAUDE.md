@@ -32,7 +32,7 @@ npm run generate:api # Build the API (writes obj/openapi.json), then regenerate 
 
 After any change that alters the OpenAPI surface — new/renamed/removed endpoint, changed `*Request.cs`/`*Response.cs` shape, changed route or HTTP verb, changed auth/permission attributes on an endpoint — invoke the `/regenerate-api` skill **in the same task**. It runs `npm run generate:api`, which builds `AppointMe.Api` (Release, so it doesn't clash with a running Aspire app) — the build writes the OpenAPI document to `src/AppointMe.Api/obj/openapi.json`, a build artifact that is never committed — and then runs orval against that file, so no running backend is needed. It reports the diff on `src/AppointMe.Frontend/src/api/`, which is where a contract change shows up in review.
 
-The build-time step runs the app's startup in the `Codegen` environment (`appsettings.Codegen.json` placeholders, no database, Wolverine as an in-memory mediator); see `CodeGenerationDetection`. Startup code that needs real infrastructure must be gated on it, or `dotnet build` fails.
+The build-time step runs the app's startup in the `Codegen` environment (`appsettings.Codegen.json` placeholders, no database, Wolverine as an in-memory mediator), selected by `<OpenApiGenerationEnvironment>` in `AppointMe.Api.csproj`; `Program.cs` keys its `isCodegen` branches off that environment name. Startup code that needs real infrastructure must be gated on it, or `dotnet build` fails.
 
 Do **not** invoke `/regenerate-api` for backend-only changes that don't affect the contract (internal handlers, domain events, EF config, migrations, tests).
 
