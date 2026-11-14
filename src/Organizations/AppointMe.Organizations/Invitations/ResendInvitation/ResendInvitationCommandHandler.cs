@@ -5,7 +5,7 @@ namespace AppointMe.Organizations.Invitations.ResendInvitation;
 
 public sealed class ResendInvitationCommandHandler(OrganizationsDbContext dbContext, TimeProvider timeProvider)
 {
-    public async Task HandleAsync(ResendInvitationCommand command, CompanyId companyId, IPrincipal principal,
+    public async Task HandleAsync(ResendInvitationCommand command, CompanyId companyId, Principal principal,
         CancellationToken cancellationToken)
     {
         principal.Require(InvitationPermissions.Resend);

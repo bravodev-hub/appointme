@@ -5,7 +5,7 @@ namespace AppointMe.Organizations.Employees.DeleteEmployee;
 
 public sealed class DeleteEmployeeCommandHandler(OrganizationsDbContext dbContext)
 {
-    public async Task HandleAsync(DeleteEmployeeCommand command, CompanyId companyId, IPrincipal principal,
+    public async Task HandleAsync(DeleteEmployeeCommand command, CompanyId companyId, Principal principal,
         Identity identity, CancellationToken cancellationToken)
     {
         principal.Require(EmployeePermissions.Remove);

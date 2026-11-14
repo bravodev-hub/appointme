@@ -33,18 +33,32 @@ public sealed record AnonymousIdentity;
 **Principal — what are you allowed to do?**
 
 ```csharp
-public interface IPrincipal
+public union Principal(AnonymousPrincipal, SystemPrincipal, UserPrincipal)
 {
-    public bool HasRole(Role role);
-    public bool HasPermission(Permission permission);
+    public bool HasRole(Role role) => this switch
+    {
+        AnonymousPrincipal anonymous => anonymous.HasRole(role),
+        SystemPrincipal system => system.HasRole(role),
+        UserPrincipal user => user.HasRole(role),
+        null => false,
+    };
+
+    public bool HasPermission(Permission permission) => this switch
+    {
+        AnonymousPrincipal anonymous => anonymous.HasPermission(permission),
+        SystemPrincipal system => system.HasPermission(permission),
+        UserPrincipal user => user.HasPermission(permission),
+        null => false,
+    };
 }
 ```
+
+Like `Identity`, it is a union, and it forwards the two questions to whichever case it holds. The `null` arms cover a default, unset principal, which is denied everything.
 
 A registered user has roles and permissions granted within a company:
 
 ```csharp
 public sealed record UserPrincipal(CompanyId CompanyId, IReadOnlySet<Role> Roles, IReadOnlySet<Permission> Permissions)
-    : IPrincipal
 {
     public bool HasRole(Role role) => Roles.Contains(role);
     public bool HasPermission(Permission permission) => Permissions.Contains(permission);
@@ -54,7 +68,7 @@ public sealed record UserPrincipal(CompanyId CompanyId, IReadOnlySet<Role> Roles
 The system can do anything:
 
 ```csharp
-public sealed record SystemPrincipal : IPrincipal
+public sealed record SystemPrincipal
 {
     public bool HasRole(Role role) => true;
     public bool HasPermission(Permission permission) => true;
@@ -64,7 +78,7 @@ public sealed record SystemPrincipal : IPrincipal
 and an anonymous caller can do nothing:
 
 ```csharp
-public sealed record AnonymousPrincipal : IPrincipal
+public sealed record AnonymousPrincipal
 {
     public bool HasRole(Role role) => false;
     public bool HasPermission(Permission permission) => false;
@@ -76,7 +90,7 @@ This is a simple model, but it's a powerful starting point for writing business 
 ```csharp
 public sealed class DeleteEmployeeCommandHandler(OrganizationsDbContext dbContext)
 {
-    public async Task HandleAsync(DeleteEmployeeCommand command, CompanyId companyId, IPrincipal principal,
+    public async Task HandleAsync(DeleteEmployeeCommand command, CompanyId companyId, Principal principal,
         Identity identity, CancellationToken cancellationToken)
     {
         principal.Require(EmployeePermissions.Remove);
@@ -95,7 +109,7 @@ public sealed class DeleteEmployeeCommandHandler(OrganizationsDbContext dbContex
 
 The principal guarantees the authorization check. The identity lets us enforce a business rule the principal can't express — you can't delete yourself from the company. Two questions, two abstractions, both answered cleanly inside the handler.
 
-Notice that the handler simply *receives* `IPrincipal` and `Identity` as parameters. It doesn't reach into `HttpContext`, doesn't call a static accessor, doesn't know where the user came from. That's deliberate — and it's also where the hard part begins.
+Notice that the handler simply *receives* `Principal` and `Identity` as parameters. It doesn't reach into `HttpContext`, doesn't call a static accessor, doesn't know where the user came from. That's deliberate — and it's also where the hard part begins.
 
 Because the handler takes identity and principal for granted. Something, somewhere, has to actually produce them. And in a real system, the same handler can run in any of several contexts:
 
@@ -114,7 +128,7 @@ It gets worse from there, in three specific ways.
 
 **And then there's the constraint — module boundaries.** Modules are isolated — the Booking module that needs to know the current principal can't just reach into the Organizations module's tables. Fine, we accept a query across the boundary. But if you're using Wolverine with an outbox and automatic transactions, you hit another problem: Wolverine starts the transaction automatically, and it won't know *which* `DbContext` to open it on if resolution touches a different module's context mid-handler. You *can* tell Wolverine which context to use for the transaction, but there's a cleaner way out — resolution simply *cannot* happen inside the command or query handler. It has to happen before the handler's transaction is ever opened.
 
-That last constraint is the one that shapes everything. It means the clean handler signature you saw above — `IPrincipal principal, Identity identity` as plain parameters — is only possible if some layer *above* the handler has already resolved them, lazily, with the right answer for whichever of the four contexts we happen to be in, and made them available without the handler knowing any of it happened.
+That last constraint is the one that shapes everything. It means the clean handler signature you saw above — `Principal principal, Identity identity` as plain parameters — is only possible if some layer *above* the handler has already resolved them, lazily, with the right answer for whichever of the four contexts we happen to be in, and made them available without the handler knowing any of it happened.
 
 So how do you build that layer?
 
@@ -124,7 +138,7 @@ That's what the next part is about: the resolvers, the two kinds of laziness tha
 
 # Part 2: Two resolvers, four entry points
 
-In part 1 we established the shape of the problem: handlers want `Identity` and `IPrincipal` handed to them as plain parameters, but something above the handler has to produce those — lazily, correctly, for whichever execution context we're in, and *before* any transaction opens. Let's build that layer.
+In part 1 we established the shape of the problem: handlers want `Identity` and `Principal` handed to them as plain parameters, but something above the handler has to produce those — lazily, correctly, for whichever execution context we're in, and *before* any transaction opens. Let's build that layer.
 
 ## The resolvers
 
@@ -159,7 +173,7 @@ public sealed class CurrentPrincipalResolver(
     UserPrincipalFactory userPrincipalFactory
 ) : ICurrentPrincipalResolver
 {
-    public async ValueTask<IPrincipal> Resolve(CancellationToken cancellationToken)
+    public async ValueTask<Principal> Resolve(CancellationToken cancellationToken)
     {
         if (currentPrincipal.Principal is { } resolved)
         {
@@ -168,7 +182,7 @@ public sealed class CurrentPrincipalResolver(
 
         var identity = await identityResolver.Resolve(cancellationToken);
 
-        IPrincipal principal = identity switch
+        Principal principal = identity switch
         {
             AnonymousIdentity => new AnonymousPrincipal(),
             SystemIdentity => new SystemPrincipal(),
@@ -313,14 +327,14 @@ public static class IdentityContextBehavior
 
 This is the bootstrap-time selectivity from earlier. At code-generation time, Wolverine inspects every handler chain; only the ones whose handler actually *uses* `Identity` get the `Load` middleware attached. Wolverine threads the middleware's return value down the chain, so the handler can take `Identity` as a parameter and it's simply there. Handlers that don't need identity pay nothing — no middleware, no resolution. Like HTTP, this is **pull**: the middleware calls the resolver on demand.
 
-Identity is only half of what `DeleteEmployeeCommandHandler` asked for back in part 1 — it also takes `IPrincipal`. That's wired by a second, near-identical policy:
+Identity is only half of what `DeleteEmployeeCommandHandler` asked for back in part 1 — it also takes `Principal`. That's wired by a second, near-identical policy:
 
 ```csharp
 public class PrincipalContextPolicy : IHandlerPolicy
 {
     public void Apply(IReadOnlyList<HandlerChain> chains, GenerationRules rules, IServiceContainer container)
     {
-        foreach (var chain in chains.Where(chain => chain.Uses<IPrincipal>()))
+        foreach (var chain in chains.Where(chain => chain.Uses<Principal>()))
         {
             chain.Middleware.Add(new MethodCall(typeof(PrincipalContextBehavior),
                 nameof(PrincipalContextBehavior.LoadAsync)));
@@ -330,7 +344,7 @@ public class PrincipalContextPolicy : IHandlerPolicy
 
 public static class PrincipalContextBehavior
 {
-    public static async Task<IPrincipal> LoadAsync(ICurrentPrincipalResolver principalResolver,
+    public static async Task<Principal> LoadAsync(ICurrentPrincipalResolver principalResolver,
         CancellationToken cancellationToken)
     {
         return await principalResolver.Resolve(cancellationToken);
@@ -338,7 +352,7 @@ public static class PrincipalContextBehavior
 }
 ```
 
-The shape is identical; only two things change. The selection predicate is `chain.Uses<IPrincipal>()` instead of `Identity`, and the behavior delegates to the `CurrentPrincipalResolver` we built at the start of this part — which is what finally gives that resolver its entry point. The two policies are independent and registered side by side, so a handler gets exactly the middleware it declares: one asking only for `Identity` gets the identity `Load`; one asking for both — like `DeleteEmployeeCommandHandler` — gets both. And because principal resolution calls into identity resolution underneath (the `switch` we saw earlier), the two compose: resolving the principal lazily resolves the identity too, each memoized once.
+The shape is identical; only two things change. The selection predicate is `chain.Uses<Principal>()` instead of `Identity`, and the behavior delegates to the `CurrentPrincipalResolver` we built at the start of this part — which is what finally gives that resolver its entry point. The two policies are independent and registered side by side, so a handler gets exactly the middleware it declares: one asking only for `Identity` gets the identity `Load`; one asking for both — like `DeleteEmployeeCommandHandler` — gets both. And because principal resolution calls into identity resolution underneath (the `switch` we saw earlier), the two compose: resolving the principal lazily resolves the identity too, each memoized once.
 
 This is the "magic" part of Wolverine in both good and bad senses.
 
@@ -408,7 +422,7 @@ So the same Wolverine mechanism serves two of our contexts in opposite ways. Com
 
 Step back and the design is one idea: **a single ambient holder that every context populates differently.** HTTP requests and command handlers *pull* — resolution happens lazily, on demand, when a handler or an authorization requirement asks. Background jobs and domain-event handlers *push* — the system context is seeded up front because there's no user to resolve. The holder is the same in every case; only *who fills it, and when* changes.
 
-The handler, at the end of all this, knows none of it. It declares `IPrincipal` and `Identity` as parameters and trusts that they're correct — whether the caller was a browser, an API client, an event from another module, or a 3 a.m. cron job.
+The handler, at the end of all this, knows none of it. It declares `Principal` and `Identity` as parameters and trusts that they're correct — whether the caller was a browser, an API client, an event from another module, or a 3 a.m. cron job.
 
 ## The hard feeling
 

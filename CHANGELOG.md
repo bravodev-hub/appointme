@@ -33,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   it declare `using Identity = AppointMe.Shared.Authentication.Identity;` below their
   `namespace` line.
 
+- **`IPrincipal` is now the union `Principal`.**
+  `union Principal(AnonymousPrincipal, SystemPrincipal, UserPrincipal)` forwards `HasRole`
+  and `HasPermission` to the case it holds, and denies both for a default, unset principal.
+  Handlers declare a `Principal` parameter instead of `IPrincipal`. A union is a closed set,
+  so tests can no longer implement their own principal: they use `AnonymousPrincipal` or a
+  `UserPrincipal` built with the permissions they need.
+
 ### Removed
 
 - **The `System.Security.Cryptography.Pkcs` transitive pin.** SqlClient 7.1.2 and the Aspire

@@ -6,7 +6,7 @@ namespace AppointMe.Booking.Appointments.CancelAppointment;
 public sealed class CancelAppointmentCommandHandler(BookingDbContext dbContext)
 {
     public async Task HandleAsync(CancelAppointmentCommand command, CompanyId companyId,
-        IPrincipal principal, CancellationToken cancellationToken)
+        Principal principal, CancellationToken cancellationToken)
     {
         principal.Require(AppointmentPermissions.Cancel);
 

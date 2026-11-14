@@ -4,7 +4,7 @@ namespace AppointMe.Shared.Authorization.Principals;
 
 public static class PrincipalAuthorizationExtensions
 {
-    public static void Require(this IPrincipal principal, params Permission[] permissions)
+    public static void Require(this Principal principal, params Permission[] permissions)
     {
         if (permissions.Length == 0)
         {

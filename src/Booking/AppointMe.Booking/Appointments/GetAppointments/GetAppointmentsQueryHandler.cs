@@ -5,7 +5,7 @@ namespace AppointMe.Booking.Appointments.GetAppointments;
 public sealed class GetAppointmentsQueryHandler(AppointmentsRepository repository)
 {
     public async Task<IReadOnlyList<AppointmentDto>> HandleAsync(GetAppointmentsQuery query,
-        CompanyId companyId, IPrincipal principal, CancellationToken cancellationToken)
+        CompanyId companyId, Principal principal, CancellationToken cancellationToken)
     {
         principal.Require(AppointmentPermissions.View);
 

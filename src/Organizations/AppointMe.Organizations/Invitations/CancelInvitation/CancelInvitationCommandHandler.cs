@@ -5,7 +5,7 @@ namespace AppointMe.Organizations.Invitations.CancelInvitation;
 
 public sealed class CancelInvitationCommandHandler(OrganizationsDbContext dbContext)
 {
-    public async Task HandleAsync(CancelInvitationCommand command, CompanyId companyId, IPrincipal principal,
+    public async Task HandleAsync(CancelInvitationCommand command, CompanyId companyId, Principal principal,
         CancellationToken cancellationToken)
     {
         principal.Require(InvitationPermissions.Cancel);

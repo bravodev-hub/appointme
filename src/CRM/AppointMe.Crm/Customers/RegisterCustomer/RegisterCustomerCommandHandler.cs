@@ -8,7 +8,7 @@ public sealed class RegisterCustomerCommandHandler(
 )
 {
     public async Task<RegisterCustomerResponse> HandleAsync(RegisterCustomerCommand command, CompanyId companyId,
-        IPrincipal principal, CancellationToken cancellationToken)
+        Principal principal, CancellationToken cancellationToken)
     {
         principal.Require(CustomerPermissions.Create);
 

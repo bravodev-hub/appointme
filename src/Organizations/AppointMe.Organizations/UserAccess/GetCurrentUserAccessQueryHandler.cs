@@ -2,7 +2,7 @@ namespace AppointMe.Organizations.UserAccess;
 
 public sealed class GetCurrentUserAccessQueryHandler
 {
-    public GetCurrentUserAccessResponse Handle(GetCurrentUserAccessQuery query, IPrincipal principal)
+    public GetCurrentUserAccessResponse Handle(GetCurrentUserAccessQuery query, Principal principal)
     {
         if (principal is not UserPrincipal userPrincipal)
         {

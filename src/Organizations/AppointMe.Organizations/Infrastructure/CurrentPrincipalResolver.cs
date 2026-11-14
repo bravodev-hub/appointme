@@ -6,7 +6,7 @@ public sealed class CurrentPrincipalResolver(
     UserPrincipalFactory userPrincipalFactory
 ) : ICurrentPrincipalResolver
 {
-    public async ValueTask<IPrincipal> Resolve(CancellationToken cancellationToken)
+    public async ValueTask<Principal> Resolve(CancellationToken cancellationToken)
     {
         if (currentPrincipal.Principal is { } resolved)
         {
@@ -15,7 +15,7 @@ public sealed class CurrentPrincipalResolver(
 
         var identity = await identityResolver.Resolve(cancellationToken);
 
-        IPrincipal principal = identity switch
+        Principal principal = identity switch
         {
             AnonymousIdentity => new AnonymousPrincipal(),
             SystemIdentity => new SystemPrincipal(),

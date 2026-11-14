@@ -5,7 +5,7 @@ namespace AppointMe.Crm.Customers.GetCustomerById;
 public sealed class GetCustomerByIdQueryHandler(CustomersRepository repository)
 {
     public async Task<CustomerDto> HandleAsync(GetCustomerByIdQuery query, CompanyId companyId,
-        IPrincipal principal, CancellationToken cancellationToken)
+        Principal principal, CancellationToken cancellationToken)
     {
         principal.Require(CustomerPermissions.View);
 

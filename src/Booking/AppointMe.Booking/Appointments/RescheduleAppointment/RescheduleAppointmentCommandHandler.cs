@@ -7,7 +7,7 @@ namespace AppointMe.Booking.Appointments.RescheduleAppointment;
 public sealed class RescheduleAppointmentCommandHandler(BookingDbContext dbContext)
 {
     public async Task HandleAsync(RescheduleAppointmentCommand command, CompanyId companyId,
-        IPrincipal principal, CancellationToken cancellationToken)
+        Principal principal, CancellationToken cancellationToken)
     {
         principal.Require(AppointmentPermissions.Reschedule);
 

@@ -6,7 +6,7 @@ namespace AppointMe.Organizations.Invitations.InviteEmployee;
 public sealed class InviteEmployeeCommandHandler(OrganizationsDbContext dbContext, TimeProvider timeProvider)
 {
     public async Task<InviteEmployeeResponse> HandleAsync(InviteEmployeeCommand command, CompanyId companyId,
-        IPrincipal principal, Identity identity, CancellationToken cancellationToken)
+        Principal principal, Identity identity, CancellationToken cancellationToken)
     {
         principal.Require(EmployeePermissions.Invite);
 

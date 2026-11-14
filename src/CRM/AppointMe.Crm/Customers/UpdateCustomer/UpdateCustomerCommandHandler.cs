@@ -5,7 +5,7 @@ namespace AppointMe.Crm.Customers.UpdateCustomer;
 
 public sealed class UpdateCustomerCommandHandler(CrmDbContext dbContext, TimeProvider timeProvider)
 {
-    public async Task HandleAsync(UpdateCustomerCommand command, IPrincipal principal,
+    public async Task HandleAsync(UpdateCustomerCommand command, Principal principal,
         CancellationToken cancellationToken)
     {
         principal.Require(CustomerPermissions.Update);

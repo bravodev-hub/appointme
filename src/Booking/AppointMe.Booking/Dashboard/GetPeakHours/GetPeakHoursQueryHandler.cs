@@ -6,7 +6,7 @@ namespace AppointMe.Booking.Dashboard.GetPeakHours;
 public sealed class GetPeakHoursQueryHandler(DashboardRepository repository)
 {
     public async Task<GetPeakHoursResponse> HandleAsync(GetPeakHoursQuery query,
-        CompanyId companyId, IPrincipal principal, CancellationToken cancellationToken)
+        CompanyId companyId, Principal principal, CancellationToken cancellationToken)
     {
         principal.Require(AppointmentPermissions.ViewStatistics);
 

@@ -2,6 +2,6 @@ namespace AppointMe.Shared.Authorization.Principals;
 
 public interface ICurrentPrincipal
 {
-    IPrincipal? Principal { get; }
-    IDisposable Change(IPrincipal principal);
+    Principal? Principal { get; }
+    IDisposable Change(Principal principal);
 }

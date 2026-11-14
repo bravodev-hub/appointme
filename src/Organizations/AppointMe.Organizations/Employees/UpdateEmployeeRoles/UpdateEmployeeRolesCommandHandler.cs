@@ -7,7 +7,7 @@ namespace AppointMe.Organizations.Employees.UpdateEmployeeRoles;
 
 public sealed class UpdateEmployeeRolesCommandHandler(OrganizationsDbContext dbContext)
 {
-    public async Task HandleAsync(UpdateEmployeeRolesCommand command, CompanyId companyId, IPrincipal principal,
+    public async Task HandleAsync(UpdateEmployeeRolesCommand command, CompanyId companyId, Principal principal,
         CancellationToken cancellationToken)
     {
         principal.Require(EmployeePermissions.UpdateRoles);

@@ -10,7 +10,7 @@ public sealed class ScheduleAppointmentCommandHandler(
 )
 {
     public async Task<ScheduleAppointmentResponse> HandleAsync(ScheduleAppointmentCommand command,
-        CompanyId companyId, IPrincipal principal, CancellationToken cancellationToken)
+        CompanyId companyId, Principal principal, CancellationToken cancellationToken)
     {
         principal.Require(AppointmentPermissions.Schedule);
 

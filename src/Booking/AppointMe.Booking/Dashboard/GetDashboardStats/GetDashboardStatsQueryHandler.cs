@@ -9,7 +9,7 @@ public sealed class GetDashboardStatsQueryHandler(
     ServiceProvidersRepository providersRepository)
 {
     public async Task<GetDashboardStatsResponse> HandleAsync(GetDashboardStatsQuery query,
-        CompanyId companyId, IPrincipal principal, CancellationToken cancellationToken)
+        CompanyId companyId, Principal principal, CancellationToken cancellationToken)
     {
         principal.Require(AppointmentPermissions.ViewStatistics);
 

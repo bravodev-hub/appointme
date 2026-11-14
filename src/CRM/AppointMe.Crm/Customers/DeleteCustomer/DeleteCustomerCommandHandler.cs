@@ -5,7 +5,7 @@ namespace AppointMe.Crm.Customers.DeleteCustomer;
 
 public sealed class DeleteCustomerCommandHandler(CrmDbContext dbContext)
 {
-    public async Task HandleAsync(DeleteCustomerCommand command, IPrincipal principal,
+    public async Task HandleAsync(DeleteCustomerCommand command, Principal principal,
         CancellationToken cancellationToken)
     {
         principal.Require(CustomerPermissions.Delete);

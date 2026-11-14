@@ -1,8 +1,6 @@
 using System.Globalization;
 using AppointMe.Crm.Customers.GetNewCustomerStats;
-using AppointMe.Shared.Authorization.Permissions;
 using AppointMe.Shared.Authorization.Principals;
-using AppointMe.Shared.Authorization.Roles;
 using AppointMe.Shared.Companies;
 using AppointMe.Shared.Domain.Errors;
 
@@ -10,12 +8,6 @@ namespace AppointMe.Crm.Tests.Customers.GetNewCustomerStats;
 
 public class GetNewCustomerStatsQueryHandlerTests
 {
-    private sealed class NoPermissionsPrincipal : IPrincipal
-    {
-        public bool HasRole(Role role) => false;
-        public bool HasPermission(Permission permission) => false;
-    }
-
     [Fact]
     public async Task should_deny_when_principal_lacks_view_statistics_permission()
     {
@@ -31,6 +23,6 @@ public class GetNewCustomerStatsQueryHandlerTests
         };
 
         await Assert.ThrowsAsync<AccessDeniedException>(() => handler.HandleAsync(
-            query, new CompanyId(NewId()), new NoPermissionsPrincipal(), CancellationToken.None));
+            query, new CompanyId(NewId()), new AnonymousPrincipal(), CancellationToken.None));
     }
 }

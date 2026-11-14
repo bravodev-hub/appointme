@@ -6,7 +6,7 @@ namespace AppointMe.Booking.ServiceProviders.GetServiceProviders;
 public sealed class GetServiceProvidersQueryHandler(ServiceProvidersRepository repository)
 {
     public async Task<IReadOnlyList<ServiceProviderDto>> HandleAsync(GetServiceProvidersQuery query,
-        CompanyId companyId, IPrincipal principal, CancellationToken cancellationToken)
+        CompanyId companyId, Principal principal, CancellationToken cancellationToken)
     {
         principal.Require(AppointmentPermissions.View);
 

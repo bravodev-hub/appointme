@@ -5,7 +5,7 @@ namespace AppointMe.Crm.Customers.GetNewCustomerStats;
 public sealed class GetNewCustomerStatsQueryHandler(CustomersRepository repository)
 {
     public async Task<GetNewCustomerStatsResponse> HandleAsync(GetNewCustomerStatsQuery query,
-        CompanyId companyId, IPrincipal principal, CancellationToken cancellationToken)
+        CompanyId companyId, Principal principal, CancellationToken cancellationToken)
     {
         principal.Require(CustomerPermissions.ViewStatistics);
 

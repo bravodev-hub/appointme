@@ -1,19 +1,11 @@
 using System.Globalization;
 using AppointMe.Booking.Dashboard.GetDashboardStats;
-using AppointMe.Shared.Authorization.Permissions;
 using AppointMe.Shared.Authorization.Principals;
-using AppointMe.Shared.Authorization.Roles;
 
 namespace AppointMe.Booking.Tests.Dashboard;
 
 public class GetDashboardStatsQueryHandlerTests
 {
-    private sealed class NoPermissionsPrincipal : IPrincipal
-    {
-        public bool HasRole(Role role) => false;
-        public bool HasPermission(Permission permission) => false;
-    }
-
     [Fact]
     public async Task should_deny_when_principal_lacks_view_statistics_permission()
     {
@@ -31,6 +23,6 @@ public class GetDashboardStatsQueryHandlerTests
         };
 
         await Assert.ThrowsAsync<AccessDeniedException>(() => handler.HandleAsync(
-            query, new CompanyId(NewId()), new NoPermissionsPrincipal(), CancellationToken.None));
+            query, new CompanyId(NewId()), new AnonymousPrincipal(), CancellationToken.None));
     }
 }
