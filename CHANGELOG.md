@@ -40,6 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so tests can no longer implement their own principal: they use `AnonymousPrincipal` or a
   `UserPrincipal` built with the permissions they need.
 
+- **Service-provider reconciliation decides, then applies.** `ServiceProviderChange` is a
+  union of `ProviderCreation`, `ProviderUpdate`, `ProviderDeletion` and `NoProviderChange`,
+  and its `Decide` function turns a local provider and an employee snapshot into one of them
+  without touching the database. `ServiceProviderSynchronizer` applies the result in a
+  `switch` the compiler checks for exhaustiveness, replacing a tuple switch with a silent
+  catch-all arm. Behaviour is unchanged; the decision now has unit tests.
+
 ### Removed
 
 - **The `System.Security.Cryptography.Pkcs` transitive pin.** SqlClient 7.1.2 and the Aspire
