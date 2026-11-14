@@ -27,7 +27,7 @@ public sealed class EmployeeTypeConfiguration : IEntityTypeConfiguration<Employe
             .HasForeignKey(employee => employee.CompanyId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.OwnsOne(employee => employee.Name, navigationBuilder =>
+        builder.ComplexProperty(employee => employee.Name, navigationBuilder =>
         {
             navigationBuilder.Property(personName => personName.FirstName)
                 .HasColumnName("FirstName")

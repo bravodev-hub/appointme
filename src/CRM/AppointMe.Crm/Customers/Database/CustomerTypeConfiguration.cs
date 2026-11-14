@@ -20,7 +20,7 @@ public sealed class CustomerTypeConfiguration : IEntityTypeConfiguration<Custome
             .HasColumnType("uniqueidentifier")
             .IsRequired();
 
-        builder.OwnsOne(customer => customer.Name, navigationBuilder =>
+        builder.ComplexProperty(customer => customer.Name, navigationBuilder =>
         {
             navigationBuilder.Property(personName => personName.FirstName)
                 .HasColumnName("FirstName")

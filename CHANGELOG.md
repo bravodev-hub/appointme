@@ -49,6 +49,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The full reconcile uses LINQ's built-in `FullJoin`** (new in .NET 11) to pair local
   service providers with employee snapshots.
 
+- **Value objects are mapped as EF Core complex types.** `PersonName` (customers, attendees,
+  service providers, users, employees) and the appointment `Period` move from `OwnsOne` to
+  `ComplexProperty`, the mapping EF Core now recommends over owned entities. Columns are
+  unchanged, so there is no migration.
+- **`dotnet ef` reads `.config/dotnet-ef.json`** (new in EF Core 11) for the startup project,
+  so migrations commands run from a module directory with only `--context`.
+
+### Fixed
+
+- **`dotnet ef migrations add` works again on .NET 11.** EF Core Design 11 brings the Roslyn
+  workspaces at 5.9.0 while `JasperFx.RuntimeCompiler` (through Wolverine) asked for 5.0.0,
+  and the mix failed with a `ReflectionTypeLoadException`. `Microsoft.CodeAnalysis` is now
+  pinned to 5.9.0 as a transitive pin.
+
 ### Removed
 
 - **The `FullOuterJoin` extension in `AppointMe.Shared.Utilities`.** `Enumerable.FullJoin`

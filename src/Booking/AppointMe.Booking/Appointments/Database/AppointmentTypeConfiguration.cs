@@ -33,7 +33,7 @@ public sealed class AppointmentTypeConfiguration : IEntityTypeConfiguration<Appo
             .HasForeignKey(appointment => appointment.CompanyId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.OwnsOne(appointment => appointment.Period, timePeriod =>
+        builder.ComplexProperty(appointment => appointment.Period, timePeriod =>
         {
             timePeriod.Property(period => period.Start)
                 .HasConversion(UtcDateTimeOffsetConverter)

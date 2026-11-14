@@ -36,6 +36,22 @@ The build-time step runs the app's startup in the `Codegen` environment (`appset
 
 Do **not** invoke `/regenerate-api` for backend-only changes that don't affect the contract (internal handlers, domain events, EF config, migrations, tests).
 
+### EF Core migrations
+
+Each module owns its migrations, so run `dotnet ef` from the module's project directory and name
+the context. `.config/dotnet-ef.json` supplies the startup project (`src/AppointMe.Api`), so
+`--startup-project` is not needed:
+
+```bash
+cd src/CRM/AppointMe.Crm
+dotnet ef migrations add AddSomething --context CrmDbContext
+dotnet ef migrations has-pending-model-changes --context CrmDbContext
+```
+
+`--context` is still required: the startup project registers all four contexts. The `--context "*"`
+wildcard is unreliable with contexts spread over several projects (`migrations script` works from a
+module directory, `migrations list` does not), so don't rely on it.
+
 ### Testing
 ```bash
 dotnet test                                    # All tests

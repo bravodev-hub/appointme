@@ -20,7 +20,7 @@ public sealed class AttendeeTypeConfiguration : IEntityTypeConfiguration<Attende
             .HasColumnType("uniqueidentifier")
             .IsRequired();
 
-        builder.OwnsOne(attendee => attendee.Name, name =>
+        builder.ComplexProperty(attendee => attendee.Name, name =>
         {
             name.Property(personName => personName.FirstName)
                 .HasColumnName("FirstName")

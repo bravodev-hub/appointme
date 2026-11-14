@@ -26,7 +26,7 @@ public sealed class UserTypeConfiguration : IEntityTypeConfiguration<User>
         builder.HasIndex(user => user.IdentityProviderUserId)
             .IsUnique();
 
-        builder.OwnsOne(user => user.Name, navigationBuilder =>
+        builder.ComplexProperty(user => user.Name, navigationBuilder =>
         {
             navigationBuilder.Property(personName => personName.FirstName)
                 .HasColumnName("FirstName")

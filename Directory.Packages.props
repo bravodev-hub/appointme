@@ -25,6 +25,11 @@
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="11.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.14" />
     <PackageVersion Include="Microsoft.AspNetCore.Routing.Abstractions" Version="2.3.14" />
+    <!-- Transitive pins: EF Core Design 11 brings the Roslyn workspaces at 5.9.0, while
+         JasperFx.RuntimeCompiler (via WolverineFx.RuntimeCompilation) asks for Microsoft.CodeAnalysis 5.0.0.
+         Mixed versions break `dotnet ef migrations add` (ReflectionTypeLoadException in the VB workspaces).
+         Drop once JasperFx.RuntimeCompiler references Roslyn >= 5.9 itself. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis" Version="5.9.0" />
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="7.1.2" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="11.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0">

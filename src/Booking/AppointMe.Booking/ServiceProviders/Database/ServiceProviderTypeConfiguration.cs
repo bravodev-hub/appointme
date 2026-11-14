@@ -20,7 +20,7 @@ public sealed class ServiceProviderTypeConfiguration : IEntityTypeConfiguration<
             .HasColumnType("uniqueidentifier")
             .IsRequired();
 
-        builder.OwnsOne(serviceProvider => serviceProvider.Name, name =>
+        builder.ComplexProperty(serviceProvider => serviceProvider.Name, name =>
         {
             name.Property(personName => personName.FirstName)
                 .HasColumnName("FirstName")
