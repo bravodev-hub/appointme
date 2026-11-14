@@ -1,6 +1,5 @@
 using AppointMe.Booking.Database;
 using AppointMe.Organizations.Contracts.Employees;
-using AppointMe.Shared.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace AppointMe.Booking.ServiceProviders.ReconcileServiceProviders;
@@ -22,10 +21,9 @@ public class ReconcileServiceProvidersCommandHandler(
             .Where(provider => provider.CompanyId == companyId)
             .ToListAsync(cancellationToken);
 
-        var pairs = locals.FullOuterJoin(snapshots,
-            leftKeySelector: local => local.Id.Value,
-            rightKeySelector: snapshot => snapshot.EmployeeId,
-            resultSelector: (local, snapshot) => (local, snapshot));
+        var pairs = locals.FullJoin(snapshots,
+            local => local.Id.Value,
+            snapshot => snapshot.EmployeeId);
 
         foreach (var (existing, snapshot) in pairs)
         {

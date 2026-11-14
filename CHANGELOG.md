@@ -46,9 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without touching the database. `ServiceProviderSynchronizer` applies the result in a
   `switch` the compiler checks for exhaustiveness, replacing a tuple switch with a silent
   catch-all arm. Behaviour is unchanged; the decision now has unit tests.
+- **The full reconcile uses LINQ's built-in `FullJoin`** (new in .NET 11) to pair local
+  service providers with employee snapshots.
 
 ### Removed
 
+- **The `FullOuterJoin` extension in `AppointMe.Shared.Utilities`.** `Enumerable.FullJoin`
+  replaces it; its one caller was the service-provider reconcile.
 - **The `System.Security.Cryptography.Pkcs` transitive pin.** SqlClient 7.1.2 and the Aspire
   13.6.5 SQL Server host both reference patched versions themselves, so GHSA-846f-f764-76mx
   no longer needs a central pin.
