@@ -4,7 +4,7 @@ using Shared.Domain.Errors;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
-internal sealed class AccessDeniedExceptionHandler(
+internal sealed partial class AccessDeniedExceptionHandler(
     IProblemDetailsService problemDetailsService,
     ILogger<AccessDeniedExceptionHandler> logger
 ) : IExceptionHandler
@@ -17,7 +17,7 @@ internal sealed class AccessDeniedExceptionHandler(
             return false;
         }
 
-        logger.LogWarning(exception, "Unhandled access denied exception occurred");
+        LogAccessDenied(exception);
 
         httpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
         var context = new ProblemDetailsContext
@@ -34,4 +34,7 @@ internal sealed class AccessDeniedExceptionHandler(
 
         return await problemDetailsService.TryWriteAsync(context);
     }
+
+    [LoggerMessage(LogLevel.Warning, "Unhandled access denied exception occurred")]
+    private partial void LogAccessDenied(Exception exception);
 }

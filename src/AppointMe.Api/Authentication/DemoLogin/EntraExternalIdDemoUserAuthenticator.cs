@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using AppointMe.Api.Authentication.EntraExternalId;
 using Microsoft.Extensions.Options;
@@ -11,7 +12,7 @@ namespace AppointMe.Api.Authentication.DemoLogin;
 /// The configured <see cref="EntraExternalIdOptions.ClientId"/> app must be a public client with
 /// native authentication (email + password) enabled.
 /// </summary>
-internal sealed class EntraExternalIdDemoUserAuthenticator(
+internal sealed partial class EntraExternalIdDemoUserAuthenticator(
     HttpClient httpClient,
     IOptions<EntraExternalIdOptions> options,
     ILogger<EntraExternalIdDemoUserAuthenticator> logger
@@ -59,10 +60,7 @@ internal sealed class EntraExternalIdDemoUserAuthenticator(
 
         if (!string.Equals(challenge.ChallengeType, "password", StringComparison.OrdinalIgnoreCase))
         {
-            logger.LogWarning(
-                "Entra demo login: expected a 'password' challenge but got '{ChallengeType}'. " +
-                "Native authentication (email + password) may be disabled for this app registration.",
-                challenge.ChallengeType);
+            LogUnexpectedChallenge(challenge.ChallengeType);
             return null;
         }
 
@@ -89,8 +87,7 @@ internal sealed class EntraExternalIdDemoUserAuthenticator(
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning("Entra native auth call to {Url} failed: {Status} {Body}", url, response.StatusCode,
-                body);
+            LogNativeAuthCallFailed(url, response.StatusCode, body);
             return null;
         }
 
@@ -118,4 +115,12 @@ internal sealed class EntraExternalIdDemoUserAuthenticator(
 
     /// <summary>The <c>token</c> response; only the id_token is needed to build the session.</summary>
     private sealed record TokenResponse(string? IdToken);
+
+    [LoggerMessage(LogLevel.Warning,
+        "Entra demo login: expected a 'password' challenge but got '{ChallengeType}'. " +
+        "Native authentication (email + password) may be disabled for this app registration.")]
+    private partial void LogUnexpectedChallenge(string? challengeType);
+
+    [LoggerMessage(LogLevel.Warning, "Entra native auth call to {Url} failed: {Status} {Body}")]
+    private partial void LogNativeAuthCallFailed(string url, HttpStatusCode status, string body);
 }

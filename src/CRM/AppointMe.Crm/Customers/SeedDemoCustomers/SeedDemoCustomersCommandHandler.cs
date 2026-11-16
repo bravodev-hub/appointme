@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AppointMe.Crm.Customers.SeedDemoCustomers;
 
-public sealed class SeedDemoCustomersCommandHandler(
+public sealed partial class SeedDemoCustomersCommandHandler(
     CrmDbContext dbContext,
     SeedDemoCustomers seeder,
     ILogger<SeedDemoCustomersCommandHandler> logger)
@@ -21,7 +21,9 @@ public sealed class SeedDemoCustomersCommandHandler(
         dbContext.Customers.AddRange(customers);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("Seeded {Count} demo customers for company {CompanyId}.",
-            command.Count, companyId.Value);
+        LogDemoCustomersSeeded(command.Count, companyId.Value);
     }
+
+    [LoggerMessage(LogLevel.Information, "Seeded {Count} demo customers for company {CompanyId}.")]
+    private partial void LogDemoCustomersSeeded(int count, Guid companyId);
 }

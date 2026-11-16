@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AppointMe.Api.ErrorHandling;
 
-internal sealed class GlobalExceptionHandler(
+internal sealed partial class GlobalExceptionHandler(
     ILogger<GlobalExceptionHandler> logger,
     IProblemDetailsService problemDetailsService
 ) : IExceptionHandler
@@ -11,7 +11,7 @@ internal sealed class GlobalExceptionHandler(
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception,
         CancellationToken cancellationToken)
     {
-        logger.LogError(exception, "Unhandled exception occurred");
+        LogUnhandledException(exception);
 
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
         var context = new ProblemDetailsContext
@@ -28,4 +28,7 @@ internal sealed class GlobalExceptionHandler(
 
         return await problemDetailsService.TryWriteAsync(context);
     }
+
+    [LoggerMessage(LogLevel.Error, "Unhandled exception occurred")]
+    private partial void LogUnhandledException(Exception exception);
 }

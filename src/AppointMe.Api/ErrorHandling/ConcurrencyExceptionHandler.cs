@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AppointMe.Api.ErrorHandling;
 
-internal sealed class ConcurrencyExceptionHandler(
+internal sealed partial class ConcurrencyExceptionHandler(
     IProblemDetailsService problemDetailsService,
     ILogger<ConcurrencyExceptionHandler> logger
 ) : IExceptionHandler
@@ -19,7 +19,7 @@ internal sealed class ConcurrencyExceptionHandler(
             return false;
         }
 
-        logger.LogWarning(exception, "Optimistic concurrency conflict");
+        LogConcurrencyConflict(exception);
 
         httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
         var context = new ProblemDetailsContext
@@ -38,4 +38,7 @@ internal sealed class ConcurrencyExceptionHandler(
 
         return await problemDetailsService.TryWriteAsync(context);
     }
+
+    [LoggerMessage(LogLevel.Warning, "Optimistic concurrency conflict")]
+    private partial void LogConcurrencyConflict(Exception exception);
 }

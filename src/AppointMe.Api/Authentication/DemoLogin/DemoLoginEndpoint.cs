@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace AppointMe.Api.Authentication.DemoLogin;
 
-internal sealed class DemoLoginEndpoint : IEndpoint
+internal sealed partial class DemoLoginEndpoint : IEndpoint
 {
     private const string DemoAuthenticationType = "DemoLogin";
 
@@ -42,8 +42,7 @@ internal sealed class DemoLoginEndpoint : IEndpoint
         var idToken = await authenticator.AuthenticateAsync(demoUser.Email, demoUser.Password, cancellationToken);
         if (idToken is null)
         {
-            logger.LogWarning("Demo login failed to authenticate {Email} against the identity provider.",
-                demoUser.Email);
+            LogAuthenticationFailed(logger, demoUser.Email);
             return TypedResults.Problem("Demo login failed.", statusCode: StatusCodes.Status502BadGateway);
         }
 
@@ -70,4 +69,7 @@ internal sealed class DemoLoginEndpoint : IEndpoint
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, DemoAuthenticationType));
     }
+
+    [LoggerMessage(LogLevel.Warning, "Demo login failed to authenticate {Email} against the identity provider.")]
+    private static partial void LogAuthenticationFailed(ILogger logger, string email);
 }

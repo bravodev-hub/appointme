@@ -4,7 +4,7 @@ using Shared.Domain.Errors;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
-internal sealed class NotFoundExceptionHandler(
+internal sealed partial class NotFoundExceptionHandler(
     IProblemDetailsService problemDetailsService,
     ILogger<NotFoundExceptionHandler> logger
 ) : IExceptionHandler
@@ -17,7 +17,7 @@ internal sealed class NotFoundExceptionHandler(
             return false;
         }
 
-        logger.LogWarning(exception, "Resource not found");
+        LogNotFound(exception);
 
         httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
         var context = new ProblemDetailsContext
@@ -34,4 +34,7 @@ internal sealed class NotFoundExceptionHandler(
 
         return await problemDetailsService.TryWriteAsync(context);
     }
+
+    [LoggerMessage(LogLevel.Warning, "Resource not found")]
+    private partial void LogNotFound(Exception exception);
 }

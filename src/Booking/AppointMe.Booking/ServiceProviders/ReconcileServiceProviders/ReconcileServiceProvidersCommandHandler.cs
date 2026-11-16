@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AppointMe.Booking.ServiceProviders.ReconcileServiceProviders;
 
-public class ReconcileServiceProvidersCommandHandler(
+public partial class ReconcileServiceProvidersCommandHandler(
     BookingDbContext dbContext,
     IEmployeeRehydrationSource employeeSource,
     ServiceProviderSynchronizer synchronizer,
@@ -34,10 +34,12 @@ public class ReconcileServiceProvidersCommandHandler(
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                logger.LogError(exception, "Failed to reconcile service provider {ProviderId} in company {CompanyId}.",
-                    existing?.Id.Value ?? snapshot?.EmployeeId, companyId);
+                LogProviderReconciliationFailed(exception, existing?.Id.Value ?? snapshot?.EmployeeId, companyId);
                 dbContext.ChangeTracker.Clear();
             }
         }
     }
+
+    [LoggerMessage(LogLevel.Error, "Failed to reconcile service provider {ProviderId} in company {CompanyId}.")]
+    private partial void LogProviderReconciliationFailed(Exception exception, Guid? providerId, CompanyId companyId);
 }

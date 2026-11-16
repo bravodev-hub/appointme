@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AppointMe.Api.ErrorHandling;
 
-internal sealed class ValidationExceptionHandler(
+internal sealed partial class ValidationExceptionHandler(
     IProblemDetailsService problemDetailsService,
     ILogger<ValidationExceptionHandler> logger
 ) : IExceptionHandler
@@ -17,7 +17,7 @@ internal sealed class ValidationExceptionHandler(
             return false;
         }
 
-        logger.LogError(exception, "Unhandled validation exception occurred");
+        LogValidationFailed(exception);
 
         httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
         var context = new ProblemDetailsContext
@@ -36,4 +36,7 @@ internal sealed class ValidationExceptionHandler(
 
         return await problemDetailsService.TryWriteAsync(context);
     }
+
+    [LoggerMessage(LogLevel.Error, "Unhandled validation exception occurred")]
+    private partial void LogValidationFailed(Exception exception);
 }

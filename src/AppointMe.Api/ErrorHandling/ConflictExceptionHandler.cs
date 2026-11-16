@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AppointMe.Api.ErrorHandling;
 
-internal sealed class ConflictExceptionHandler(
+internal sealed partial class ConflictExceptionHandler(
     IProblemDetailsService problemDetailsService,
     ILogger<ConflictExceptionHandler> logger
 ) : IExceptionHandler
@@ -17,7 +17,7 @@ internal sealed class ConflictExceptionHandler(
             return false;
         }
 
-        logger.LogError(exception, "Conflict occurred");
+        LogConflict(exception);
 
         httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
         var context = new ProblemDetailsContext
@@ -40,4 +40,7 @@ internal sealed class ConflictExceptionHandler(
 
         return await problemDetailsService.TryWriteAsync(context);
     }
+
+    [LoggerMessage(LogLevel.Error, "Conflict occurred")]
+    private partial void LogConflict(Exception exception);
 }

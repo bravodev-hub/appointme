@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AppointMe.Booking.Attendees.ReconcileAttendees;
 
-public class ReconcileAttendeesCommandHandler(
+public partial class ReconcileAttendeesCommandHandler(
     BookingDbContext dbContext,
     ICustomerRehydrationSource source,
     AttendeeSynchronizer synchronizer,
@@ -22,7 +22,7 @@ public class ReconcileAttendeesCommandHandler(
             await ReconcileAttendee(snapshot, companyId, cancellationToken);
         }
 
-        logger.LogInformation("Finished attendee reconciliation for company {CompanyId}.", companyId);
+        LogReconciliationFinished(companyId);
     }
 
     private async IAsyncEnumerable<CustomerSnapshot> GetCustomerSnapshots(CompanyId companyId,
@@ -58,12 +58,15 @@ public class ReconcileAttendeesCommandHandler(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            logger.LogError(exception,
-                "Failed to reconcile attendee {CustomerId} in company {CompanyId}.",
-                snapshot.CustomerId,
-                companyId);
+            LogAttendeeReconciliationFailed(exception, snapshot.CustomerId, companyId);
 
             dbContext.ChangeTracker.Clear();
         }
     }
+
+    [LoggerMessage(LogLevel.Information, "Finished attendee reconciliation for company {CompanyId}.")]
+    private partial void LogReconciliationFinished(CompanyId companyId);
+
+    [LoggerMessage(LogLevel.Error, "Failed to reconcile attendee {CustomerId} in company {CompanyId}.")]
+    private partial void LogAttendeeReconciliationFailed(Exception exception, Guid customerId, CompanyId companyId);
 }

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AppointMe.Booking.Appointments.SeedDemoAppointments;
 
-public sealed class SeedDemoAppointmentsCommandHandler(
+public sealed partial class SeedDemoAppointmentsCommandHandler(
     BookingDbContext dbContext,
     SeedDemoAppointments seeder,
     ILogger<SeedDemoAppointmentsCommandHandler> logger)
@@ -22,8 +22,10 @@ public sealed class SeedDemoAppointmentsCommandHandler(
         dbContext.Appointments.AddRange(appointments);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation(
-            "Scheduled {Count} demo appointments for attendee {AttendeeId} in company {CompanyId}.",
-            command.Count, command.AttendeeId, companyId.Value);
+        LogDemoAppointmentsScheduled(command.Count, command.AttendeeId, companyId.Value);
     }
+
+    [LoggerMessage(LogLevel.Information,
+        "Scheduled {Count} demo appointments for attendee {AttendeeId} in company {CompanyId}.")]
+    private partial void LogDemoAppointmentsScheduled(int count, Guid attendeeId, Guid companyId);
 }

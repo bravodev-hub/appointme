@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AppointMe.Booking.BookingCompanies.ReconcileBookingCompanies;
 
-public class ReconcileBookingCompaniesCommandHandler(
+public partial class ReconcileBookingCompaniesCommandHandler(
     BookingDbContext dbContext,
     ICompanyRehydrationSource source,
     BookingCompanySynchronizer synchronizer,
@@ -25,12 +25,17 @@ public class ReconcileBookingCompaniesCommandHandler(
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                logger.LogError(exception,
-                    "Failed to reconcile booking company {CompanyId}.", snapshot.CompanyId);
+                LogCompanyReconciliationFailed(exception, snapshot.CompanyId);
                 dbContext.ChangeTracker.Clear();
             }
         }
 
-        logger.LogInformation("Reconciled {Count} booking companies.", processed);
+        LogCompaniesReconciled(processed);
     }
+
+    [LoggerMessage(LogLevel.Error, "Failed to reconcile booking company {CompanyId}.")]
+    private partial void LogCompanyReconciliationFailed(Exception exception, Guid companyId);
+
+    [LoggerMessage(LogLevel.Information, "Reconciled {Count} booking companies.")]
+    private partial void LogCompaniesReconciled(int count);
 }

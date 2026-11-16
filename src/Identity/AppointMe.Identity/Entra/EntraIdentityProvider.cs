@@ -7,7 +7,7 @@ using Microsoft.Graph.Models.ODataErrors;
 
 namespace AppointMe.Identity.Entra;
 
-public sealed class EntraIdentityProvider(
+public sealed partial class EntraIdentityProvider(
     IOptions<EntraIdentityOptions> options,
     ILogger<EntraIdentityProvider> logger
 ) : IIdentityProvider
@@ -77,8 +77,8 @@ public sealed class EntraIdentityProvider(
 
     private void LogGraphError(ODataError error, string context)
     {
-        logger.LogError(error,
-            "{Context}. Graph error code={Code} message={Message} innerCode={InnerCode} innerMessage={InnerMessage}",
+        LogGraphErrorDetails(
+            error,
             context,
             error.Error?.Code,
             error.Error?.Message,
@@ -106,4 +106,9 @@ public sealed class EntraIdentityProvider(
         var credential = new ClientSecretCredential(options.TenantId, options.ClientId, options.ClientSecret);
         return new GraphServiceClient(credential, scopes: ["https://graph.microsoft.com/.default"]);
     }
+
+    [LoggerMessage(LogLevel.Error,
+        "{Context}. Graph error code={Code} message={Message} innerCode={InnerCode} innerMessage={InnerMessage}")]
+    private partial void LogGraphErrorDetails(Exception exception, string context, string? code, string? message,
+        string? innerCode, string? innerMessage);
 }

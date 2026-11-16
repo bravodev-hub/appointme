@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 
 namespace AppointMe.Api.Authentication.DemoLogin;
@@ -6,7 +7,7 @@ namespace AppointMe.Api.Authentication.DemoLogin;
 /// Demo login for Keycloak via the OAuth2 Resource Owner Password Credentials (ROPC) grant.
 /// Reuses the configured OIDC client; the realm client must have "Direct Access Grants" enabled.
 /// </summary>
-internal sealed class KeycloakDemoUserAuthenticator(
+internal sealed partial class KeycloakDemoUserAuthenticator(
     HttpClient httpClient,
     IdentityProviderOptions providerOptions,
     ILogger<KeycloakDemoUserAuthenticator> logger
@@ -31,11 +32,14 @@ internal sealed class KeycloakDemoUserAuthenticator(
 
         if (!response.IsSuccessStatusCode)
         {
-            logger.LogWarning("Keycloak demo login (ROPC) failed: {Status} {Body}", response.StatusCode, body);
+            LogLoginFailed(response.StatusCode, body);
             return null;
         }
 
         using var json = JsonDocument.Parse(body);
         return json.RootElement.TryGetProperty("id_token", out var idToken) ? idToken.GetString() : null;
     }
+
+    [LoggerMessage(LogLevel.Warning, "Keycloak demo login (ROPC) failed: {Status} {Body}")]
+    private partial void LogLoginFailed(HttpStatusCode status, string body);
 }

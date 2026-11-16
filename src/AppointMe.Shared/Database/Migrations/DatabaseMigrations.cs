@@ -23,7 +23,7 @@ internal sealed class DatabaseMigrationOptions
     }
 }
 
-internal sealed class DatabaseMigrationService(
+internal sealed partial class DatabaseMigrationService(
     IServiceScopeFactory scopeFactory,
     IOptions<DatabaseMigrationOptions> options,
     ILogger<DatabaseMigrationService> logger) : IHostedService
@@ -45,12 +45,18 @@ internal sealed class DatabaseMigrationService(
     {
         var context = (DbContext)serviceProvider.GetRequiredService(contextType);
 
-        logger.LogInformation("Applying migrations for {Context}...", contextType.Name);
+        LogApplyingMigrations(contextType.Name);
 
         await context.Database.MigrateAsync(cancellationToken);
 
-        logger.LogInformation("Migrations applied for {Context}.", contextType.Name);
+        LogMigrationsApplied(contextType.Name);
     }
+
+    [LoggerMessage(LogLevel.Information, "Applying migrations for {Context}...")]
+    private partial void LogApplyingMigrations(string context);
+
+    [LoggerMessage(LogLevel.Information, "Migrations applied for {Context}.")]
+    private partial void LogMigrationsApplied(string context);
 }
 
 public static class DatabaseMigrationsExtensions

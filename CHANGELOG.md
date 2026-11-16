@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `isCodegen` from the environment, and command-line detection remains only for Wolverine's
   `codegen` command.
 
+- **Logging is source-generated.** All 22 log statements are `[LoggerMessage]` partial
+  methods declared on the class that logs, replacing `logger.LogWarning(...)`-style calls.
+  Messages, levels and categories are unchanged; each entry now carries a generated event
+  ID and an event name (the method name) where it used to be 0.
+
 ### Fixed
 
 - **`dotnet ef migrations add` works again on .NET 11.** EF Core Design 11 brings the Roslyn
